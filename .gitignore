@@ -68,12 +68,6 @@ server_blacklist.txt
 # shader files
 *.tmp
 
-# compiled map and nodegraph files
-*.bsp
-*.ain
-
 # misc
 capt_compile.bat
 *.lib
-sp/game/portalzpe/cfg/pet.txt
-sp/game/portalzpe/materials/maps/*/*.vtf
