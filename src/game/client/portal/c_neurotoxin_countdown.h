@@ -14,7 +14,7 @@
 class C_NeurotoxinCountdown : public C_BaseEntity
 {
 public:
-	DECLARE_CLASS( C_NeurotoxinCountdown, CBaseEntity );
+	DECLARE_CLASS( C_NeurotoxinCountdown, C_BaseEntity );
 	DECLARE_CLIENTCLASS();
 	DECLARE_PREDICTABLE();
 

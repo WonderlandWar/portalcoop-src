@@ -813,7 +813,7 @@ void CGrabController::AttachEntity( CPortal_Player *pPlayer, CBaseEntity *pEntit
 				}
 			}
 		}
-		if( pObjectPortal )
+		if (pObjectPortal && pObjectPortal->m_hLinkedPortal )
 		{
 			UTIL_Portal_AngleTransform( pObjectPortal->m_hLinkedPortal->MatrixThisToLinked(), angles, angles );
 		}
