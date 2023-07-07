@@ -312,8 +312,17 @@ void CPortalGameRules::ClientSettingsChanged(CBasePlayer *pPlayer)
 #endif
 
 }
+#ifdef GAME_DLL
+const char *CPortalGameRules::GetGameDescription( void )
+{ 
+	if (gpGlobals->maxClients == 2)
+		return "2 Player";
+	if (gpGlobals->maxClients == 3)
+		return "3 Player";
 
-
+	return "Custom Player Count"; 
+} 
+#endif
 
 #ifdef CLIENT_DLL //{
 

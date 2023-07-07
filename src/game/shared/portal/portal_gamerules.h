@@ -89,7 +89,7 @@ private:
 
 	virtual void			InitDefaultAIRelationships( void );
 	virtual const char*		AIClassText(int classType);
-	virtual const char *GetGameDescription( void ) { return "Portal"; }
+	virtual const char *GetGameDescription( void );
 
 	// Ammo
 	virtual void			PlayerThink( CBasePlayer *pPlayer );

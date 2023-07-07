@@ -8,6 +8,9 @@
 #include "c_playerresource.h"
 #include "c_team.h"
 #include "gamestringpool.h"
+#ifdef PORTAL
+	#include "c_weapon_portalgun.h"
+#endif
 
 #ifdef HL2MP
 #include "hl2mp_gamerules.h"
@@ -166,6 +169,34 @@ int C_PlayerResource::GetTeam(int iIndex )
 		return m_iTeam[iIndex];
 	}
 }
+
+#ifdef PORTAL
+const Color C_PlayerResource::GetPortalgunColor(int iIndex)
+{	
+	C_BaseCombatCharacter *pCombatChar = ToBaseCombatCharacter(ClientEntityList().GetEnt(iIndex));
+	C_BaseCombatWeapon *pWeapon = pCombatChar->GetActiveWeapon();
+	
+	C_WeaponPortalgun *pPortalgun = NULL;
+		
+	if (pWeapon)
+		pPortalgun = dynamic_cast<C_WeaponPortalgun*>(pWeapon);
+	
+	if (pPortalgun)
+	{
+		if (pPortalgun->m_iPortalLinkageGroupID == 1)
+		{
+			return Color(128, 0, 255, 255);
+		}
+		else if (pPortalgun->m_iPortalLinkageGroupID == 2)
+		{
+			return Color(255, 0, 0, 255);
+		}
+	}
+
+	return Color(255, 160, 32, 255);
+
+}
+#endif
 
 const char * C_PlayerResource::GetTeamName(int index)
 {

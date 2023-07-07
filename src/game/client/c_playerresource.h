@@ -52,6 +52,9 @@ public : // IGameResources intreface
 	virtual int		GetTeam( int index );
 	virtual int		GetFrags( int index );
 	virtual int		GetHealth( int index );
+#ifdef PORTAL	
+	const Color GetPortalgunColor( int index );
+#endif
 
 	virtual void ClientThink();
 	virtual	void	OnDataChanged(DataUpdateType_t updateType);
