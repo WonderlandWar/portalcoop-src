@@ -3263,8 +3263,6 @@ void CTriggerCamera::EnableControlAllPlayers( void )
 
 		if (pPlayer)
 		{
-			Msg("pPlayer: Check#%i\n", i);
-
 			// if the player was already under control of a similar trigger, disable the previous trigger.
 			{
 				CBaseEntity *pPrevViewControl = pPlayer->GetViewEntity();
