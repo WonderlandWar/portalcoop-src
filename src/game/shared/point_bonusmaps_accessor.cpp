@@ -66,8 +66,12 @@ void CPointBonusMapsAccessor::Activate( void )
 
 void CPointBonusMapsAccessor::InputUnlock( inputdata_t& inputdata )
 {
+#if 0
 	if ( m_pGameUI )
 		m_pGameUI->BonusMapUnlock( m_String_tFileName.ToCStr(), m_String_tMapName.ToCStr() );	
+#else
+	Warning("Bonus Maps are not supported in portalcoop\n");
+#endif
 }
 
 void CPointBonusMapsAccessor::InputComplete( inputdata_t& inputdata )
@@ -89,8 +93,12 @@ void CPointBonusMapsAccessor::InputComplete( inputdata_t& inputdata )
 
 void CPointBonusMapsAccessor::InputSave( inputdata_t& inputdata )
 {
+#if 0
 	if ( m_pGameUI )
 		m_pGameUI->BonusMapDatabaseSave();
+#else
+	Warning("Bonus Maps are not supported in portalcoop\n");
+#endif
 }
 
 #endif
