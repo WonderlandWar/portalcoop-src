@@ -116,6 +116,10 @@ void CWeaponPortalgun::Precache()
 	PrecacheParticleSystem( "portal_purple_projectile_stream_pedestal" );
 	PrecacheParticleSystem( "portal_lightblue_projectile_stream" );
 	PrecacheParticleSystem( "portal_lightblue_projectile_stream_pedestal" );
+	PrecacheParticleSystem( "portal_pink_projectile_stream" );
+	PrecacheParticleSystem( "portal_pink_projectile_stream_pedestal" );
+	PrecacheParticleSystem( "portal_green_projectile_stream" );
+	PrecacheParticleSystem( "portal_green_projectile_stream_pedestal" );
 #ifndef CLIENT_DLL
 	PrecacheParticleSystem( "portal_1_charge" );
 	PrecacheParticleSystem( "portal_2_charge" );
@@ -124,6 +128,8 @@ void CWeaponPortalgun::Precache()
 	PrecacheParticleSystem( "portal_yellow_charge" );
 	PrecacheParticleSystem( "portal_purple_charge" );
 	PrecacheParticleSystem( "portal_lightblue_charge" );
+	PrecacheParticleSystem( "portal_pink_charge" );
+	PrecacheParticleSystem( "portal_green_charge" );
 #endif
 }
 

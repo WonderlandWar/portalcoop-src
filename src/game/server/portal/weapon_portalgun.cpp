@@ -234,6 +234,8 @@ void CWeaponPortalgun::InputChargePortal1( inputdata_t &inputdata )
 		DispatchParticleEffect( "portal_lightblue_charge", PATTACH_POINT_FOLLOW, this, "muzzle" );
 	else if (m_iPortalLinkageGroupID == 2)
 		DispatchParticleEffect( "portal_yellow_charge", PATTACH_POINT_FOLLOW, this, "muzzle" );
+	else if (m_iPortalLinkageGroupID == 3)
+		DispatchParticleEffect( "portal_green_charge", PATTACH_POINT_FOLLOW, this, "muzzle" );
 	else
 		DispatchParticleEffect( "portal_1_charge", PATTACH_POINT_FOLLOW, this, "muzzle" );
 }
@@ -244,6 +246,8 @@ void CWeaponPortalgun::InputChargePortal2( inputdata_t &inputdata )
 		DispatchParticleEffect( "portal_purple_charge", PATTACH_POINT_FOLLOW, this, "muzzle" );
 	else if (m_iPortalLinkageGroupID == 2)
 		DispatchParticleEffect( "portal_red_charge", PATTACH_POINT_FOLLOW, this, "muzzle" );
+	else if (m_iPortalLinkageGroupID == 3)
+		DispatchParticleEffect( "portal_pink_charge", PATTACH_POINT_FOLLOW, this, "muzzle" );
 	else
 		DispatchParticleEffect( "portal_2_charge", PATTACH_POINT_FOLLOW, this, "muzzle" );
 }

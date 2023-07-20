@@ -290,6 +290,7 @@ ConVar sv_portal_coop_allow_ping("sv_portal_coop_allow_ping", "1", FCVAR_REPLICA
 #define COOP_PING_PARTICLE_NAME_ORANGE "command_target_ping_orange"
 #define COOP_PING_PARTICLE_NAME_RED "command_target_ping_red"
 #define COOP_PING_PARTICLE_NAME_PURPLE "command_target_ping_purple"
+#define COOP_PING_PARTICLE_NAME_GREEN "command_target_ping_green"
 
 
 extern float IntervalDistance(float x, float x0, float x1);
@@ -360,6 +361,7 @@ void CPortal_Player::Precache(void)
 	PrecacheParticleSystem( COOP_PING_PARTICLE_NAME_ORANGE );
 	PrecacheParticleSystem( COOP_PING_PARTICLE_NAME_RED );
 	PrecacheParticleSystem( COOP_PING_PARTICLE_NAME_PURPLE );
+	PrecacheParticleSystem( COOP_PING_PARTICLE_NAME_GREEN );
 	//PrecacheParticleSystem( "command_target_ping_just_arrows" );
 	PrecacheScriptSound( COOP_PING_SOUNDSCRIPT_NAME );
 
@@ -751,6 +753,10 @@ void CPortal_Player::PlayCoopPingEffect( void )
 			{
 				vColor = Vector(1.0, 0, 0); // 255 0 0
 			}
+			else if (iLinkageGroupID == 3)
+			{
+				vColor = Vector(0.0, 255, 0); // 0 255 0
+			}
 		}
 
 		CBaseAnimating *pAnimating = dynamic_cast<CBaseAnimating*>(tr.m_pEnt);
@@ -850,7 +856,9 @@ void CPortal_Player::PlayCoopPingEffect( void )
 			if (iLinkageGroupID == 1)
 				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_PURPLE, tr.endpos, angNormal, this );
 			else if (iLinkageGroupID == 2)
-				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_RED, tr.endpos, angNormal, this );			
+				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_RED, tr.endpos, angNormal, this );
+			else if (iLinkageGroupID == 3)
+				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_GREEN, tr.endpos, angNormal, this );
 			else
 				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_ORANGE, tr.endpos, angNormal, this );
 		}

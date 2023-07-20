@@ -41,6 +41,8 @@ CLIENTEFFECT_MATERIAL( "models/portals/portalstaticoverlay_li1_1" )
 CLIENTEFFECT_MATERIAL( "models/portals/portalstaticoverlay_li1_2" )
 CLIENTEFFECT_MATERIAL( "models/portals/portalstaticoverlay_li2_1" )
 CLIENTEFFECT_MATERIAL( "models/portals/portalstaticoverlay_li2_2" )
+CLIENTEFFECT_MATERIAL( "models/portals/portalstaticoverlay_li3_1" )
+CLIENTEFFECT_MATERIAL( "models/portals/portalstaticoverlay_li3_2" )
 CLIENTEFFECT_MATERIAL( "models/portals/portal_stencil_hole" )
 CLIENTEFFECT_MATERIAL( "models/portals/portal_refract_1" )
 CLIENTEFFECT_MATERIAL( "models/portals/portal_refract_2" )
@@ -64,6 +66,8 @@ public:
 		m_Materials.m_PortalStaticOverlay_li1[1].Init( "models/portals/portalstaticoverlay_li1_2", TEXTURE_GROUP_CLIENT_EFFECTS );
 		m_Materials.m_PortalStaticOverlay_li2[0].Init( "models/portals/portalstaticoverlay_li2_1", TEXTURE_GROUP_CLIENT_EFFECTS );
 		m_Materials.m_PortalStaticOverlay_li2[1].Init( "models/portals/portalstaticoverlay_li2_2", TEXTURE_GROUP_CLIENT_EFFECTS );
+		m_Materials.m_PortalStaticOverlay_li3[0].Init( "models/portals/portalstaticoverlay_li3_1", TEXTURE_GROUP_CLIENT_EFFECTS );
+		m_Materials.m_PortalStaticOverlay_li3[1].Init( "models/portals/portalstaticoverlay_li3_2", TEXTURE_GROUP_CLIENT_EFFECTS );
 		m_Materials.m_Portal_Stencil_Hole.Init( "models/portals/portal_stencil_hole", TEXTURE_GROUP_CLIENT_EFFECTS );
 		m_Materials.m_Portal_Refract[0].Init( "models/portals/portal_refract_1", TEXTURE_GROUP_CLIENT_EFFECTS );
 		m_Materials.m_Portal_Refract[1].Init( "models/portals/portal_refract_2", TEXTURE_GROUP_CLIENT_EFFECTS );
@@ -1191,6 +1195,8 @@ void CPortalRenderable_FlatBasic::DrawPortal( int iLinkageGroupID )
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li1[((m_bIsPortal2)?(1):(0))] );
 			else if (iLinkageGroupID == 2)
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li2[((m_bIsPortal2)?(1):(0))] );
+			else if (iLinkageGroupID == 3)
+				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li3[((m_bIsPortal2)?(1):(0))] );
 			else
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay[((m_bIsPortal2)?(1):(0))] );
 			
@@ -1218,6 +1224,8 @@ void CPortalRenderable_FlatBasic::DrawPortal( int iLinkageGroupID )
 					DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li1[((m_bIsPortal2)?(1):(0))] );
 				else if (iLinkageGroupID == 2)
 					DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li2[((m_bIsPortal2)?(1):(0))] );
+				else if (iLinkageGroupID == 3)
+					DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li3[((m_bIsPortal2)?(1):(0))] );
 				else
 					DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay[((m_bIsPortal2)?(1):(0))] );
 			}
@@ -1248,6 +1256,8 @@ void CPortalRenderable_FlatBasic::DrawPortal( int iLinkageGroupID )
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li1[((m_bIsPortal2)?(1):(0))] );
 			else if (iLinkageGroupID == 2)
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li2[((m_bIsPortal2)?(1):(0))] );
+			else if (iLinkageGroupID == 3)
+				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li3[((m_bIsPortal2)?(1):(0))] );
 			else
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay[((m_bIsPortal2)?(1):(0))] );
 		}

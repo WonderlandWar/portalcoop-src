@@ -157,6 +157,8 @@ Color UTIL_Portal_Color( int iPortal, int iLinkageGroupID )
 				return Color(128, 244, 255, 255); //light blue
 			if (iLinkageGroupID == 2)
 				return Color( 255, 255, 0, 255 ); //yellow
+			if (iLinkageGroupID == 3)
+				return Color( 0, 255, 0, 255 ); //green
 			else
 				return Color( 64, 160, 255, 255 ); // Default Blue
 
@@ -166,6 +168,8 @@ Color UTIL_Portal_Color( int iPortal, int iLinkageGroupID )
 				return Color(128, 0, 255, 255); //purple
 			if (iLinkageGroupID == 2)
 				return Color( 255, 0, 0, 255 ); //red
+			if (iLinkageGroupID == 3)
+				return Color( 255, 0, 255, 255 ); //pink
 			else
 				return Color(255, 160, 32, 255); //default orange
 	}

@@ -194,6 +194,10 @@ const Color C_PlayerResource::GetPortalgunColor(int iIndex)
 		{
 			return Color(255, 0, 0, 255);
 		}
+		else if (pPortalgun->m_iPortalLinkageGroupID == 3)
+		{
+			return Color(0, 255, 0, 255);
+		}
 	}
 
 	return Color(255, 160, 32, 255);

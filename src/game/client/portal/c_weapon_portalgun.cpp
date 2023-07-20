@@ -289,6 +289,10 @@ void C_WeaponPortalgun::StartEffects( void )
 		{
 			m_Parameters[PORTALGUN_PORTAL1LIGHT].SetMaterial(PORTALGUN_YELLOW_LAST_GLOW);
 		}
+		else if (m_iPortalLinkageGroupID == 3)
+		{
+			m_Parameters[PORTALGUN_PORTAL1LIGHT].SetMaterial(PORTALGUN_GREEN_LAST_GLOW);
+		}
 		else
 		{
 			m_Parameters[PORTALGUN_PORTAL1LIGHT].SetMaterial(PORTALGUN_PORTAL1_FIRED_LAST_GLOW);
@@ -309,6 +313,10 @@ void C_WeaponPortalgun::StartEffects( void )
 		else if (m_iPortalLinkageGroupID == 2)
 		{
 			m_Parameters[PORTALGUN_PORTAL1LIGHT_WORLD].SetMaterial(PORTALGUN_YELLOW_LAST_GLOW);
+		}
+		else if (m_iPortalLinkageGroupID == 3)
+		{
+			m_Parameters[PORTALGUN_PORTAL1LIGHT_WORLD].SetMaterial(PORTALGUN_GREEN_LAST_GLOW);
 		}
 		else
 		{
@@ -332,6 +340,10 @@ void C_WeaponPortalgun::StartEffects( void )
 		{
 			m_Parameters[PORTALGUN_PORTAL2LIGHT].SetMaterial( PORTALGUN_RED_LAST_GLOW );
 		}
+		else if (m_iPortalLinkageGroupID == 3)
+		{
+			m_Parameters[PORTALGUN_PORTAL2LIGHT].SetMaterial( PORTALGUN_PINK_LAST_GLOW );
+		}
 		else
 		{
 			m_Parameters[PORTALGUN_PORTAL2LIGHT].SetMaterial( PORTALGUN_PORTAL2_FIRED_LAST_GLOW );
@@ -353,6 +365,10 @@ void C_WeaponPortalgun::StartEffects( void )
 		else if (m_iPortalLinkageGroupID == 2)
 		{
 			m_Parameters[PORTALGUN_PORTAL2LIGHT_WORLD].SetMaterial(PORTALGUN_RED_LAST_GLOW);
+		}
+		else if (m_iPortalLinkageGroupID == 3)
+		{
+			m_Parameters[PORTALGUN_PORTAL2LIGHT_WORLD].SetMaterial(PORTALGUN_PINK_LAST_GLOW);
 		}
 		else
 		{
