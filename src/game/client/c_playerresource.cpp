@@ -173,8 +173,11 @@ int C_PlayerResource::GetTeam(int iIndex )
 #ifdef PORTAL
 const Color C_PlayerResource::GetPortalgunColor(int iIndex)
 {	
-	C_BaseCombatCharacter *pCombatChar = ToBaseCombatCharacter(ClientEntityList().GetEnt(iIndex));
-	C_BaseCombatWeapon *pWeapon = pCombatChar->GetActiveWeapon();
+	C_Portal_Player *pPlayer = ToPortalPlayer(ClientEntityList().GetEnt(iIndex));
+	C_BaseCombatWeapon *pWeapon = NULL;
+	
+	if (pPlayer)
+		pWeapon = pPlayer->Weapon_OwnsThisType("weapon_portalgun");
 	
 	C_WeaponPortalgun *pPortalgun = NULL;
 		

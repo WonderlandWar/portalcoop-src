@@ -113,12 +113,12 @@ public:
 		return false;
 	}
 
-	void RenderGlowEffects( const CViewSetup *pSetup, int nSplitScreenSlot );
+	void RenderGlowEffects( const CViewSetup *pSetup, int nSplitScreenSlot, bool bIsPortalView );
 
 private:
 
-	void RenderGlowModels( const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext );
-	void ApplyEntityGlowEffects( const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext, float flBloomScale, int x, int y, int w, int h );
+	void RenderGlowModels( const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext, bool bIsPortalView );
+	void ApplyEntityGlowEffects( const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext, float flBloomScale, int x, int y, int w, int h, bool bIsPortalView = false );
 
 	struct GlowObjectDefinition_t
 	{

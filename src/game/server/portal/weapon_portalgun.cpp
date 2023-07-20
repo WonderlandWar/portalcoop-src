@@ -26,7 +26,6 @@
 #define BLAST_SPEED_NON_PLAYER 1000.0f
 #define BLAST_SPEED 3000.0f
 
-extern ConVar use_server_portal_crosshair_test;
 extern ConVar sv_playtesting;
 
 IMPLEMENT_NETWORKCLASS_ALIASED( WeaponPortalgun, DT_WeaponPortalgun )
@@ -54,7 +53,7 @@ BEGIN_DATADESC( CWeaponPortalgun )
 	DEFINE_KEYFIELD( m_bCanFirePortal1, FIELD_BOOLEAN, "CanFirePortal1" ),
 	DEFINE_KEYFIELD( m_bCanFirePortal2, FIELD_BOOLEAN, "CanFirePortal2" ),
 	DEFINE_KEYFIELD( m_iPortalLinkageGroupID, FIELD_CHARACTER, "PortalLinkageGroupID" ),
-	DEFINE_KEYFIELD( m_bForceAlwaysUseSetID, FIELD_CHARACTER, "ForceAlwaysUseSetID" ),
+	DEFINE_KEYFIELD( m_bForceAlwaysUseSetID, FIELD_BOOLEAN, "ForceAlwaysUseSetID" ),
 	DEFINE_FIELD( m_iLastFiredPortal, FIELD_INTEGER ),
 	DEFINE_FIELD( m_bOpenProngs, FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_fCanPlacePortal1OnThisSurface, FIELD_FLOAT ),
@@ -111,6 +110,7 @@ void CWeaponPortalgun::Spawn( void )
 			Assert( (m_iPortalLinkageGroupID >= 0) && (m_iPortalLinkageGroupID < 256) );
 		}	
 	}
+
 	m_hPrimaryPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, false, true);
 	m_hSecondaryPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, true, true);
 }
@@ -160,13 +160,13 @@ void CWeaponPortalgun::Drop(const Vector &vecVelocity)
 
 void CWeaponPortalgun::FizzleOwnedPortals()
 {
-		CProp_Portal *pPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, false);
-		if (pPortal)
-		pPortal->Fizzle();
+	CProp_Portal *pPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, false);
+	if (pPortal)
+	pPortal->Fizzle();
 		
-		pPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, true);
-		if (pPortal)
-		pPortal->Fizzle();
+	pPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, true);
+	if (pPortal)
+	pPortal->Fizzle();
 }
 
 void CWeaponPortalgun::OnPickedUp( CBaseCombatCharacter *pNewOwner )
@@ -341,6 +341,7 @@ static void change_portalgun_linkage_id_f( const CCommand &args )
 		{
 			CWeaponPortalgun *pPortalGun = (CWeaponPortalgun *)pWeapon;
 			pPortalGun->m_iPortalLinkageGroupID = iNewID;
+			pPortalGun->m_bForceAlwaysUseSetID = true; // HACK! Don't change linkage group id's when deploying
 			pPortalGun->m_hPrimaryPortal = CProp_Portal::FindPortal(pPortalGun->m_iPortalLinkageGroupID, false, true);
 			pPortalGun->m_hSecondaryPortal = CProp_Portal::FindPortal(pPortalGun->m_iPortalLinkageGroupID, true, true);
 			break;

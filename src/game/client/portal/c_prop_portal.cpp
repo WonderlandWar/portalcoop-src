@@ -837,6 +837,11 @@ void C_Prop_Portal::HandleNetworkChanges( void )
 			Vector vScaledUp = m_vUp * (PORTAL_HALF_HEIGHT  * 0.95f);
 			
 			m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
+			NewLocation(m_ptOrigin, m_qAbsAngle);
+
+			//Reset the portals
+			g_pPortalRender->RemovePortal(this);
+			g_pPortalRender->AddPortal(this); 
 
 //		if( m_pAttachedCloningArea )
 //			m_pAttachedCloningArea->UpdatePosition();
@@ -965,8 +970,6 @@ void C_Prop_Portal::OnDataChanged( DataUpdateType_t updateType )
 		UpdateVisibility();
 	}
 
-	/*
-	*/
 }
 
 void C_Prop_Portal::UpdateGhostRenderables( void )
@@ -996,7 +999,7 @@ int C_Prop_Portal::DrawModel( int flags )
 	}
 
 	//g_pPortalRender->m_iLinkageGroupID = m_iLinkageGroupID;
-
+	
 	if ( g_pPortalRender->ShouldUseStencilsToRenderPortals() )
 	{
 		g_pPortalRender->SetPropPortal(this);
@@ -1601,7 +1604,7 @@ void C_Prop_Portal::Fizzle( void )
 
 bool C_Prop_Portal::ShouldPredict( void )
 {
-#if 0
+#if 1
 	{
 		C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer( );
 		if ( pLocalPlayer )
@@ -1785,13 +1788,11 @@ void C_Prop_Portal::DestroyAttachedParticles( void )
 }
 
 void C_Prop_Portal::HandlePredictionError( bool bErrorInThisEntity )
-{	
-	
+{		
 	if( bErrorInThisEntity )
 	{
 		HandleNetworkChanges();
 	}
-
 
 	BaseClass::HandlePredictionError( bErrorInThisEntity );
 	if( bErrorInThisEntity )

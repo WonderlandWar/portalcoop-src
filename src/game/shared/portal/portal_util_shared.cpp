@@ -607,6 +607,7 @@ CProp_Portal* UTIL_Portal_TraceRay( const Ray_t &ray, unsigned int fMask, ITrace
 
 CProp_Portal* UTIL_Portal_TraceRay( const Ray_t &ray, unsigned int fMask, const IHandleEntity *ignore, int collisionGroup, trace_t *pTrace, bool bTraceHolyWall )
 {
+
 	CTraceFilterSimple traceFilter( ignore, collisionGroup );
 	return UTIL_Portal_TraceRay( ray, fMask, &traceFilter, pTrace, bTraceHolyWall );
 }

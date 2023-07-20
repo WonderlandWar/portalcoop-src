@@ -330,6 +330,7 @@ void CWeaponPortalgun::SecondaryAttack( void )
 void CWeaponPortalgun::DelayAttack( float fDelay )
 {
 	m_flNextPrimaryAttack = gpGlobals->curtime + fDelay;
+	m_flNextSecondaryAttack = gpGlobals->curtime + fDelay;
 }
 
 //-----------------------------------------------------------------------------
@@ -386,7 +387,7 @@ bool CWeaponPortalgun::Deploy( void )
 
 	bool bReturn = BaseClass::Deploy();
 
-	m_flNextSecondaryAttack = m_flNextPrimaryAttack = gpGlobals->curtime;
+	m_flNextSecondaryAttack = m_flNextPrimaryAttack = gpGlobals->curtime + SequenceDuration();
 
 	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
 
@@ -407,7 +408,7 @@ bool CWeaponPortalgun::Deploy( void )
 				Assert( (m_iPortalLinkageGroupID >= 0) && (m_iPortalLinkageGroupID < 256) );
 			}
 		}
-		
+
 		m_hPrimaryPortal = CProp_Portal::FindPortal( m_iPortalLinkageGroupID, false, true );
 		m_hSecondaryPortal = CProp_Portal::FindPortal( m_iPortalLinkageGroupID, true, true );
 #endif
@@ -518,10 +519,15 @@ void CWeaponPortalgun::UpdateOnRemove(void)
 void CWeaponPortalgun::DoEffectBlast(CBaseEntity *pOwner, bool bPortal2, int iPlacedBy, const Vector &ptStart, const Vector &ptFinalPos, const QAngle &qStartAngles, float fDelay, int iPortalLinkageGroup)
 {
 
+	if (use_server_portal_particles.GetBool())
+	{
+		IPredictionSystem::SuppressHostEvents( this );
+
 #ifdef CLIENT_DLL
-	if (!prediction->InPrediction() || use_server_portal_particles.GetBool())
 		return;
 #endif
+	}
+	
 	CEffectData	fxData;
 	fxData.m_vOrigin = ptStart;
 	fxData.m_vStart = ptFinalPos;
@@ -1138,7 +1144,7 @@ void CWeaponPortalgun::FirePortal2( void )
 #if defined( GAME_DLL )
 	if( m_hSecondaryPortal.Get() == NULL )
 	{
-		m_hSecondaryPortal = CProp_Portal::FindPortal( m_iPortalLinkageGroupID, true, true );
+			m_hSecondaryPortal = CProp_Portal::FindPortal( m_iPortalLinkageGroupID, true, true );
 	}
 #else
 	/*
@@ -1239,7 +1245,7 @@ void CWeaponPortalgun::Think( void )
 			m_fCanPlacePortal2OnThisSurfaceNetworked = m_fCanPlacePortal2OnThisSurface;
 		}
 #else
-		if (!use_server_portal_crosshair_test.GetBool())
+		if (!use_server_portal_crosshair_test.GetBool() && prediction->InPrediction() )
 		{
 			m_fCanPlacePortal1OnThisSurface = 1.0f;
 			m_fCanPlacePortal2OnThisSurface = 1.0f;
@@ -1263,7 +1269,7 @@ void CWeaponPortalgun::Think( void )
 		m_fCanPlacePortal2OnThisSurfaceNetworked = m_fCanPlacePortal2OnThisSurface;
 	}
 #else
-	if (!use_server_portal_crosshair_test.GetBool()) // Use client crosshair test
+	if (!use_server_portal_crosshair_test.GetBool() && prediction->InPrediction() ) // Use client crosshair test
 	{
 		m_fCanPlacePortal1OnThisSurface = ( ( m_bCanFirePortal1 ) ? ( FirePortal( false, 0, 1 ) ) : ( 0.0f ) );
 		m_fCanPlacePortal2OnThisSurface = ( ( m_bCanFirePortal2 ) ? ( FirePortal( true, 0, 2 ) ) : ( 0.0f ) );

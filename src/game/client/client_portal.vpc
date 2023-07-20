@@ -24,6 +24,7 @@ $Project "Client (Portal)"
 	{
 		-$File	"$SRCDIR\game\shared\weapon_parse_default.cpp"
 		$File	"hud_chat.cpp"
+		$File	"hud_voicestatus.cpp"
 		$File	"c_team_objectiveresource.cpp"
 		$File	"c_team_objectiveresource.h"
 		
@@ -199,6 +200,8 @@ $Project "Client (Portal)"
 			$File	"portal\c_trigger_portal_cleanser.h"
 			$File	"portal\c_prop_glados_core.cpp"
 			$File	"portal\c_prop_glados_core.h"
+			$File	"portal\pcoop_hud_target_id.cpp"
+			
 			$File	"$SRCDIR\game\shared\portal\physicsshadowclone.cpp"
 			$File	"$SRCDIR\game\shared\portal\physicsshadowclone.h"
 			$File	"$SRCDIR\game\shared\portal\PhysicsCloneArea.cpp"

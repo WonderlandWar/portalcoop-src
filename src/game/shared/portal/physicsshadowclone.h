@@ -47,6 +47,7 @@ class CPhysicsShadowClone : public CBaseAnimating
 	DECLARE_CLASS( CPhysicsShadowClone, CBaseAnimating );
 	DECLARE_NETWORKCLASS()
 	DECLARE_PREDICTABLE();
+
 private:
 
 	EHANDLE			m_hClonedEntity; //the entity we're supposed to be cloning the physics of

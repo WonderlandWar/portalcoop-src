@@ -51,7 +51,7 @@ void RegisterUserMessages()
 	//new stuff for portal
 	usermessages->Register( "EntityPortalled", sizeof( long ) + sizeof( long ) + sizeof( Vector ) + sizeof( QAngle ) ); //something got teleported through a portal
 	usermessages->Register( "KillCam", -1 );
-	//usermessages->Register( "HudPingIndicator", sizeof( Vector ) );
+	usermessages->Register( "HudPingIndicator", sizeof( Vector ) );
 
 	// Voting
 	usermessages->Register( "CallVoteFailed", 1 );

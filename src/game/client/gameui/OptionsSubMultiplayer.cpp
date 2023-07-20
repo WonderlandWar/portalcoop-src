@@ -1095,9 +1095,10 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 
 	m_pSecondaryColorSlider = new CCvarSlider( this, "Secondary Color Slider", "#GameUI_SecondaryColor",
 		0.0f, 255.0f, "bottomcolor" );
-
+	
 	m_pHighQualityModelCheckBox = new CCvarToggleCheckButton( this, "High Quality Models", "#GameUI_HighModels", "cl_himodels" );
-
+	m_pShowPortalIDCheckBox = new CCvarToggleCheckButton(this, "CheckShowPortalID", "#GameUI_MultiplayerShowPortalID", "hud_showportalid");
+	
 	m_pModelList = new CLabeledCommandComboBox( this, "Player model" );
 	m_ModelName[0] = 0;
 	InitModelList( m_pModelList );
@@ -1804,6 +1805,7 @@ void COptionsSubMultiplayer::OnApplyChanges()
 	m_pLogoList->ApplyChanges();
     m_pLogoList->GetText(m_LogoName, sizeof(m_LogoName));
 	m_pHighQualityModelCheckBox->ApplyChanges();
+	m_pShowPortalIDCheckBox->ApplyChanges();
 
 	for ( int i=0; i<m_cvarToggleCheckButtons.GetCount(); ++i )
 	{

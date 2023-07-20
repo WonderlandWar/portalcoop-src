@@ -16,6 +16,7 @@
 #if defined( CLIENT_DLL )
 	#include "c_portal_player.h"
 	#include "c_rumble.h"
+	#include "prediction.h"
 #else
 	#include "portal_player.h"
 	#include "env_player_surface_trigger.h"
@@ -150,10 +151,8 @@ void CPortalGameMovement::ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMov
 //	g_bAllowForcePortalTrace = false;
 //	g_bForcePortalTrace = false;
 
-#ifndef CLIENT_DLL
 	pPlayer->UnforceButtons( IN_DUCK );
 	pPlayer->UnforceButtons( IN_JUMP );
-#endif
 
 	//This is probably not needed, but just in case.
 	gpGlobals->frametime = flStoreFrametime;
@@ -374,24 +373,32 @@ void CPortalGameMovement::PlayerRoughLandingEffects( float fvol )
 {
 	BaseClass::PlayerRoughLandingEffects( fvol );
 
-#ifndef CLIENT_DLL
-	if ( fvol >= 1.0 )
+#ifdef CLIENT_DLL
+	if (prediction->InPrediction())
+#endif
 	{
-		// Play the future shoes sound
-		CRecipientFilter filter;
-		filter.AddRecipientsByPAS( player->GetAbsOrigin() );
-
-		CSoundParameters params;
-		if ( CBaseEntity::GetParametersForSound( "PortalPlayer.FallRecover", params, NULL ) )
+		if ( fvol >= 1.0 )
 		{
-			EmitSound_t ep( params );
-			ep.m_nPitch = 125.0f - player->m_Local.m_flFallVelocity * 0.03f;					// lower pitch the harder they land
-			ep.m_flVolume = MIN( player->m_Local.m_flFallVelocity * 0.00075f - 0.38, 1.0f );	// louder the harder they land
+			// Play the future shoes sound
+#ifndef CLIENT_DLL
+			CRecipientFilter filter;
+#else
+			C_RecipientFilter filter;
+#endif
+			filter.AddRecipientsByPAS( player->GetAbsOrigin() );
+			filter.UsePredictionRules();
 
-			CBaseEntity::EmitSound( filter, player->entindex(), ep );
+			CSoundParameters params;
+			if ( CBaseEntity::GetParametersForSound( "PortalPlayer.FallRecover", params, NULL ) )
+			{
+				EmitSound_t ep( params );
+				ep.m_nPitch = 125.0f - player->m_Local.m_flFallVelocity * 0.03f;					// lower pitch the harder they land
+				ep.m_flVolume = MIN( player->m_Local.m_flFallVelocity * 0.00075f - 0.38, 1.0f );	// louder the harder they land
+				
+				CBaseEntity::EmitSound( filter, player->entindex(), ep );
+			}
 		}
 	}
-#endif
 }
 
 void TracePlayerBBoxForGround2( const Vector& start, const Vector& end, const Vector& minsSrc,
@@ -404,10 +411,8 @@ void TracePlayerBBoxForGround2( const Vector& start, const Vector& end, const Ve
 	CPortal_Player *pPortalPlayer = dynamic_cast<CPortal_Player *>(player->GetRefEHandle().Get());
 	CProp_Portal *pPlayerPortal = pPortalPlayer->m_hPortalEnvironment;
 
-#ifndef CLIENT_DLL
 	if( pPlayerPortal && pPlayerPortal->m_PortalSimulator.IsReadyToSimulate() == false )
 		pPlayerPortal = NULL;
-#endif
 
 	Ray_t ray;
 	Vector mins, maxs;

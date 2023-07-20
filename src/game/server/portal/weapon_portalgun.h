@@ -25,10 +25,11 @@ public:
 
 	DECLARE_NETWORKCLASS(); 
 	DECLARE_PREDICTABLE();
-
-private:
+	
 	CNetworkVar( bool,	m_bCanFirePortal1 );	// Is able to use primary fire
 	CNetworkVar( bool,	m_bCanFirePortal2 );	// Is able to use secondary fire
+
+private:
 	CNetworkVar( int,	m_iLastFiredPortal );	// Which portal was placed last
 	CNetworkVar( bool,	m_bOpenProngs );		// Which portal was placed last
 	CNetworkVar( float, m_fCanPlacePortal1OnThisSurfaceNetworked );	// Tells the gun if it can place on the surface it's pointing at
@@ -37,7 +38,7 @@ private:
 	float				m_fCanPlacePortal2OnThisSurface;	// Tells the gun if it can place on the surface it's pointing at
 	
 public:
-	void SetLinkageGroupID( int iPortalLinkageGroupID) { iPortalLinkageGroupID = m_iPortalLinkageGroupID; }
+	void SetLinkageGroupID( int iPortalLinkageGroupID) { m_iPortalLinkageGroupID = iPortalLinkageGroupID; }
 
 	CNetworkVar(unsigned char, m_iPortalLinkageGroupID); //which portal linkage group this gun is tied to, usually set by mapper, or inherited from owning player's index
 	

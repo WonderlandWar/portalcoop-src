@@ -1487,7 +1487,7 @@ static void fire_rocket_projectile_f( void )
 	if ( !pRocket )
 		return;
 
-	pRocket->PrecacheModel(ROCKET_TURRET_PROJECTILE_NAME);
+	pRocket->Precache();
 	pRocket->SetThink( NULL );
 	pRocket->SetMoveType( MOVETYPE_FLY );
 

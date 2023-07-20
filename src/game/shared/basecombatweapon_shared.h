@@ -545,7 +545,7 @@ public:
 
 	virtual void			HideThink( void );
 	virtual bool			CanReload( void );
-
+	
 private:
 	typedef CHandle< CBaseCombatCharacter > CBaseCombatCharacterHandle;
 	CNetworkVar( CBaseCombatCharacterHandle, m_hOwner );				// Player carrying this weapon

@@ -167,7 +167,7 @@ void C_BaseCombatWeapon::OnDataChanged( DataUpdateType_t updateType )
 	{
 		UpdateVisibility();
 	}
-
+	
 	m_iOldState = m_iState;
 
 	m_bJustRestored = false;

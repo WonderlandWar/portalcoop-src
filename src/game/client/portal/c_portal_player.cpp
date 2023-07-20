@@ -24,6 +24,7 @@
 #include "prop_portal_shared.h"
 #include "portal_gamerules.h"
 #include "collisionutils.h"
+#include "c_triggers.h"
 
 // NVNT for fov updates
 #include "haptics/ihaptics.h"
@@ -395,7 +396,26 @@ void C_Portal_Player::UpdateIDTarget()
 	Vector vecStart, vecEnd;
 	VectorMA( MainViewOrigin(), 1500, MainViewForward(), vecEnd );
 	VectorMA( MainViewOrigin(), 10,   MainViewForward(), vecStart );
-	UTIL_TraceLine( vecStart, vecEnd, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
+	Ray_t ray;
+	ray.Init( vecStart, vecEnd );
+	
+	UTIL_Portal_TraceRay( ray, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
+
+	// Sigh, can't see my own name :(
+#if 0
+	CProp_Portal *pShootThroughPortal = NULL;
+	float fPortalFraction = 2.0f;
+
+	CTraceFilterSimpleList traceFilter(COLLISION_GROUP_NONE);
+	traceFilter.SetPassEntity( this ); // Standard pass entity for THIS so that it can be easily removed from the list after passing through a portal
+	
+	pShootThroughPortal = UTIL_Portal_FirstAlongRay( ray, fPortalFraction );
+	if ( !UTIL_Portal_TraceRay_Bullets( pShootThroughPortal, ray, MASK_SHOT, &traceFilter, &tr ) )
+	{
+		pShootThroughPortal = NULL;
+	}
+#endif
+	//UTIL_TraceLine( vecStart, vecEnd, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
 
 	if ( !tr.startsolid && tr.DidHitNonWorldEntity() )
 	{
@@ -466,118 +486,181 @@ CStudioHdr *C_Portal_Player::OnNewModel( void )
 /**
 * Orient head and eyes towards m_lookAt.
 */
+
+#define HL2DM_LOOKAT 0
+
 void C_Portal_Player::UpdateLookAt( void )
 {
-	// head yaw
-	if (m_headYawPoseParam < 0 || m_headPitchPoseParam < 0)
-		return;
-
-	// This is buggy with dt 0, just skip since there is no work to do.
-	if ( gpGlobals->frametime <= 0.0f )
-		return;
-
-	// Player looks at themselves through portals. Pick the portal we're turned towards.
-	const int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
-	CProp_Portal **pPortals = CProp_Portal_Shared::AllPortals.Base();
-	float *fPortalDot = (float *)stackalloc( sizeof( float ) * iPortalCount );
-	float flLowDot = 1.0f;
-	int iUsePortal = -1;
-
-	// defaults if no portals are around
-	Vector vPlayerForward;
-	GetVectors( &vPlayerForward, NULL, NULL );
-	Vector vCurLookTarget = EyePosition();
-
-	if ( !IsAlive() )
+#if HL2DM_LOOKAT
+	//Only I can see me looking at myself
+	if (!IsLocalPlayer())
+#endif
 	{
-		m_viewtarget = EyePosition() + vPlayerForward*10.0f;
-		return;
-	}
+		//Don't try to always look at me if I don't have a Portal otherwise it looks weird to other people/players
+		if (!m_hPortalEnvironment)
+			return;
 
-	bool bNewTarget = false;
-	if ( UTIL_IntersectEntityExtentsWithPortal( this ) != NULL )
-	{
-		// player is in a portal
-		vCurLookTarget = EyePosition() + vPlayerForward*10.0f;
-	}
-	else if ( pPortals && pPortals[0] )
-	{
-		// Test through any active portals: This may be a shorter distance to the target
-		for( int i = 0; i != iPortalCount; ++i )
+		// head yaw
+		if (m_headYawPoseParam < 0 || m_headPitchPoseParam < 0)
+			return;
+
+		// This is buggy with dt 0, just skip since there is no work to do.
+		if ( gpGlobals->frametime <= 0.0f )
+			return;
+
+		// Player looks at themselves through portals. Pick the portal we're turned towards.
+		const int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
+		CProp_Portal **pPortals = CProp_Portal_Shared::AllPortals.Base();
+		float *fPortalDot = (float *)stackalloc( sizeof( float ) * iPortalCount );
+		float flLowDot = 1.0f;
+		int iUsePortal = -1;
+
+		// defaults if no portals are around
+		Vector vPlayerForward;
+		GetVectors( &vPlayerForward, NULL, NULL );
+		Vector vCurLookTarget = EyePosition();
+
+		if ( !IsAlive() )
 		{
-			CProp_Portal *pTempPortal = pPortals[i];
+			m_viewtarget = EyePosition() + vPlayerForward*10.0f;
+			return;
+		}
 
-			if( pTempPortal && pTempPortal->IsActive() && pTempPortal->m_hLinkedPortal.Get() )
+		bool bNewTarget = false;
+		if ( UTIL_IntersectEntityExtentsWithPortal( this ) != NULL )
+		{
+			// player is in a portal
+			vCurLookTarget = EyePosition() + vPlayerForward*10.0f;
+		}
+		else if ( pPortals && pPortals[0] )
+		{
+			// Test through any active portals: This may be a shorter distance to the target
+			for( int i = 0; i != iPortalCount; ++i )
 			{
-				Vector vEyeForward, vPortalForward;
-				EyeVectors( &vEyeForward );
-				pTempPortal->GetVectors( &vPortalForward, NULL, NULL );
-				fPortalDot[i] = vEyeForward.Dot( vPortalForward );
-				if ( fPortalDot[i] < flLowDot )
+				CProp_Portal *pTempPortal = pPortals[i];
+
+				if( pTempPortal && pTempPortal->IsActive() && pTempPortal->m_hLinkedPortal.Get() )
 				{
-					flLowDot = fPortalDot[i];
-					iUsePortal = i;
+					Vector vEyeForward, vPortalForward;
+					EyeVectors( &vEyeForward );
+					pTempPortal->GetVectors( &vPortalForward, NULL, NULL );
+					fPortalDot[i] = vEyeForward.Dot( vPortalForward );
+					if ( fPortalDot[i] < flLowDot )
+					{
+						flLowDot = fPortalDot[i];
+						iUsePortal = i;
+					}
+				}
+			}
+
+			if ( iUsePortal >= 0 )
+			{
+				C_Prop_Portal* pPortal = pPortals[iUsePortal];
+				if ( pPortal )
+				{
+					vCurLookTarget = pPortal->MatrixThisToLinked()*vCurLookTarget;
+					if ( vCurLookTarget != m_vLookAtTarget )
+					{
+						bNewTarget = true;
+					}
 				}
 			}
 		}
-
-		if ( iUsePortal >= 0 )
+		else
 		{
-			C_Prop_Portal* pPortal = pPortals[iUsePortal];
-			if ( pPortal )
-			{
-				vCurLookTarget = pPortal->MatrixThisToLinked()*vCurLookTarget;
-				if ( vCurLookTarget != m_vLookAtTarget )
-				{
-					bNewTarget = true;
-				}
-			}
+			// No other look targets, look straight ahead
+			vCurLookTarget += vPlayerForward*10.0f;
 		}
+
+		// Figure out where we want to look in world space.
+		QAngle desiredAngles;
+		Vector to = vCurLookTarget - EyePosition();
+		VectorAngles( to, desiredAngles );
+		QAngle aheadAngles;
+		VectorAngles( vCurLookTarget, aheadAngles );
+
+		// Figure out where our body is facing in world space.
+		QAngle bodyAngles( 0, 0, 0 );
+		bodyAngles[YAW] = GetLocalAngles()[YAW];
+
+		m_flLastBodyYaw = bodyAngles[YAW];
+
+		// Set the head's yaw.
+		float desiredYaw = AngleNormalize( desiredAngles[YAW] - bodyAngles[YAW] );
+		desiredYaw = clamp( desiredYaw, m_headYawMin, m_headYawMax );
+
+		float desiredPitch = AngleNormalize( desiredAngles[PITCH] );
+		desiredPitch = clamp( desiredPitch, m_headPitchMin, m_headPitchMax );
+
+		if ( bNewTarget )
+		{
+			m_flStartLookTime = gpGlobals->curtime;
+		}
+
+		float dt = (gpGlobals->frametime);
+		float flSpeed	= 1.0f - ExponentialDecay( 0.7f, 0.033f, dt );
+
+		m_flCurrentHeadYaw = m_flCurrentHeadYaw + flSpeed * ( desiredYaw - m_flCurrentHeadYaw );
+		m_flCurrentHeadYaw	= AngleNormalize( m_flCurrentHeadYaw );
+		SetPoseParameter( m_headYawPoseParam, m_flCurrentHeadYaw );	
+
+		m_flCurrentHeadPitch = m_flCurrentHeadPitch + flSpeed * ( desiredPitch - m_flCurrentHeadPitch );
+		m_flCurrentHeadPitch = AngleNormalize( m_flCurrentHeadPitch );
+		SetPoseParameter( m_headPitchPoseParam, m_flCurrentHeadPitch );
+
+		// This orients the eyes
+		m_viewtarget = m_vLookAtTarget = vCurLookTarget;
 	}
-	else
+#if HL2DM_LOOKAT
+	//-------------------------//
+	// HL2DM UpdateLookAt code //
+	//-------------------------//
+	else 
 	{
-		// No other look targets, look straight ahead
-		vCurLookTarget += vPlayerForward*10.0f;
+		
+		// head yaw
+		if (m_headYawPoseParam < 0 || m_headPitchPoseParam < 0)
+			return;
+
+		// orient eyes
+		m_viewtarget = m_vLookAtTarget;
+
+		// Figure out where we want to look in world space.
+		QAngle desiredAngles;
+		Vector to = m_vLookAtTarget - EyePosition();
+		VectorAngles(to, desiredAngles);
+
+		// Figure out where our body is facing in world space.
+		QAngle bodyAngles(0, 0, 0);
+		bodyAngles[YAW] = GetLocalAngles()[YAW];
+
+
+		float flBodyYawDiff = bodyAngles[YAW] - m_flLastBodyYaw;
+		m_flLastBodyYaw = bodyAngles[YAW];
+
+
+		// Set the head's yaw.
+		float desired = AngleNormalize(desiredAngles[YAW] - bodyAngles[YAW]);
+		desired = clamp(desired, m_headYawMin, m_headYawMax);
+		m_flCurrentHeadYaw = ApproachAngle(desired, m_flCurrentHeadYaw, 130 * gpGlobals->frametime);
+
+		// Counterrotate the head from the body rotation so it doesn't rotate past its target.
+		m_flCurrentHeadYaw = AngleNormalize(m_flCurrentHeadYaw - flBodyYawDiff);
+		desired = clamp(desired, m_headYawMin, m_headYawMax);
+
+		SetPoseParameter(m_headYawPoseParam, m_flCurrentHeadYaw);
+
+
+		// Set the head's yaw.
+		desired = AngleNormalize(desiredAngles[PITCH]);
+		desired = clamp(desired, m_headPitchMin, m_headPitchMax);
+
+		m_flCurrentHeadPitch = ApproachAngle(desired, m_flCurrentHeadPitch, 130 * gpGlobals->frametime);
+		m_flCurrentHeadPitch = AngleNormalize(m_flCurrentHeadPitch);
+		SetPoseParameter(m_headPitchPoseParam, m_flCurrentHeadPitch);
+		
 	}
-
-	// Figure out where we want to look in world space.
-	QAngle desiredAngles;
-	Vector to = vCurLookTarget - EyePosition();
-	VectorAngles( to, desiredAngles );
-	QAngle aheadAngles;
-	VectorAngles( vCurLookTarget, aheadAngles );
-
-	// Figure out where our body is facing in world space.
-	QAngle bodyAngles( 0, 0, 0 );
-	bodyAngles[YAW] = GetLocalAngles()[YAW];
-
-	m_flLastBodyYaw = bodyAngles[YAW];
-
-	// Set the head's yaw.
-	float desiredYaw = AngleNormalize( desiredAngles[YAW] - bodyAngles[YAW] );
-	desiredYaw = clamp( desiredYaw, m_headYawMin, m_headYawMax );
-
-	float desiredPitch = AngleNormalize( desiredAngles[PITCH] );
-	desiredPitch = clamp( desiredPitch, m_headPitchMin, m_headPitchMax );
-
-	if ( bNewTarget )
-	{
-		m_flStartLookTime = gpGlobals->curtime;
-	}
-
-	float dt = (gpGlobals->frametime);
-	float flSpeed	= 1.0f - ExponentialDecay( 0.7f, 0.033f, dt );
-
-	m_flCurrentHeadYaw = m_flCurrentHeadYaw + flSpeed * ( desiredYaw - m_flCurrentHeadYaw );
-	m_flCurrentHeadYaw	= AngleNormalize( m_flCurrentHeadYaw );
-	SetPoseParameter( m_headYawPoseParam, m_flCurrentHeadYaw );	
-
-	m_flCurrentHeadPitch = m_flCurrentHeadPitch + flSpeed * ( desiredPitch - m_flCurrentHeadPitch );
-	m_flCurrentHeadPitch = AngleNormalize( m_flCurrentHeadPitch );
-	SetPoseParameter( m_headPitchPoseParam, m_flCurrentHeadPitch );
-
-	// This orients the eyes
-	m_viewtarget = m_vLookAtTarget = vCurLookTarget;
+#endif
 }
 
 void C_Portal_Player::ClientThink( void )
@@ -591,6 +674,39 @@ void C_Portal_Player::ClientThink( void )
 	HandleSpeedChanges();
 
 	FixTeleportationRoll();
+	
+	//Hacks to get client sided triggers working
+#if 0
+	C_BaseEntity *pList[1024];
+
+	// PARTITION_ALL_CLIENT_EDICTS
+	// PARTITION_CLIENT_TRIGGER_ENTITIES
+	int count = UTIL_EntitiesInBox( pList, 1024, GetPlayerMins(), GetPlayerMaxs(), MASK_ALL, PARTITION_ALL_CLIENT_EDICTS );
+
+	for (int i = 1; i <= count; ++i)
+	{
+
+		C_BaseEntity *pEntity = pList[i];
+
+		if (pEntity && (pEntity != this))
+		{
+			C_BaseTrigger *pTrigger = dynamic_cast<C_BaseTrigger*>(pEntity);
+			if (pTrigger)
+			{
+				pTrigger->Touch(this);
+			}
+
+			C_BaseCombatWeapon *pWeapon = dynamic_cast<C_BaseCombatWeapon*>(pList[i]);
+
+			if (pWeapon)
+			{
+				Msg("Touching Classname: %s\n", pWeapon->GetClassname());
+			}
+
+
+		}
+	}
+#endif
 
 	//QAngle vAbsAngles = EyeAngles();
 

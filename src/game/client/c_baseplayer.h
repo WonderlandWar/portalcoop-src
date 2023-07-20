@@ -417,7 +417,7 @@ protected:
 
 public:
 	int m_StuckLast;
-	
+
 	// Data for only the local player
 	CNetworkVarEmbedded( CPlayerLocalData, m_Local );
 
@@ -459,7 +459,7 @@ public:
 	float			m_flConstraintSpeedFactor;
 	
 	void SetUseEntity( CBaseEntity *pUseEntity );
-
+	
 protected:
 
 	void				CalcPlayerView( Vector& eyeOrigin, QAngle& eyeAngles, float& fov );

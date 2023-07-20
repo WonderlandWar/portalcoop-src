@@ -27,8 +27,6 @@ ConVar cl_portalgun_effects_max_alpha ("cl_portalgun_effects_max_alpha", "128", 
 ConVar cl_portalgun_effects_min_size ("cl_portalgun_effects_min_size", "3.0", FCVAR_CLIENTDLL );
 ConVar cl_portalgun_beam_size ("cl_portalgun_beam_size", "0.04", FCVAR_CLIENTDLL );
 
-extern ConVar use_server_portal_crosshair_test;
-
 // HACK HACK! Used to make the gun visually change when going through a cleanser!
 //ConVar cl_portalgun_effects_max_size ("cl_portalgun_effects_max_size", "2.5", FCVAR_REPLICATED );
 

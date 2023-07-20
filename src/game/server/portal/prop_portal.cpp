@@ -1875,6 +1875,11 @@ CProp_Portal *CProp_Portal::FindPortal( unsigned char iLinkageGroupID, bool bPor
 		pPortal->m_bIsPortal2 = bPortal2;
 		DispatchSpawn( pPortal );
 		return pPortal;
+
+#ifdef CLIENT_DLL
+		Msg("Nothing found!\n");
+#endif
+
 	}
 
 	return NULL;

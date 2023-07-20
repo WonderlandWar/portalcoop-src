@@ -178,6 +178,12 @@ public:
 	CNetworkHandle( CBaseEntity, m_hRagdoll );	// networked entity handle
 
 	void SuppressCrosshair( bool bState ) { m_bSuppressingCrosshair = bState; }
+
+	// In multiplayer, last time we used a coop ping to draw our partner's attention
+	CNetworkVar(float, m_flLastPingTime);
+
+	CProp_Portal *m_pPrimaryPortal;
+	CProp_Portal *m_pSecondaryPortal;
 			
 private:
 	
@@ -211,9 +217,6 @@ private:
 
 	int		m_iNumCamerasDetatched;
 	
-	// In multiplayer, last time we used a coop ping to draw our partner's attention
-	float						m_flLastPingTime;
-
 	QAngle						m_qPrePortalledViewAngles;
 	bool						m_bFixEyeAnglesFromPortalling;
 	VMatrix						m_matLastPortalled;
@@ -238,6 +241,7 @@ public:
 	
 	// Coop ping effect
 	void	PlayCoopPingEffect( void );
+	bool	PingChildrenOfParentEntity( CBaseAnimating *pAnimating, Vector vColor );
 
 	friend class CProp_Portal;
 	

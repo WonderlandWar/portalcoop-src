@@ -2700,22 +2700,23 @@ void CViewRender::ViewDrawScene_PortalStencil( const CViewSetup &viewIn, ViewCus
 	QAngle vecOldAngles = CurrentViewAngles();
 
 	int iCurrentViewID = g_CurrentViewID;
-//	int iRecursionLevel = g_pPortalRender->GetViewRecursionLevel();
-//	Assert( iRecursionLevel > 0 );
+	int iRecursionLevel = g_pPortalRender->GetViewRecursionLevel();
+	Assert( iRecursionLevel > 0 );
 
 	//get references to reflection textures
 	CTextureReference pPrimaryWaterReflectionTexture;
 	pPrimaryWaterReflectionTexture.Init( GetWaterReflectionTexture() );
 	CTextureReference pReplacementWaterReflectionTexture;
-//	pReplacementWaterReflectionTexture.Init( portalrendertargets->GetWaterReflectionTextureForStencilDepth( iRecursionLevel ) );
+	if ( pReplacementWaterReflectionTexture != NULL )
+		pReplacementWaterReflectionTexture.Init( portalrendertargets->GetWaterReflectionTextureForStencilDepth( iRecursionLevel ) );
 
 	//get references to refraction textures
 	CTextureReference pPrimaryWaterRefractionTexture;
 	pPrimaryWaterRefractionTexture.Init( GetWaterRefractionTexture() );
 	CTextureReference pReplacementWaterRefractionTexture;
-//	pReplacementWaterRefractionTexture.Init( portalrendertargets->GetWaterRefractionTextureForStencilDepth( iRecursionLevel ) );
-
-
+	if ( pReplacementWaterReflectionTexture != NULL )
+		pReplacementWaterRefractionTexture.Init( portalrendertargets->GetWaterRefractionTextureForStencilDepth( iRecursionLevel ) );
+	
 	//swap texture contents for the primary render targets with those we set aside for this recursion level
 	if( pReplacementWaterReflectionTexture != NULL )
 		pPrimaryWaterReflectionTexture->SwapContents( pReplacementWaterReflectionTexture );
@@ -2742,7 +2743,7 @@ void CViewRender::ViewDrawScene_PortalStencil( const CViewSetup &viewIn, ViewCus
 	// update vis data
 	unsigned int visFlags;
 	SetupVis( view, visFlags, pCustomVisibility );
-
+	
 	VisibleFogVolumeInfo_t fogInfo;
 	if( g_pPortalRender->GetViewRecursionLevel() == 0 )
 	{
@@ -2796,6 +2797,12 @@ void CViewRender::ViewDrawScene_PortalStencil( const CViewSetup &viewIn, ViewCus
 	DisableFog();
 
 	CGlowOverlay::DrawOverlays( view.m_bCacheFullSceneState );
+	
+	// Fixes glow effects not rendering through portals
+	// This doesn't fix it, not yet at least, it's way too messy to fix and I've perfected it to the best of my ability, perhaps someone else could fix it for me.
+	// NOTE: If you intend to fix this, move this function elsewhere because depth is only taken into account for the main view, portal view
+	// To elaborate, holding a box in front of you will block the glow effect, but holding a box in front of you while the box is on the other side of the portal will not block it, like normal.
+	//GetClientModeNormal()->DoPostScreenSpaceEffects(&view, true);
 
 	// Draw rain..
 	DrawPrecipitation();
@@ -4334,12 +4341,12 @@ void CRendering3dView::DrawTranslucentRenderables( bool bInSkybox, bool bShadowD
 
 		int iLinkageGroupID = 0;
 
-		if (g_pPortalRender->GetPropPortal())
+		if ( g_pPortalRender && g_pPortalRender->GetPropPortal() )
 		{
 			iLinkageGroupID = g_pPortalRender->GetPropPortal()->GetLinkageGroup();
 		}
 
-		if( g_pPortalRender->DrawPortalsUsingStencils( (CViewRender *)m_pMainView, iLinkageGroupID ) )// @MULTICORE (toml 8/10/2006): remove this hack cast
+		if( g_pPortalRender && g_pPortalRender->DrawPortalsUsingStencils( (CViewRender *)m_pMainView, iLinkageGroupID ) )// @MULTICORE (toml 8/10/2006): remove this hack cast
 		{
 			m_DrawFlags = iDrawFlagsBackup;
 

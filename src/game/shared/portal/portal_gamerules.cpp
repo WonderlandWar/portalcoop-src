@@ -29,6 +29,7 @@
 	#include "props.h"		// For props flags used in making the portal weight box
 	#include "datacache/imdlcache.h"	// For precaching box model
 	#include "weapon_portalgun.h"
+	#include "playerinfomanager.h"
 
 	#include "achievementmgr.h"
 	extern CAchievementMgr g_AchievementMgrPortal;
@@ -57,6 +58,37 @@ END_NETWORK_TABLE()
 
 LINK_ENTITY_TO_CLASS_ALIASED( portal_gamerules, PortalGameRulesProxy );
 
+#ifdef GAME_DLL
+
+CON_COMMAND(portal_bot, "Creates a fake portal player")
+{
+	bool bShouldMakeBot = false;
+
+	CBasePlayer *pPlayer = UTIL_GetCommandClient();
+	CBasePlayer *pHost = UTIL_GetListenServerHost();
+
+	//This should mean that the dedicated server console ran this command
+	if (!pPlayer)
+		bShouldMakeBot = true;
+
+	// We should undoubtedly make a bot if the server console ran this command, so skip these checks
+	if (!bShouldMakeBot)
+	{
+		//Not a dedicated server? Only return true if the user is the listen server host
+		if (pPlayer == pHost)
+			bShouldMakeBot = true;
+	}
+
+	if (bShouldMakeBot)
+	{
+		CPluginBotManager *pBotManager = new CPluginBotManager;
+
+		pBotManager->CreateBot("pcoop bot");
+
+		delete pBotManager;
+	}
+}
+#endif
 
 #ifdef CLIENT_DLL
 	void RecvProxy_PortalGameRules( const RecvProp *pProp, void **pOut, void *pData, int objectID )

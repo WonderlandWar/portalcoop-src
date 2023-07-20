@@ -2869,6 +2869,9 @@
     <ClCompile Include="hud_vehicle.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="hud_voicestatus.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="hud_weapon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -3620,6 +3623,9 @@
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
     <ClCompile Include="..\..\game\shared\Multiplayer\multiplayer_animstate.cpp">
+      <Filter>Source Files\Portal</Filter>
+    </ClCompile>
+    <ClCompile Include="portal\pcoop_hud_target_id.cpp">
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
     <ClCompile Include="..\..\game\shared\portal\PhysicsCloneArea.cpp">

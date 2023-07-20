@@ -22,7 +22,7 @@
 #include "view_scene.h"
 #include "materialsystem/imaterialvar.h"
 #include "tier0/vprof.h"
-
+#include "clientmode_portal.h"
 
 #define PORTALRENDERABLE_FLATBASIC_MINPIXELVIS 0.0f
 
@@ -452,7 +452,7 @@ void CPortalRenderable_FlatBasic::RenderPortalViewToBackBuffer( CViewRender *pVi
 
 	Vector ptRemotePortalPosition = m_pLinkedPortal->m_ptOrigin;
 	Vector vRemotePortalForward = m_pLinkedPortal->m_vForward;
-
+	
 	CViewSetup portalView = cameraView;
 
 	if( portalView.zNear < 1.0f )
@@ -471,7 +471,7 @@ void CPortalRenderable_FlatBasic::RenderPortalViewToBackBuffer( CViewRender *pVi
 	portalView.m_flAspectRatio = cameraView.m_flAspectRatio;
 
 	CopyToCurrentView( pViewRender, portalView );
-
+	
 	CMatRenderContextPtr pRenderContext( materials );
 
 	{
@@ -502,6 +502,7 @@ void CPortalRenderable_FlatBasic::RenderPortalViewToBackBuffer( CViewRender *pVi
 
 			//DRAW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			ViewDrawScene_PortalStencil( pViewRender, portalView, &customVisibility );
+
 
 			SetViewEntranceAndExitPortals( pRenderingViewForPortalBackup, pRenderingViewExitPortalBackup );
 

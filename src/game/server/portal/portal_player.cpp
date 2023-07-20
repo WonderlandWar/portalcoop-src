@@ -279,9 +279,11 @@ extern ConVar sv_turbophysics;
 #define VPHYS_MAX_DISTSQR		(VPHYS_MAX_DISTANCE*VPHYS_MAX_DISTANCE)
 #define VPHYS_MAX_VELSQR		(VPHYS_MAX_VEL*VPHYS_MAX_VEL)
 
-ConVar sv_portal_coop_ping_cooldown_time( "sv_portal_coop_ping_cooldown_time", "0.5", FCVAR_CHEAT, "Time (in seconds) between coop pings", true, 0.1f, false, 60.0f );
-//ConVar sv_portal_coop_ping_indicator_show_to_all_players( "sv_portal_coop_ping_indicator_show_to_all_players", "1", FCVAR_REPLICATED, "Sets if pinging should show for all players");
-ConVar sv_portal_coop_allow_ping("sv_portal_coop_allow_ping", "1", FCVAR_REPLICATED, "Sets if players are allowed to ping?");
+ConVar sv_portal_coop_ping_cooldown_time( "sv_portal_coop_ping_cooldown_time", "0.5", FCVAR_REPLICATED, "Time (in seconds) between coop pings", true, 0.1f, false, 60.0f );
+#if 0
+ConVar sv_portal_coop_ping_indicator_show_to_all_players( "sv_portal_coop_ping_indicator_show_to_all_players", "1", FCVAR_REPLICATED, "Sets if pinging should show for all players");
+#endif
+ConVar sv_portal_coop_allow_ping("sv_portal_coop_allow_ping", "1", FCVAR_REPLICATED, "Sets if players are allowed to ping");
 
 #define COOP_PING_SOUNDSCRIPT_NAME "Player.Coop_Ping"
 //#define COOP_PING_PARTICLE_NAME "command_target_ping"
@@ -726,12 +728,15 @@ void CPortal_Player::PlayCoopPingEffect( void )
 		CDisablePredictionFiltering filter(true);
 		//DispatchParticleEffect( COOP_PING_PARTICLE_NAME, tr.endpos, vec3_angle );
 
-		Vector vColor = Vector(1.0, 0.6274509804, 0.1254901961);
+		Vector vColor = Vector(1.0, 0.6274509804, 0.1254901961); // 255 160 32
 
-		CBaseCombatWeapon *pWeapon = GetActiveWeapon();
+		CBaseCombatWeapon *pWeapon = Weapon_OwnsThisType("weapon_portalgun");
 
-		CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pWeapon);
+		CWeaponPortalgun *pPortalgun = NULL;
 
+		if (pWeapon)
+			pPortalgun = dynamic_cast<CWeaponPortalgun*>(pWeapon);
+		
 		unsigned char iLinkageGroupID = 0;
 
 		if (pPortalgun)
@@ -740,11 +745,11 @@ void CPortal_Player::PlayCoopPingEffect( void )
 
 			if (iLinkageGroupID == 1)
 			{
-				vColor = Vector(0.6, 0, 1.0);
+				vColor = Vector(0.6, 0, 1.0); // 153 0 255
 			}
 			else if (iLinkageGroupID == 2)
 			{
-				vColor = Vector(1.0, 0, 0);
+				vColor = Vector(1.0, 0, 0); // 255 0 0
 			}
 		}
 
@@ -754,6 +759,12 @@ void CPortal_Player::PlayCoopPingEffect( void )
 
 		if (pAnimating)
 		{
+			if (PingChildrenOfParentEntity(pAnimating, vColor))
+			{
+				EmitSound( COOP_PING_SOUNDSCRIPT_NAME );
+				return;
+			}
+
 			if (pAnimating->m_bGlowEnabled)
 			{
 				pAnimating->RemoveGlowEffect();
@@ -792,12 +803,18 @@ void CPortal_Player::PlayCoopPingEffect( void )
 
 			if (pDoor)
 			{
-				for (int i = 1; i < 1024; ++i)
+				for (int i = 1; i <= 1024; ++i)
 				{
 					CBaseAnimating *pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
 
 					if (pChild && pChild->GetParent() == pDoor)
-					{
+					{						
+						if (pChild->m_bGlowEnabled)
+						{
+							pChild->RemoveGlowEffect();
+							m_bGlowEnabled.Set(false);
+						}
+
 						pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
 						pChild->AddGlowTime(gpGlobals->curtime);
 						pChild->RemoveGlowTime(gpGlobals->curtime + 3);
@@ -807,12 +824,18 @@ void CPortal_Player::PlayCoopPingEffect( void )
 			}
 			else if (pTrain)
 			{
-				for (int i = 1; i < 1024; ++i)
+				for (int i = 1; i <= 1024; ++i)
 				{
 					CBaseAnimating *pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
 
 					if (pChild && pChild->GetParent() == pTrain)
 					{
+						if (pChild->m_bGlowEnabled)
+						{
+							pChild->RemoveGlowEffect();
+							m_bGlowEnabled.Set(false);
+						}
+
 						pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
 						pChild->AddGlowTime(gpGlobals->curtime);
 						pChild->RemoveGlowTime(gpGlobals->curtime + 3);
@@ -834,7 +857,7 @@ void CPortal_Player::PlayCoopPingEffect( void )
 
 		EmitSound( COOP_PING_SOUNDSCRIPT_NAME );
 	//	UTIL_DecalTrace( &tr, "Portal2.CoopPingDecal" );
-		/*
+#if 0
 		CReliableBroadcastRecipientFilter allplayers;
 		if ( sv_portal_coop_ping_indicator_show_to_all_players.GetBool() == true )
 		{
@@ -845,7 +868,7 @@ void CPortal_Player::PlayCoopPingEffect( void )
 			WRITE_FLOAT( tr.endpos.y );
 			WRITE_FLOAT( tr.endpos.z );
 		MessageEnd();
-		*/
+#endif
 	}
 	else
 	{
@@ -853,9 +876,70 @@ void CPortal_Player::PlayCoopPingEffect( void )
 	}
 
 	// Note this in the player proxy
-	//FirePlayerProxyOutput( "OnCoopPing", variant_t(), this, this );
+	FirePlayerProxyOutput( "OnCoopPing", variant_t(), this, this );
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: Ping all of my siblings
+// TODO: Does this need to be a member function?
+//-----------------------------------------------------------------------------
+bool CPortal_Player::PingChildrenOfParentEntity( CBaseAnimating *pAnimating, Vector vColor )
+{
+	if (!pAnimating)
+		return false;
+	if (!pAnimating->GetParent())
+		return false;
+	
+	bool bResult = false;
+
+	CBaseDoor *pDoor = dynamic_cast<CBaseDoor *>(pAnimating->GetParent());
+	CFuncTrackTrain *pTrain = dynamic_cast<CFuncTrackTrain*>(pAnimating->GetParent());
+
+	if (pDoor)
+	{
+		for (int i = 1; i <= 1024; ++i)
+		{
+			CBaseAnimating *pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
+
+			if (pChild && pChild->GetParent() == pDoor)
+			{
+				if (pChild->m_bGlowEnabled)
+				{
+					pChild->RemoveGlowEffect();
+					m_bGlowEnabled.Set(false);
+				}
+
+				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
+				pChild->AddGlowTime(gpGlobals->curtime);
+				pChild->RemoveGlowTime(gpGlobals->curtime + 3);
+				bResult = true;
+			}
+		}
+	}
+	else if (pTrain)
+	{
+		for (int i = 1; i <= 1024; ++i)
+		{
+			CBaseAnimating *pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
+
+			if (pChild && pChild->GetParent() == pTrain)
+			{
+				if (pChild->m_bGlowEnabled)
+				{
+					pChild->RemoveGlowEffect();
+					m_bGlowEnabled.Set(false);
+				}
+
+				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
+				pChild->AddGlowTime(gpGlobals->curtime);
+				pChild->RemoveGlowTime(gpGlobals->curtime + 3);
+				bResult = true;
+			}
+		}
+	}
+
+	return bResult;
+}
 
 void CPortal_Player::PreThink(void)
 {
@@ -881,7 +965,7 @@ void CPortal_Player::PreThink(void)
 	//if ( GameRules()->IsMultiplayer() )
 	{
 		// Send a ping
-		if ( m_afButtonPressed & IN_COOP_PING )
+		if ( m_afButtonPressed & IN_COOP_PING && sv_portal_coop_allow_ping.GetBool())
 		{
 			if ( ( m_flLastPingTime + sv_portal_coop_ping_cooldown_time.GetFloat() ) < gpGlobals->curtime && IsAlive() )
 			{
@@ -957,6 +1041,8 @@ void CPortal_Player::PostThink(void)
 	
 }
 
+ConVar sv_portalgun_fizzle_on_owner_death_always ("sv_portalgun_fizzle_on_owner_death_always", "1", FCVAR_REPLICATED, "Sets if the portalgun should always die if the player dies");
+
 void CPortal_Player::PlayerDeathThink(void)
 {
 	float flForward;
@@ -981,6 +1067,17 @@ void CPortal_Player::PlayerDeathThink(void)
 
 	if (HasWeapons())
 	{
+		if (sv_portalgun_fizzle_on_owner_death_always.GetBool())
+		{
+			CBaseCombatWeapon *pWeapon = Weapon_OwnsThisType("weapon_portalgun");
+
+			CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pWeapon);
+			if (pPortalgun)
+			{
+				pPortalgun->FizzleOwnedPortals();
+			}
+		}
+
 		// we drop the guns here because weapons that have an area effect and can kill their user
 		// will sometimes crash coming back from CBasePlayer::Killed() if they kill their owner because the
 		// player class sometimes is freed. It's safer to manipulate the weapons once we know

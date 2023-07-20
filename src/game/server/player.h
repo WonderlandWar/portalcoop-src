@@ -87,6 +87,7 @@ class CFuncLadder;
 class CNavArea;
 class CHintSystem;
 class CAI_Expresser;
+class CPointCommentaryNode;
 
 #if defined USES_ECON_ITEMS
 class CEconWearable;
@@ -536,6 +537,7 @@ public:
 	bool					ClearUseEntity();
 	CBaseEntity				*DoubleCheckUseNPC( CBaseEntity *pNPC, const Vector &vecSrc, const Vector &vecDir );
 
+	CPointCommentaryNode *GetNodeUnderCrosshair();
 
 	// physics interactions
 	// mass/size limit set to zero for none
@@ -890,7 +892,7 @@ public:
 	const CEconWearable		*GetWearable( int i ) const { return m_hMyWearables[i]; }
 	int						GetNumWearables( void ) const { return m_hMyWearables.Count(); }
 #endif
-
+	
 private:
 
 	Activity				m_Activity;

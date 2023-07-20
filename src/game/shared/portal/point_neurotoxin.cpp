@@ -210,6 +210,15 @@ void CPointNeurotoxin::DamagePlayersThink()
 		}
 	
 	}
+#if 1
+	FOR_ALL_PLAYERS(pPlayer)
+		CTakeDamageInfo info;
+		info.SetDamage(gpGlobals->frametime * 50.0f);
+		info.SetDamageType(DMG_NERVEGAS);
+		pPlayer->TakeDamage(info);
+	} //FOR_ALL_PLAYERS(pPlayer)
+#endif
+
 #endif
 	SetNextThink(gpGlobals->curtime);
 }

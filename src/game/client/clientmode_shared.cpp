@@ -786,9 +786,9 @@ int ClientModeShared::HudElementKeyInput( int down, ButtonCode_t keynum, const c
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-bool ClientModeShared::DoPostScreenSpaceEffects( const CViewSetup *pSetup )
+bool ClientModeShared::DoPostScreenSpaceEffects( const CViewSetup *pSetup, bool bIsPortalView )
 {
-	g_GlowObjectManager.RenderGlowEffects( pSetup, 0 );
+	g_GlowObjectManager.RenderGlowEffects( pSetup, 0, bIsPortalView );
 
 #if defined( REPLAY_ENABLED )
 	if ( engine->IsPlayingDemo() )

@@ -2427,6 +2427,9 @@ void CPortalSimulator::SetVPhysicsSimulationEnabled( bool bEnabled )
 
 CPortalSimulator *CPortalSimulator::GetSimulatorThatOwnsEntity( const CBaseEntity *pEntity )
 {
+	if (!pEntity)
+		return NULL;
+
 	int nEntIndex = pEntity->entindex();
 	if( nEntIndex < 0 )
 		return NULL;

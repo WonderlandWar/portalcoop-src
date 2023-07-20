@@ -30,9 +30,12 @@ static void DrawDebugOverlayForShadowClone( CPhysicsShadowClone *pClone );
 IMPLEMENT_NETWORKCLASS_ALIASED( PhysicsShadowClone, DT_PhysicsShadowClone )
 BEGIN_NETWORK_TABLE( CPhysicsShadowClone, DT_PhysicsShadowClone )
 END_NETWORK_TABLE()
+
 #ifdef CLIENT_DLL
 BEGIN_PREDICTION_DATA(CPhysicsShadowClone)
-	DEFINE_PRED_FIELD(m_hClonedEntity, FIELD_EHANDLE, FTYPEDESC_NOERRORCHECK)
+
+	DEFINE_PRED_FIELD( m_hClonedEntity, FIELD_EHANDLE, FTYPEDESC_PRIVATE ),
+
 END_PREDICTION_DATA()
 #endif
 
@@ -391,7 +394,7 @@ void CPhysicsShadowClone::SyncEntity( bool bPullChanges )
 	QAngle qAngles;
 
 	ptOrigin = pSource->GetAbsOrigin();
-	qAngles = pSource->GetAbsAngles();
+	qAngles = pSource->IsPlayer() ? vec3_angle : pSource->GetAbsAngles();
 	vVelocity = pSource->GetAbsVelocity();
 
 	if( !m_bShadowTransformIsIdentity )
@@ -412,6 +415,11 @@ void CPhysicsShadowClone::SyncEntity( bool bPullChanges )
 #else
 		pDest->SetAbsOrigin(ptOrigin);
 		pDest->SetAbsAngles(qAngles);
+		
+		VPhysicsGetObject();
+
+		if (VPhysicsGetObject())
+			VPhysicsGetObject()->SetPosition(ptOrigin, qAngles, false);
 #endif
 	}
 	
@@ -1016,7 +1024,15 @@ CPhysicsShadowClone *CPhysicsShadowClone::CreateShadowClone( IPhysicsEnvironment
 #ifdef GAME_DLL
 	DispatchSpawn( pClone );
 #else
+	solid_t tmpSolid;
+	PhysModelParseSolid(tmpSolid, pClone, pClonedEntity->GetModelIndex());
+
+	pClone->VPhysicsInitNormal(pClonedEntity->GetSolid(), pClonedEntity->GetSolidFlags(), false, &tmpSolid);
 	pClone->Spawn();
+
+	if (pClonedEntity->IsPlayer())
+		pClone->SetPredictionEligible(true);
+
 #endif
 	return pClone;
 }

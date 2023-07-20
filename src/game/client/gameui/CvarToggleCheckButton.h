@@ -36,6 +36,7 @@ private:
 
 	char			*m_pszCvarName;
 	bool			m_bStartValue;
+	bool			m_bIsTiny;
 };
 
 #endif // CVARTOGGLECHECKBUTTON_H

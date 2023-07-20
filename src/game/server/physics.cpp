@@ -2233,7 +2233,11 @@ void CCollisionEvent::RestoreDamageInflictorState( IPhysicsObject *pInflictor )
 		if ( !state.restored )
 		{
 			float velocityBlend = 1.0;
-			float inflictorMass = state.pInflictorPhysics->GetMass();
+			float inflictorMass = 0;
+
+			if (state.pInflictorPhysics)
+				inflictorMass = state.pInflictorPhysics->GetMass();
+
 			if ( inflictorMass < VPHYSICS_LARGE_OBJECT_MASS && !(state.pInflictorPhysics->GetGameFlags() & FVPHYSICS_DMG_SLICE) )
 			{
 				float otherMass = state.otherMassMax > 0 ? state.otherMassMax : 1;
