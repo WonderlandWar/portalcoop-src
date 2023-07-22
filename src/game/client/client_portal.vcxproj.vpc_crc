@@ -2,7 +2,7 @@
 b9c20ec3 E:\Downloads\portalcoop-master\portalcoop\src\devtools\bin\vpc.exe
 _Nc_VS2013/vpcgame:portal_
 67096a6b client_portal.vpc
-7b5b9d96 ..\..\game\client\client_base.vpc
+4838a2bf ..\..\game\client\client_base.vpc
 4832e67a ..\..\vpc_scripts\source_dll_base.vpc
 d752cf80 ..\..\vpc_scripts\platform_dirs.vpc
 6c4a5ff1 ..\..\vpc_scripts\source_base.vpc

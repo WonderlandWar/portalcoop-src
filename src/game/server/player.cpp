@@ -6765,12 +6765,12 @@ void CBasePlayer::UpdateClientData( void )
 			if ( g_pGameRules->IsMultiplayer() )
 			{
 				variant_t value;
-				g_EventQueue.AddEvent( "game_player_manager", "OnPlayerJoin", value, 0, this, this );
+				g_EventQueue.AddEvent( "game_player_manager", "PlayerJoin", value, 0, this, this );
 			}
 		}
 
 		variant_t value;
-		g_EventQueue.AddEvent( "game_player_manager", "OnPlayerSpawn", value, 0, this, this );
+		g_EventQueue.AddEvent( "game_player_manager", "PlayerSpawn", value, 0, this, this );
 	}
 
 	// HACKHACK -- send the message to display the game title

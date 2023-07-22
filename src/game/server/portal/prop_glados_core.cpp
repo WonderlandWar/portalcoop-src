@@ -10,6 +10,8 @@
 #include "props.h"				// CPhysicsProp base class
 #include "saverestore_utlvector.h"
 
+#define SERVER_SIDED_SOUNDS 0
+
 #define GLADOS_CORE_MODEL_NAME "models/props_bts/glados_ball_reference.mdl" 
 
 static const char *s_pAnimateThinkContext = "Animate";
@@ -58,30 +60,46 @@ public:
 
 	void	TalkingThink ( void );
 	void	PanicThink ( void );
+	
 	void	AnimateThink ( void );
 
 	void	SetupVOList ( void );
-	
+
 	void	OnPhysGunPickup( CBasePlayer* pPhysGunUser, PhysGunPickup_t reason );
 
 private:
+
+#if SERVER_SIDED_SOUNDS
 	int m_iTotalLines;
+#endif
 	int m_iEyeballAttachment;
-	float m_flBetweenVOPadding;		// Spacing (in seconds) between VOs
 	bool m_bFirstPickup;
 
+	//Networked
+	CNetworkVar(bool, m_bStartTalking);
+	CNetworkVar(bool, m_bStartPanic);
+	CNetworkVar(float, m_flBetweenVOPadding);		// Spacing (in seconds) between VOs
+
+#if SERVER_SIDED_SOUNDS
 	// Names of sound scripts for this core's personality
 	CUtlVector<string_t> m_speechEvents;
 	int m_iSpeechIter;
 
 	string_t	m_iszPanicSoundScriptName;
 	string_t	m_iszDeathSoundScriptName;
+#endif
 	string_t	m_iszLookAnimationName;		// Different animations for each personality
 
-	CORETYPE m_iCoreType;
+	CNetworkVar(CORETYPE, m_iCoreType);
 };
 
 IMPLEMENT_SERVERCLASS_ST(CPropGladosCore, DT_PropGladosCore)
+
+SendPropBool(SENDINFO(m_bStartTalking)),
+SendPropBool(SENDINFO(m_bStartPanic)),
+SendPropFloat(SENDINFO(m_flBetweenVOPadding)),
+SendPropInt(SENDINFO(m_iCoreType)),
+
 END_SEND_TABLE()
 
 LINK_ENTITY_TO_CLASS( prop_glados_core, CPropGladosCore );
@@ -92,12 +110,16 @@ LINK_ENTITY_TO_CLASS( prop_glados_core, CPropGladosCore );
 BEGIN_DATADESC( CPropGladosCore )
 
 	DEFINE_FIELD( m_iEyeballAttachment,						FIELD_INTEGER ),
+#if SERVER_SIDED_SOUNDS
 	DEFINE_FIELD( m_iTotalLines,							FIELD_INTEGER ),
 	DEFINE_FIELD( m_iSpeechIter,							FIELD_INTEGER ),
 	DEFINE_FIELD( m_iszDeathSoundScriptName,				FIELD_STRING ),
 	DEFINE_FIELD( m_iszPanicSoundScriptName,				FIELD_STRING ),
+#endif
 	DEFINE_FIELD( m_iszLookAnimationName,					FIELD_STRING ),
+#if SERVER_SIDED_SOUNDS
 	DEFINE_UTLVECTOR( m_speechEvents,						FIELD_STRING ),
+#endif
 	DEFINE_FIELD( m_bFirstPickup,							FIELD_BOOLEAN ),
 
 	DEFINE_KEYFIELD( m_iCoreType,			FIELD_INTEGER, "CoreType" ),
@@ -108,25 +130,35 @@ BEGIN_DATADESC( CPropGladosCore )
 
 	DEFINE_THINKFUNC( TalkingThink ),
 	DEFINE_THINKFUNC( PanicThink ),
+
+#if SERVER_SIDED_SOUNDS
+#endif
 	DEFINE_THINKFUNC( AnimateThink ),
 	
 END_DATADESC()
 
 CPropGladosCore::CPropGladosCore()
 {
+#if SERVER_SIDED_SOUNDS
 	m_iTotalLines = m_iSpeechIter = 0;
 	m_iszLookAnimationName = m_iszPanicSoundScriptName = m_iszDeathSoundScriptName = NULL_STRING;
+#else
+	m_iszLookAnimationName = NULL_STRING;
+#endif
 	m_flBetweenVOPadding = 2.5f;
 	m_bFirstPickup = true;
 }
 
 CPropGladosCore::~CPropGladosCore()
 {
+#if SERVER_SIDED_SOUNDS
 	m_speechEvents.Purge();
+#endif
 }
 
 void CPropGladosCore::Spawn( void )
 {
+
 	SetupVOList();
 
 	Precache();
@@ -147,6 +179,7 @@ void CPropGladosCore::Precache( void )
 {
 	BaseClass::Precache();
 
+#if SERVER_SIDED_SOUNDS
 	// Personality VOs -- Curiosity
 	PrecacheScriptSound ( "Portal.Glados_core.Curiosity_1" );
 	PrecacheScriptSound ( "Portal.Glados_core.Curiosity_2" );
@@ -234,7 +267,7 @@ void CPropGladosCore::Precache( void )
 	PrecacheScriptSound ( "Portal.Glados_core.Crazy_39" );
 	PrecacheScriptSound ( "Portal.Glados_core.Crazy_40" );
 	PrecacheScriptSound ( "Portal.Glados_core.Crazy_41" );
-
+#endif
 	PrecacheModel( GLADOS_CORE_MODEL_NAME );
 }
 
@@ -250,7 +283,11 @@ void CPropGladosCore::InputPanic( inputdata_t &inputdata )
 void CPropGladosCore::StartPanic( void )
 {
 	ResetSequence( LookupSequence( STRING(m_iszLookAnimationName) ) );
+
+	m_bStartPanic = true;
+
 	SetThink( &CPropGladosCore::PanicThink );
+
 	SetNextThink( gpGlobals->curtime + 0.1f );
 }
 
@@ -260,6 +297,7 @@ void CPropGladosCore::StartPanic( void )
 //-----------------------------------------------------------------------------
 void CPropGladosCore::PanicThink ( void )
 {
+#if SERVER_SIDED_SOUNDS
 	if ( m_speechEvents.Count() <= 0 || !m_speechEvents.IsValidIndex( m_iSpeechIter ) || m_iszPanicSoundScriptName == NULL_STRING )
 	{
 		SetThink ( NULL );
@@ -269,9 +307,14 @@ void CPropGladosCore::PanicThink ( void )
 
 	StopSound( m_speechEvents[m_iSpeechIter].ToCStr() );
 	EmitSound( m_iszPanicSoundScriptName.ToCStr() );
+
 	float flCurDuration = GetSoundDuration(  m_iszPanicSoundScriptName.ToCStr(), GLADOS_CORE_MODEL_NAME );
 
+#else
+	float flCurDuration = 0;
+#endif
 	SetThink( &CPropGladosCore::TalkingThink );
+
 	SetNextThink( gpGlobals->curtime + m_flBetweenVOPadding + flCurDuration );
 }
 
@@ -286,12 +329,19 @@ void CPropGladosCore::InputStartTalking ( inputdata_t &inputdata )
 
 void CPropGladosCore::StartTalking( float flDelay )
 {
+#if SERVER_SIDED_SOUNDS
 	if ( m_speechEvents.IsValidIndex( m_iSpeechIter ) &&  m_speechEvents.Count() > 0 )
 	{
 		StopSound( m_speechEvents[m_iSpeechIter].ToCStr() );
 	}
 
 	m_iSpeechIter = 0;
+
+#else
+
+	m_bStartTalking = true;
+#endif
+	
 	SetThink( &CPropGladosCore::TalkingThink );
 	SetNextThink( gpGlobals->curtime + m_flBetweenVOPadding + flDelay );
 }
@@ -301,17 +351,23 @@ void CPropGladosCore::StartTalking( float flDelay )
 //-----------------------------------------------------------------------------
 void CPropGladosCore::TalkingThink( void )
 {
+#if SERVER_SIDED_SOUNDS
 	if ( m_speechEvents.Count() <= 0 || !m_speechEvents.IsValidIndex( m_iSpeechIter ) )
 	{
 		SetThink ( NULL );
 		SetNextThink( gpGlobals->curtime );
 		return;
 	}
+#endif
 
 	// Loop the 'look around' animation after the first line.
 	int iCurSequence = GetSequence();
 	int iLookSequence = LookupSequence( STRING(m_iszLookAnimationName) );
-	if ( iCurSequence != iLookSequence && m_iSpeechIter > 0 )
+
+#if !SERVER_SIDED_SOUNDS
+	float m_iSpeechIter = 1;
+#endif
+	if ( iCurSequence != iLookSequence && m_iSpeechIter > 0 && m_iCoreType != CORETYPE_NONE )
 	{
 		ResetSequence( iLookSequence );
 	}
@@ -320,17 +376,24 @@ void CPropGladosCore::TalkingThink( void )
 	if ( iPrevIter < 0 )
 		iPrevIter = 0;
 
+#if SERVER_SIDED_SOUNDS
+
 	StopSound( m_speechEvents[iPrevIter].ToCStr() );
 
 	float flCurDuration = GetSoundDuration( m_speechEvents[m_iSpeechIter].ToCStr(), GLADOS_CORE_MODEL_NAME );
 
 	EmitSound( m_speechEvents[m_iSpeechIter].ToCStr() );
-	SetNextThink( gpGlobals->curtime + m_flBetweenVOPadding + flCurDuration );
 
 	// wrap if we hit the end of the list
 	m_iSpeechIter = (m_iSpeechIter+1)%m_speechEvents.Count();
-}
+#else
 
+	float flCurDuration = 0;
+
+#endif
+	
+	SetNextThink( gpGlobals->curtime + m_flBetweenVOPadding + flCurDuration );
+}
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  :  - 
@@ -346,12 +409,15 @@ void CPropGladosCore::AnimateThink()
 //-----------------------------------------------------------------------------
 void CPropGladosCore::SetupVOList( void )
 {
+#if SERVER_SIDED_SOUNDS
 	m_speechEvents.RemoveAll();
+#endif
 
 	switch ( m_iCoreType )
 	{
 	case CORETYPE_CURIOUS:
-		{
+	{
+#if SERVER_SIDED_SOUNDS
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Curiosity_1" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Curiosity_2" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Curiosity_3" ) );
@@ -368,13 +434,15 @@ void CPropGladosCore::SetupVOList( void )
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Curiosity_16" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Curiosity_17" ) );
 			m_iszPanicSoundScriptName =  AllocPooledString( "Portal.Glados_core.Curiosity_15" );
+#endif
 			m_iszLookAnimationName = AllocPooledString( CURIOUS_LOOK_ANINAME );
 			m_nSkin = CURIOUS_SKIN;
 			
 		}
 		break;
 	case CORETYPE_AGGRESSIVE:
-		{
+	{
+#if SERVER_SIDED_SOUNDS
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Aggressive_01" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Aggressive_02" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Aggressive_03" ) );
@@ -397,12 +465,14 @@ void CPropGladosCore::SetupVOList( void )
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Aggressive_20" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Aggressive_21" ) );
 			m_iszPanicSoundScriptName = AllocPooledString( "Portal.Glados_core.Aggressive_panic_01" );
+#endif
 			m_iszLookAnimationName = AllocPooledString( AGGRESSIVE_LOOK_ANINAME );
 			m_nSkin = AGGRESSIVE_SKIN;
 		}
 		break;
 	case CORETYPE_CRAZY:
-		{
+	{
+#if SERVER_SIDED_SOUNDS
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Crazy_01" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Crazy_02" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Crazy_03" ) );
@@ -444,6 +514,7 @@ void CPropGladosCore::SetupVOList( void )
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Crazy_39" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Crazy_40" ) );
 			m_speechEvents.AddToTail( AllocPooledString( "Portal.Glados_core.Crazy_41" ) );
+#endif
 			m_iszLookAnimationName = AllocPooledString( CRAZY_LOOK_ANINAME );
 			m_nSkin = CRAZY_SKIN;
 		}
@@ -456,9 +527,11 @@ void CPropGladosCore::SetupVOList( void )
 		break;
 	};
 
+#if SERVER_SIDED_SOUNDS
 	m_iszDeathSoundScriptName =  AllocPooledString( "Portal.Glados_core.Death" );
 	m_iTotalLines = m_speechEvents.Count();
 	m_iSpeechIter = 0;
+#endif
 }
 
 //-----------------------------------------------------------------------------

@@ -1139,6 +1139,9 @@
     <ClInclude Include="game.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="game_player_manager.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="gameinterface.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -2399,6 +2402,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="game.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="game_player_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="game_ui.cpp">

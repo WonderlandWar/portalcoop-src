@@ -383,6 +383,8 @@ $Project
 		$File	"game_ui.cpp"
 		$File	"gameinterface.cpp"
 		$File	"gameinterface.h"
+		$File	"game_player_manager.cpp"
+		$File	"game_player_manager.h"
 		$File	"$SRCDIR\game\shared\gamemovement.cpp"
 		$File	"$SRCDIR\game\shared\gamemovement.h"
 		$File	"$SRCDIR\game\shared\gamerules.cpp"
