@@ -54,6 +54,7 @@ public:
 	COutputEvent m_OnDissolve;
 	COutputEvent m_OnFizzle;
 	COutputEvent m_OnDissolveBox;
+	COutputEvent m_OnDissolveSphere;
 	
 	virtual int UpdateTransmitState( void )	
 	{

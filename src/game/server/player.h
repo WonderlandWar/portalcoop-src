@@ -18,6 +18,7 @@
 #include "hintsystem.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 #include "util_shared.h"
+#include "CommentarySystem.h"
 
 #if defined USES_ECON_ITEMS
 #include "game_item_schema.h"
@@ -87,7 +88,6 @@ class CFuncLadder;
 class CNavArea;
 class CHintSystem;
 class CAI_Expresser;
-class CPointCommentaryNode;
 
 #if defined USES_ECON_ITEMS
 class CEconWearable;
@@ -539,6 +539,8 @@ public:
 
 	CPointCommentaryNode *GetNodeUnderCrosshair();
 
+	CPointCommentaryNode *m_pOldNode;
+	
 	// physics interactions
 	// mass/size limit set to zero for none
 	static bool				CanPickupObject( CBaseEntity *pObject, float massLimit, float sizeLimit );
@@ -892,6 +894,10 @@ public:
 	const CEconWearable		*GetWearable( int i ) const { return m_hMyWearables[i]; }
 	int						GetNumWearables( void ) const { return m_hMyWearables.Count(); }
 #endif
+
+	// Last received usercmd (in case we drop a lot of packets )
+	CUserCmd				m_LastCmd;
+	CUserCmd				*m_pCurrentCommand;
 	
 private:
 
@@ -1048,15 +1054,13 @@ private:
 
 	// player locking
 	int						m_iPlayerLocked;
+
 		
 protected:
 	// the player's personal view model
 	typedef CHandle<CBaseViewModel> CBaseViewModelHandle;
 	CNetworkArray( CBaseViewModelHandle, m_hViewModel, MAX_VIEWMODELS );
 
-	// Last received usercmd (in case we drop a lot of packets )
-	CUserCmd				m_LastCmd;
-	CUserCmd				*m_pCurrentCommand;
 	int						m_iLockViewanglesTickNumber;
 	QAngle					m_qangLockViewangles;
 

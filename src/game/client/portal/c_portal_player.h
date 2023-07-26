@@ -57,6 +57,8 @@ public:
 	
 	virtual bool CreateMove( float flInputSampleTime, CUserCmd *pCmd );
 
+	void SetupMove( CUserCmd *ucmd, IMoveHelper *pHelper );
+
 	virtual void AddEntity( void );
 
 	//virtual bool IsPredicted() { return true; }
@@ -123,7 +125,9 @@ public:
 	void	UpdateLookAt( void );
 	void	Initialize( void );
 	int		GetIDTarget() const;
+	int		GetPortalIDTarget() const;
 	void	UpdateIDTarget( void );
+	void	UpdatePortalIDTarget( void );
 	bool	ShouldCollide( int collisionGroup, int contentsMask ) const;
 	void	AvoidPlayers( CUserCmd *pCmd );
 	
@@ -178,6 +182,13 @@ public:
 
 	VMatrix GetPendingPortalMatrix() { return m_PendingPortalMatrix; }
 
+
+	QAngle						m_qPrePortalledViewAngles;
+	bool						m_bFixEyeAnglesFromPortalling;
+	VMatrix						m_matLastPortalled;
+
+	int m_iCustomPortalColorSet;
+
 private:
 
 	C_Portal_Player( const C_Portal_Player & );
@@ -209,6 +220,7 @@ private:
 	float m_flStartLookTime;
 
 	int	  m_iIDEntIndex;
+	int	  m_iIDPortalEntIndex;
 
 	CountdownTimer m_blinkTimer;
 
@@ -256,6 +268,7 @@ private:
 	VMatrix m_PendingPortalMatrix;
 
 	bool m_bToolMode_EyeHasPortalled_LastRecord; //when recording, keep track of whether we teleported the camera position last capture or not. Need to avoid interpolating when switching
+
 
 public:
 

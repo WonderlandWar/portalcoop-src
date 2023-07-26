@@ -68,6 +68,7 @@ BEGIN_DATADESC( CProp_Portal )
 	DEFINE_FIELD( m_qDelayedAngles,		FIELD_VECTOR ),
 	DEFINE_FIELD( m_iDelayedFailure,	FIELD_INTEGER ),
 	DEFINE_FIELD( m_hPlacedBy,			FIELD_EHANDLE ),
+	DEFINE_FIELD( m_iCustomPortalColorSet,	FIELD_INTEGER ),
 
 	// DEFINE_FIELD( m_plane_Origin, cplane_t ),
 	// DEFINE_FIELD( m_pAttachedCloningArea, CPhysicsCloneArea ),
@@ -112,6 +113,7 @@ IMPLEMENT_SERVERCLASS_ST( CProp_Portal, DT_Prop_Portal )
 	SendPropEHandle( SENDINFO( m_hPlacedBy ) ),
 	SendPropEHandle( SENDINFO( m_hFiredByPlayer ) ),
 	SendPropInt( SENDINFO( m_nPlacementAttemptParity ), EF_PARITY_BITS, SPROP_UNSIGNED ),
+	SendPropInt( SENDINFO( m_iCustomPortalColorSet ), EF_PARITY_BITS, SPROP_UNSIGNED ),
 	
 	SendPropDataTable( SENDINFO_DT( m_PortalSimulator ), &REFERENCE_SEND_TABLE( DT_PortalSimulator ) )
 END_SEND_TABLE()
@@ -533,7 +535,7 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 			pPlayer->RumbleEffect( RUMBLE_PORTAL_PLACEMENT_FAILURE, 0, RUMBLE_FLAGS_NONE );
 		}
 	}
-	
+		
 	// Pick a fizzle effect
 	switch ( iEffect )
 	{

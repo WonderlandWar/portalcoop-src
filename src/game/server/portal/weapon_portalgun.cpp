@@ -43,6 +43,7 @@ BEGIN_NETWORK_TABLE( CWeaponPortalgun, DT_WeaponPortalgun )
 	SendPropFloat( SENDINFO( m_fEffectsMaxSize2 ) ),
 	SendPropInt( SENDINFO( m_EffectState ) ),
 	SendPropInt( SENDINFO( m_iPortalLinkageGroupID ) ),
+	SendPropInt( SENDINFO( m_iCustomPortalColorSet ) ),	
 	SendPropBool( SENDINFO (m_bCanAttack) ),
 	SendPropEHandle( SENDINFO (m_hPrimaryPortal) ),
 	SendPropEHandle( SENDINFO (m_hSecondaryPortal) )
@@ -111,6 +112,11 @@ void CWeaponPortalgun::Spawn( void )
 		}	
 	}
 
+	CPortal_Player *pPlayer = ToPortalPlayer(GetOwner());
+
+	if (pPlayer)
+		m_iCustomPortalColorSet = pPlayer->m_iCustomPortalColorSet;
+
 	m_hPrimaryPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, false, true);
 	m_hSecondaryPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, true, true);
 }
@@ -138,6 +144,11 @@ void CWeaponPortalgun::Activate()
 					m_iPortalLinkageGroupID = m_iPortalLinkageGroupID - 1;
 			}
 		}
+
+		CPortal_Player *pPortalPlayer = ToPortalPlayer(GetOwner());
+
+		if (pPortalPlayer)
+			m_iCustomPortalColorSet = pPortalPlayer->m_iCustomPortalColorSet;
 		
 		m_hPrimaryPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, false, true);
 		m_hSecondaryPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, true, true);
@@ -185,6 +196,12 @@ void CWeaponPortalgun::OnPickedUp( CBaseCombatCharacter *pNewOwner )
 			Assert( (m_iPortalLinkageGroupID >= 0) && (m_iPortalLinkageGroupID < 256) );
 		}
 	}
+
+	CPortal_Player *pPortalPlayer = ToPortalPlayer(GetOwner());
+
+	if (pPortalPlayer)
+		m_iCustomPortalColorSet = pPortalPlayer->m_iCustomPortalColorSet;
+
 	m_hPrimaryPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, false, true);
 	m_hSecondaryPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, true, true);
 

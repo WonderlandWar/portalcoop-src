@@ -25,6 +25,7 @@
 #include "portal_gamerules.h"
 #include "collisionutils.h"
 #include "c_triggers.h"
+#include "prediction.h"
 
 // NVNT for fov updates
 #include "haptics/ihaptics.h"
@@ -289,9 +290,10 @@ IMPLEMENT_CLIENTCLASS_DT(C_Portal_Player, DT_Portal_Player, CPortal_Player)
 	RecvPropEHandle( RECVINFO( m_hPortalEnvironment ) ),
 	RecvPropEHandle( RECVINFO( m_hSurroundingLiquidPortal ) ),
 	RecvPropBool( RECVINFO( m_bSuppressingCrosshair ) ),
-	RecvPropBool(RECVINFO(m_bHasSprintDevice ) ),
-	RecvPropBool(RECVINFO(m_bSprintEnabled ) ),
-	RecvPropBool(RECVINFO(m_bSilentDropAndPickup ) ),
+	RecvPropBool( RECVINFO( m_bHasSprintDevice ) ),
+	RecvPropBool( RECVINFO( m_bSprintEnabled ) ),
+	RecvPropBool( RECVINFO( m_bSilentDropAndPickup ) ),
+	RecvPropInt( RECVINFO( m_iCustomPortalColorSet ) ),
 END_RECV_TABLE()
 
 LINK_ENTITY_TO_CLASS( player, C_Portal_Player )
@@ -309,6 +311,8 @@ BEGIN_PREDICTION_DATA( C_Portal_Player )
 	DEFINE_PRED_FIELD( m_nResetEventsParity, FIELD_INTEGER, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE | FTYPEDESC_NOERRORCHECK ),
 	
 	DEFINE_PRED_FIELD( m_hPortalEnvironment, FIELD_EHANDLE, FTYPEDESC_NOERRORCHECK ),
+	
+	//DEFINE_FIELD( m_matLastPortalled, FIELD_VMATRIX_WORLDSPACE ), //Garbage data :(
 
 //	DEFINE_PRED_FIELD( m_iOldModelType, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	
@@ -337,6 +341,7 @@ C_Portal_Player::C_Portal_Player()
 	SetPredictionEligible(true);
 
 	m_iIDEntIndex = 0;
+	m_iIDPortalEntIndex = 0;
 	m_iSpawnInterpCounterCache = 0;
 
 	m_hRagdoll.Set( NULL );
@@ -374,6 +379,11 @@ C_Portal_Player::~C_Portal_Player( void )
 int C_Portal_Player::GetIDTarget() const
 {
 	return m_iIDEntIndex;
+}
+
+int C_Portal_Player::GetPortalIDTarget() const
+{
+	return m_iIDPortalEntIndex;
 }
 
 //-----------------------------------------------------------------------------
@@ -425,6 +435,41 @@ void C_Portal_Player::UpdateIDTarget()
 		{
 			m_iIDEntIndex = pEntity->entindex();
 		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Update this client's target entity
+//-----------------------------------------------------------------------------
+void C_Portal_Player::UpdatePortalIDTarget()
+{
+	if ( !IsLocalPlayer() )
+		return;
+
+	// Clear old target and find a new one
+	m_iIDPortalEntIndex = 0;
+
+	// don't show IDs in chase spec mode
+	if ( GetObserverMode() == OBS_MODE_CHASE || 
+		GetObserverMode() == OBS_MODE_DEATHCAM )
+		return;
+
+	trace_t tr;
+	Vector vecStart, vecEnd;
+	VectorMA( MainViewOrigin(), 1500, MainViewForward(), vecEnd );
+	VectorMA( MainViewOrigin(), 10,   MainViewForward(), vecStart );
+
+	UTIL_TraceLine( vecStart, vecEnd, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
+	
+	Ray_t ray;
+	ray.Init( tr.startpos, tr.endpos );
+
+	float flMustBeCloserThan = 2.0f;
+	CProp_Portal *pPortal = UTIL_Portal_FirstAlongRayAll(ray, flMustBeCloserThan);
+	
+	if ( pPortal )
+	{
+		m_iIDPortalEntIndex = pPortal->entindex();
 	}
 }
 
@@ -491,14 +536,13 @@ CStudioHdr *C_Portal_Player::OnNewModel( void )
 
 void C_Portal_Player::UpdateLookAt( void )
 {
-#if HL2DM_LOOKAT
 	//Only I can see me looking at myself
-	if (!IsLocalPlayer())
-#endif
+	if (IsLocalPlayer())
 	{
 		//Don't try to always look at me if I don't have a Portal otherwise it looks weird to other people/players
-		if (!m_hPortalEnvironment)
-			return;
+		//Nope, this completely makes heads snappy
+		//if (!m_hPortalEnvironment)
+		//	return;
 
 		// head yaw
 		if (m_headYawPoseParam < 0 || m_headPitchPoseParam < 0)
@@ -617,48 +661,58 @@ void C_Portal_Player::UpdateLookAt( void )
 	//-------------------------//
 	else 
 	{
-		
 		// head yaw
 		if (m_headYawPoseParam < 0 || m_headPitchPoseParam < 0)
+			return;
+
+		// This is buggy with dt 0, just skip since there is no work to do.
+		if ( gpGlobals->frametime <= 0.0f )
 			return;
 
 		// orient eyes
 		m_viewtarget = m_vLookAtTarget;
 
+		// blinking
+		if (m_blinkTimer.IsElapsed())
+		{
+			m_blinktoggle = !m_blinktoggle;
+			m_blinkTimer.Start( RandomFloat( 1.5f, 4.0f ) );
+		}
+
 		// Figure out where we want to look in world space.
 		QAngle desiredAngles;
 		Vector to = m_vLookAtTarget - EyePosition();
-		VectorAngles(to, desiredAngles);
+		VectorAngles( to, desiredAngles );
 
 		// Figure out where our body is facing in world space.
-		QAngle bodyAngles(0, 0, 0);
+		QAngle bodyAngles( 0, 0, 0 );
 		bodyAngles[YAW] = GetLocalAngles()[YAW];
 
 
 		float flBodyYawDiff = bodyAngles[YAW] - m_flLastBodyYaw;
 		m_flLastBodyYaw = bodyAngles[YAW];
 
+	
 
 		// Set the head's yaw.
-		float desired = AngleNormalize(desiredAngles[YAW] - bodyAngles[YAW]);
-		desired = clamp(desired, m_headYawMin, m_headYawMax);
-		m_flCurrentHeadYaw = ApproachAngle(desired, m_flCurrentHeadYaw, 130 * gpGlobals->frametime);
+		float desired = AngleNormalize( desiredAngles[YAW] - bodyAngles[YAW] );
+		desired = clamp( desired, m_headYawMin, m_headYawMax );
+		m_flCurrentHeadYaw = ApproachAngle( desired, m_flCurrentHeadYaw, 130 * gpGlobals->frametime );
 
 		// Counterrotate the head from the body rotation so it doesn't rotate past its target.
-		m_flCurrentHeadYaw = AngleNormalize(m_flCurrentHeadYaw - flBodyYawDiff);
-		desired = clamp(desired, m_headYawMin, m_headYawMax);
+		m_flCurrentHeadYaw = AngleNormalize( m_flCurrentHeadYaw - flBodyYawDiff );
+		desired = clamp( desired, m_headYawMin, m_headYawMax );
+	
+		SetPoseParameter( m_headYawPoseParam, m_flCurrentHeadYaw );
 
-		SetPoseParameter(m_headYawPoseParam, m_flCurrentHeadYaw);
-
-
+	
 		// Set the head's yaw.
-		desired = AngleNormalize(desiredAngles[PITCH]);
-		desired = clamp(desired, m_headPitchMin, m_headPitchMax);
-
-		m_flCurrentHeadPitch = ApproachAngle(desired, m_flCurrentHeadPitch, 130 * gpGlobals->frametime);
-		m_flCurrentHeadPitch = AngleNormalize(m_flCurrentHeadPitch);
-		SetPoseParameter(m_headPitchPoseParam, m_flCurrentHeadPitch);
-		
+		desired = AngleNormalize( desiredAngles[PITCH] );
+		desired = clamp( desired, m_headPitchMin, m_headPitchMax );
+	
+		m_flCurrentHeadPitch = ApproachAngle( desired, m_flCurrentHeadPitch, 130 * gpGlobals->frametime );
+		m_flCurrentHeadPitch = AngleNormalize( m_flCurrentHeadPitch );
+		SetPoseParameter( m_headPitchPoseParam, m_flCurrentHeadPitch );
 	}
 #endif
 }
@@ -790,7 +844,58 @@ void C_Portal_Player::ClientThink( void )
 		g_pColorCorrectionMgr->SetColorCorrectionWeight( m_CCDeathHandle, m_flDeathCCWeight );
 	}
 #endif
+
+	//HL2DM LOOKAT CODE
+#if HL2DM_LOOKAT
+
+	if (!IsLocalPlayer())
+	{		
+		bool bFoundViewTarget = false;
+	
+		Vector vForward;
+		AngleVectors( GetLocalAngles(), &vForward );
+
+		for( int i = 1; i <= gpGlobals->maxClients; ++i )
+		{
+			C_BasePlayer *pPlayer = UTIL_PlayerByIndex( i );
+			if( !pPlayer )
+				continue;
+
+			if ( pPlayer->entindex() == entindex() )
+				continue;
+
+			if ( pPlayer == this )
+				continue;
+
+			Vector vTargetOrigin = pPlayer->GetAbsOrigin();
+			Vector vMyOrigin =  GetAbsOrigin();
+
+			Vector vDir = vTargetOrigin - vMyOrigin;
+		
+			if ( vDir.Length() > 128 ) 
+				continue;
+
+			VectorNormalize( vDir );
+
+			if ( DotProduct( vForward, vDir ) < 0.0f )
+				 continue;
+
+			m_vLookAtTarget = pPlayer->EyePosition();
+			bFoundViewTarget = true;
+			break;
+		}
+
+		if ( bFoundViewTarget == false )
+		{
+			m_vLookAtTarget = GetAbsOrigin() + vForward * 512;
+		}
+
+	}
+
+#endif
+
 	UpdateIDTarget();
+	UpdatePortalIDTarget();
 }
 
 void C_Portal_Player::FixTeleportationRoll( void )
@@ -970,6 +1075,7 @@ void C_Portal_Player::UpdateClientSideAnimation( void )
 
 void C_Portal_Player::DoAnimationEvent( PlayerAnimEvent_t event, int nData )
 {
+	//if (prediction->InPrediction() && GetPredictable())
 	m_PlayerAnimState->DoAnimationEvent( event, nData );
 }
 
@@ -1243,6 +1349,28 @@ bool C_Portal_Player::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 	AvoidPlayers( pCmd );
 
 	return BaseClass::CreateMove(flInputSampleTime, pCmd);
+}
+
+void C_Portal_Player::SetupMove( CUserCmd *ucmd, IMoveHelper *pHelper )
+{
+	if (m_bFixEyeAnglesFromPortalling)
+	{
+		//the idea here is to handle the notion that the player has portalled, but they sent us an angle update before receiving that message.
+		//If we don't handle this here, we end up sending back their old angles which makes them hiccup their angles for a frame
+		float fOldAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, m_qPrePortalledViewAngles.x));
+		fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, m_qPrePortalledViewAngles.y));
+		fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, m_qPrePortalledViewAngles.z));
+
+		float fCurrentAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, pl.v_angle.x));
+		fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, pl.v_angle.y));
+		fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, pl.v_angle.z));
+
+		if (fCurrentAngleDiff > fOldAngleDiff)
+			ucmd->viewangles = TransformAnglesToWorldSpace(ucmd->viewangles, m_matLastPortalled.As3x4());
+
+		m_bFixEyeAnglesFromPortalling = false;
+	}
+
 }
 
 //-----------------------------------------------------------------------------

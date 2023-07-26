@@ -26,7 +26,8 @@
 #include "env_debughistory.h"
 #endif
 
-ConVar sv_portal_unified_velocity( "sv_portal_unified_velocity", "1", FCVAR_CHEAT | FCVAR_REPLICATED, "An attempt at removing patchwork velocity tranformation in portals, moving to a unified approach." );
+ConVar sv_portal_unified_velocity( "sv_portal_unified_velocity", "1", FCVAR_REPLICATED, "An attempt at removing patchwork velocity tranformation in portals, moving to a unified approach." );
+extern ConVar sv_allow_customized_portal_colors;
 
 extern ConVar sv_portal_debug_touch;
 
@@ -262,6 +263,11 @@ void CProp_Portal::PlacePortal( const Vector &vOrigin, const QAngle &qAngles, fl
 #endif
 		return;
 	}
+
+#ifdef CLIENT_DLL
+	if (sv_allow_customized_portal_colors.GetBool())
+	m_iPortalColorSet = m_iLinkageGroupID;
+#endif
 	
 	m_vDelayedPosition = vNewOrigin;
 	m_qDelayedAngles = qNewAngles;
@@ -421,48 +427,10 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 	
 	
 	QAngle qOtherAngles;
-#if 1
+
 	Vector vOtherVelocity = Portal_FindUsefulVelocity(pOther);
 	vOtherVelocity -= GetAbsVelocity(); //subtract the portal's velocity if it's moving. It's all relative.
-#else
-	Vector vOtherVelocity = Portal_FindUsefulVelocity(pOther);
-	//grab current velocity
-	{
-		IPhysicsObject *pOtherPhysObject = pOther->VPhysicsGetObject();
-		if( pOther->GetMoveType() == MOVETYPE_VPHYSICS )
-		{
-			if( pOtherPhysObject && (pOtherPhysObject->GetShadowController() == NULL) )
-				pOtherPhysObject->GetVelocity( &vOtherVelocity, NULL );
-			else
-				pOther->GetVelocity( &vOtherVelocity );
-		}
-		else if ( bPlayer && pOther->VPhysicsGetObject() )
-		{
-			pOther->VPhysicsGetObject()->GetVelocity( &vOtherVelocity, NULL );
 
-			if ( vOtherVelocity == vec3_origin )
-			{
-				vOtherVelocity = pOther->GetAbsVelocity();
-			}
-		}
-		else
-		{
-			pOther->GetVelocity( &vOtherVelocity );
-		}
-
-		if( vOtherVelocity == vec3_origin )
-		{
-			// Recorded velocity is sometimes zero under pushed or teleported movement, or after position correction.
-			// In these circumstances, we want implicit velocity ((last pos - this pos) / timestep )
-			if ( pOtherPhysObject )
-			{
-				Vector vOtherImplicitVelocity;
-				pOtherPhysObject->GetImplicitVelocity( &vOtherImplicitVelocity, NULL );
-				vOtherVelocity += vOtherImplicitVelocity;
-			}
-		}
-	}
-#endif
 	const PS_InternalData_t &RemotePortalDataAccess = m_hLinkedPortal->m_PortalSimulator.GetInternalData();
 	const PS_InternalData_t &LocalPortalDataAccess = m_PortalSimulator.GetInternalData();
 
@@ -470,11 +438,11 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 	if( bPlayer )
 	{
 		qOtherAngles = pOtherAsPlayer->EyeAngles();
-#ifdef GAME_DLL
+
 		pOtherAsPlayer->m_qPrePortalledViewAngles = qOtherAngles;
 		pOtherAsPlayer->m_bFixEyeAnglesFromPortalling = true;
 		pOtherAsPlayer->m_matLastPortalled = m_matrixThisToLinked;
-#endif
+
 		bNonPhysical = true;
 		//if( (fabs( RemotePortalDataAccess.Placement.vForward.z ) + fabs( LocalPortalDataAccess.Placement.vForward.z )) > 0.7071f ) //some combination of floor/ceiling
 		if( fabs( LocalPortalDataAccess.Placement.vForward.z ) > 0.0f )

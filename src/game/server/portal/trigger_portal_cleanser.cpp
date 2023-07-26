@@ -29,6 +29,7 @@ BEGIN_DATADESC( CTriggerPortalCleanser )
 DEFINE_OUTPUT( m_OnDissolve, "OnDissolve" ),
 DEFINE_OUTPUT( m_OnFizzle, "OnFizzle" ),
 DEFINE_OUTPUT( m_OnDissolveBox, "OnDissolveBox" ),
+DEFINE_OUTPUT( m_OnDissolveSphere, "OnDissolveSphere" )
 
 END_DATADESC()
 
@@ -70,12 +71,22 @@ CBaseEntity* ConvertToSimpleProp ( CBaseEntity* pEnt )
 		pRetVal = CreateEntityByName( "simple_physics_prop" );
 	}
 
-	pRetVal->KeyValue( "model", STRING(pEnt->GetModelName()) );
-	pRetVal->SetAbsOrigin( pEnt->GetAbsOrigin() );
-	pRetVal->SetAbsAngles( pEnt->GetAbsAngles() );
-	pRetVal->Spawn();
-	pRetVal->VPhysicsInitNormal( SOLID_VPHYSICS, 0, false );
-	
+	CBaseAnimating *pRetValAsAnimating = dynamic_cast<CBaseAnimating*>(pRetVal);
+	CBaseAnimating *pAnimating = dynamic_cast<CBaseAnimating*>(pEnt);
+
+	if (pAnimating)
+	{
+		//Specific Stuff
+		pRetValAsAnimating->m_nSkin = pAnimating->m_nSkin;
+		pRetValAsAnimating->m_flModelScale = pAnimating->m_flModelScale;
+	}
+
+		pRetVal->KeyValue( "model", STRING(pEnt->GetModelName()) );
+		pRetVal->SetAbsOrigin( pEnt->GetAbsOrigin() );
+		pRetVal->SetAbsAngles( pEnt->GetAbsAngles() );
+		pRetVal->Spawn();
+		pRetVal->VPhysicsInitNormal( SOLID_VPHYSICS, 0, false );
+
 	return pRetVal;
 }
 
@@ -178,6 +189,7 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 			++i;
 		}
 		
+		//Fixes vehicle crashing
 		CPropVehicleDriveable *pVehicle = dynamic_cast<CPropVehicleDriveable*>( pBaseAnimating );
 		if (pVehicle)
 		{
@@ -193,6 +205,11 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 		if ( pBaseAnimating->NameMatches( "box" ) )
 		{
 			m_OnDissolveBox.FireOutput( pOther, this );
+		}
+
+		if ( pBaseAnimating->NameMatches( "sphere" ) )
+		{
+			m_OnDissolveSphere.FireOutput( pOther, this );
 		}
 
 		if ( FClassnameIs( pBaseAnimating, "updateitem2" ) )

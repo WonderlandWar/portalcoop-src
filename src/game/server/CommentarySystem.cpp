@@ -22,6 +22,7 @@
 #include "gamestats.h"
 #include "ai_basenpc.h"
 #include "Sprite.h"
+#include "CommentarySystem.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -59,82 +60,6 @@ bool IsInCommentaryMode( void )
 	return g_bInCommentaryMode;
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: An entity that marks a spot for a piece of commentary
-//-----------------------------------------------------------------------------
-class CPointCommentaryNode : public CBaseAnimating
-{
-	DECLARE_CLASS( CPointCommentaryNode, CBaseAnimating );
-public:
-	DECLARE_DATADESC();
-	DECLARE_SERVERCLASS();
-
-	void Spawn( void );
-	void Precache( void );
-	void Activate( void );
-	void SpinThink( void );
-	void StartCommentary( void );
-	void FinishCommentary( bool bBlendOut = true );
-	void CleanupPostCommentary( void );
-	void UpdateViewThink( void );
-	void UpdateViewPostThink( void );
-	bool TestCollision( const Ray_t &ray, unsigned int mask, trace_t& trace );
-	bool HasViewTarget( void ) { return (m_hViewTarget != NULL || m_hViewPosition.Get() != NULL); }
-	bool PreventsMovement( void );
-	bool CannotBeStopped( void ) { return (m_bUnstoppable || m_bPreventChangesWhileMoving); }
-	int  UpdateTransmitState( void );
-	void SetTransmit( CCheckTransmitInfo *pInfo, bool bAlways );
-	void SetDisabled( bool bDisabled );
-	void SetNodeNumber( int iCount ) { m_iNodeNumber = iCount; }
-
-	// Called to tell the node when it's moved under/not-under the player's crosshair
-	void SetUnderCrosshair( bool bUnderCrosshair );
-
-	// Called when the player attempts to activate the node
-	void PlayerActivated( void );
-	void StopPlaying( void );
-	void AbortPlaying( void );
-	void TeleportTo( CBasePlayer *pPlayer );
-	bool CanTeleportTo( void );
-
-	// Inputs
-	void InputStartCommentary( inputdata_t &inputdata );
-	void InputStartUnstoppableCommentary( inputdata_t &inputdata );
-	void InputEnable( inputdata_t &inputdata );
-	void InputDisable( inputdata_t &inputdata );
-
-private:
-	string_t	m_iszPreCommands;
-	string_t	m_iszPostCommands;
-	CNetworkVar( string_t, m_iszCommentaryFile );
-	CNetworkVar( string_t, m_iszCommentaryFileNoHDR );
-	string_t	m_iszViewTarget;
-	EHANDLE		m_hViewTarget;
-	EHANDLE		m_hViewTargetAngles;		// Entity used to blend view angles to look at the target
-	string_t	m_iszViewPosition;
-	CNetworkVar( EHANDLE, m_hViewPosition );
-	EHANDLE		m_hViewPositionMover;		// Entity used to blend the view to the viewposition entity
-	bool		m_bPreventMovement;
-	bool		m_bUnderCrosshair;
-	bool		m_bUnstoppable;
-	float		m_flFinishedTime;
-	Vector		m_vecFinishOrigin;
-	QAngle		m_vecOriginalAngles;
-	QAngle		m_vecFinishAngles;
-	bool		m_bPreventChangesWhileMoving;
-	bool		m_bDisabled;
-	Vector		m_vecTeleportOrigin;
-
-	COutputEvent	m_pOnCommentaryStarted;
-	COutputEvent	m_pOnCommentaryStopped;
-
-	CNetworkVar( bool, m_bActive );
-	CNetworkVar( float, m_flStartTime );
-	CNetworkVar( string_t, m_iszSpeakers );
-	CNetworkVar( int, m_iNodeNumber );
-	CNetworkVar( int, m_iNodeNumberMax );
-};
-
 BEGIN_DATADESC( CPointCommentaryNode )
 	DEFINE_KEYFIELD( m_iszPreCommands,	FIELD_STRING,	"precommands" ),
 	DEFINE_KEYFIELD( m_iszPostCommands,	FIELD_STRING,	"postcommands" ),
@@ -171,6 +96,7 @@ BEGIN_DATADESC( CPointCommentaryNode )
 	DEFINE_INPUTFUNC( FIELD_VOID, "StartUnstoppableCommentary", InputStartUnstoppableCommentary ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Enable", InputEnable ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Disable", InputDisable ),
+	DEFINE_INPUTFUNC( FIELD_VOID, "Use", InputUse ),
 
 	// Functions
 	DEFINE_THINKFUNC( SpinThink ),
@@ -373,6 +299,7 @@ public:
 
 	void PrePlayerRunCommand( CBasePlayer *pPlayer, CUserCmd *pUserCmds )
 	{
+
 		if ( !IsInCommentaryMode() )
 			return;
 //Testing with bots is easier than testing with real players
@@ -401,9 +328,18 @@ public:
 			m_hCurrentNode = pCurrentNode;
 		}
 
+//This works terribly in multiplayer
+#if 0
+
 		// Check for commentary node activations
 		if ( pPlayer )
 		{
+		//	CUserCmd lastCmd = pPlayer->m_LastCmd;
+		//	CUserCmd *pCurCmd = pPlayer->m_pCurrentCommand;
+
+		//	if (!pCurCmd)
+		//		return;
+
 			// Has the player pressed down an attack button?
 			int buttonsChanged = m_afPlayersLastButtons ^ pUserCmds->buttons;
 			int buttonsPressed = buttonsChanged & pUserCmds->buttons;
@@ -440,7 +376,7 @@ public:
 								GetActiveNode()->StopPlaying();
  							}
 
-							m_hCurrentNode->PlayerActivated();
+							m_hCurrentNode->PlayerActivated( pPlayer );
 						}
 
 						// Prevent weapon firing when toggling nodes
@@ -463,7 +399,7 @@ public:
 
 			if ( GetActiveNode() && GetActiveNode()->PreventsMovement() )
 			{
- 				pUserCmds->buttons &= ~(IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT | IN_JUMP | IN_DUCK );
+				pUserCmds->buttons &= ~(IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT | IN_JUMP | IN_DUCK);
 				pUserCmds->upmove = 0;
 				pUserCmds->sidemove = 0;
 				pUserCmds->forwardmove = 0;
@@ -507,6 +443,7 @@ public:
 				}
 			}
 		}
+#endif
 	}
 
 	CPointCommentaryNode *GetActiveNode( void )
@@ -868,6 +805,11 @@ bool IsListeningToCommentary( void )
 	return ( g_CommentarySystem.GetActiveNode() != NULL );
 }
 
+CPointCommentaryNode *GetPlayingNode(void)
+{
+	return g_CommentarySystem.GetActiveNode();
+}
+
 //===========================================================================================================
 // COMMENTARY NODES
 //===========================================================================================================
@@ -1017,9 +959,25 @@ void CPointCommentaryNode::SpinThink( void )
 //------------------------------------------------------------------------------
 // Purpose:
 //------------------------------------------------------------------------------
-void CPointCommentaryNode::PlayerActivated( void )
+void CPointCommentaryNode::PlayerActivated( CBasePlayer *pPlayer )
 {
 	gamestats->Event_Commentary();
+
+	if (GetPlayingNode())
+	{
+		
+		// Ignore input while an unstoppable node is playing
+		if (!GetPlayingNode() || !GetPlayingNode()->CannotBeStopped())
+		{
+			// If we have an active node already, stop it
+			if ( GetPlayingNode() && GetPlayingNode() != this )
+			{
+				GetPlayingNode()->StopPlaying();
+ 			}
+							
+			//StartCommentary( pPlayer );
+		}
+	}
 
 	if ( m_bActive )
 	{
@@ -1027,7 +985,7 @@ void CPointCommentaryNode::PlayerActivated( void )
 	}
 	else
 	{
-		StartCommentary();
+		StartCommentary( pPlayer );
 		g_CommentarySystem.SetActiveNode( this );
 	}
 }
@@ -1098,14 +1056,10 @@ void CPointCommentaryNode::TeleportTo( CBasePlayer *pPlayer )
 //------------------------------------------------------------------------------
 // Purpose:
 //------------------------------------------------------------------------------
-void CPointCommentaryNode::StartCommentary( void )
+void CPointCommentaryNode::StartCommentary( CBasePlayer *pPlayer )
 {
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	//for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-
-		if ( !pPlayer )
-			continue;
 
 		m_bActive = true;
 
@@ -1120,9 +1074,11 @@ void CPointCommentaryNode::StartCommentary( void )
 		// Fire off our precommands
 		if ( m_iszPreCommands != NULL_STRING )
 		{
-			g_CommentarySystem.SetCommentaryConvarsChanging( true );
-			engine->ClientCommand( pPlayer->edict(), STRING(m_iszPreCommands) );
-			engine->ClientCommand( pPlayer->edict(), "commentary_cvarsnotchanging\n" );
+			g_CommentarySystem.SetCommentaryConvarsChanging(true);
+			
+			engine->ClientCommand(pPlayer->edict(), STRING(m_iszPreCommands));
+			engine->ClientCommand(pPlayer->edict(), "commentary_cvarsnotchanging\n");
+			
 		}
 	
 
@@ -1133,6 +1089,7 @@ void CPointCommentaryNode::StartCommentary( void )
 		if ( m_hViewTarget || m_hViewPosition.Get() )
 		{
 			m_vecOriginalAngles = pPlayer->EyeAngles();
+			
  			SetContextThink( &CPointCommentaryNode::UpdateViewThink, gpGlobals->curtime, s_pCommentaryUpdateViewThink );
 		}
 	}
@@ -1409,7 +1366,16 @@ void CPointCommentaryNode::InputStartCommentary( inputdata_t &inputdata )
 			g_CommentarySystem.GetActiveNode()->StopPlaying();
 		}
 
-		PlayerActivated();
+		CBasePlayer *pPlayer = dynamic_cast<CBasePlayer*>(inputdata.pActivator);
+
+		if (pPlayer)
+			PlayerActivated(pPlayer);
+		else
+		{
+			//Last Resort
+			pPlayer = UTIL_PlayerByIndex(1);
+			PlayerActivated(pPlayer);
+		}
 	}	
 }
 
@@ -1439,6 +1405,21 @@ void CPointCommentaryNode::InputEnable( inputdata_t &inputdata )
 void CPointCommentaryNode::InputDisable( inputdata_t &inputdata )
 {
 	SetDisabled( true );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CPointCommentaryNode::InputUse( inputdata_t &inputdata )
+{
+	CBasePlayer *pPlayer = ToBasePlayer(inputdata.pActivator);
+
+	if (!pPlayer)
+		return;
+
+	PlayerActivated(pPlayer);
+
+	BaseClass::InputUse( inputdata );
 }
 
 //-----------------------------------------------------------------------------
@@ -1671,7 +1652,9 @@ CPointCommentaryNode *CBasePlayer::GetNodeUnderCrosshair()
 	Vector vecForward = GetAutoaimVector(AUTOAIM_SCALE_DIRECT_ONLY);
 	
 	g_bTracingVsCommentaryNodes = true;
+		
 	UTIL_TraceLine(vecSrc, vecSrc + vecForward * MAX_TRACE_LENGTH, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr);
+
 	g_bTracingVsCommentaryNodes = false;
 
 	return dynamic_cast<CPointCommentaryNode*>(tr.m_pEnt);

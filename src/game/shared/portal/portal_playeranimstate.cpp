@@ -21,6 +21,8 @@
 #include "weapon_portalgun.h"
 #endif
 
+#ifndef DONT_USE_PORTALANIMSTATE
+
 #define PORTAL_RUN_SPEED			320.0f
 #define PORTAL_CROUCHWALK_SPEED		110.0f
 
@@ -308,3 +310,5 @@ bool CPortalPlayerAnimState::HandleJumping( Activity &idealActivity )
 
 	return false;
 }
+
+#endif //PORTAL_PLAYERANIMSTATE_H

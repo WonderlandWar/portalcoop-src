@@ -25,6 +25,10 @@
 #include "c_basehlplayer.h"
 #endif
 
+#ifdef PORTAL
+#include "c_portal_player.h"
+#endif
+
 #include "tier0/vprof.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -700,6 +704,14 @@ void CPrediction::SetupMove( C_BasePlayer *player, CUserCmd *ucmd, IMoveHelper *
 	move->m_flConstraintRadius = player->m_flConstraintRadius;
 	move->m_flConstraintWidth = player->m_flConstraintWidth;
 	move->m_flConstraintSpeedFactor = player->m_flConstraintSpeedFactor;
+
+#ifdef PORTAL
+	C_Portal_Player *pPortalPlayer = ToPortalPlayer(player);
+
+	if (pPortalPlayer)
+			pPortalPlayer->SetupMove( ucmd, pHelper );
+
+#endif
 
 #ifdef HL2_CLIENT_DLL
 	// Convert to HL2 data.

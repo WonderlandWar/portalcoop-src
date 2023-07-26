@@ -52,6 +52,7 @@ public:
 	virtual void StartTouchAll() {}
 	virtual void EndTouchAll() {}
 	bool IsTouching( CBaseEntity *pOther );
+	bool AllPlayersAreTouching( void );
 
 	CBaseEntity *GetTouchedEntityOfType( const char *sClassName );
 
@@ -67,7 +68,7 @@ public:
 //	bool		m_bDisabled;
 	string_t	m_iFilterName;
 	CHandle<class CBaseFilter>	m_hFilter;
-
+	
 protected:
 
 	// Outputs
@@ -77,9 +78,10 @@ protected:
 	COutputEvent m_OnEndTouchAll;
 	COutputEvent m_OnTouching;
 	COutputEvent m_OnNotTouching;
-
+	COutputEvent m_OnAllPlayersTouching;
 	// Entities currently being touched by this trigger
 	CUtlVector< EHANDLE >	m_hTouchingEntities;
+	CUtlVector< CHandle<CBasePlayer> >	m_hTouchingPlayers;
 
 	DECLARE_DATADESC();
 	// True if trigger participates in client side prediction

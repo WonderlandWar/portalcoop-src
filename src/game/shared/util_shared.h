@@ -40,17 +40,6 @@ extern ConVar developer;	// developer mode
    static ConCommand name##_command( #name, name, description ); \
    static void name( const CCommand &args )
 
-#define FOR_ALL_PLAYERS(name) for (int i = 1; i <= gpGlobals->maxClients; ++i) \
-	{ \
-	CBasePlayer *name = UTIL_PlayerByIndex( i );
-
-#define FOR_ALL_PORTAL_PLAYERS(name) for (int i = 1; i <= gpGlobals->maxClients; ++i) \
-	{ \
-	CPortal_Player *name = (CPortal_Player*)UTIL_PlayerByIndex( i );
-
-#define FOR_ALL_HL2_PLAYERS(name) for (int i = 1; i <= gpGlobals->maxClients; ++i) \
-	{ \
-	CHL2_Player *name = (CHL2_Player*)UTIL_PlayerByIndex( i );
 //-----------------------------------------------------------------------------
 // Language IDs.
 //-----------------------------------------------------------------------------

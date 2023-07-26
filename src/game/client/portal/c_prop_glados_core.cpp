@@ -163,14 +163,39 @@ void C_PropGladosCore::Precache( void )
 
 void C_PropGladosCore::ClientThink()
 {
+#if 0
+	
+	if (m_bShouldPanicThink)
+		Msg("m_bShouldPanicThink = true\n");
+	else
+		Msg("m_bShouldPanicThink = false\n");
+
+	if (m_bShouldTalkingThink)
+		Msg("m_bShouldTalkingThink = true\n");
+	else
+		Msg("m_bShouldTalkingThink = false\n");
+
+#endif
+
+	bool bShouldNextThink = true;
+
 	if (m_bShouldPanicThink)
 	{
+		//Msg("PanicThink()\n");
 		PanicThink();
+		bShouldNextThink = false;
+		Assert(0);
 	}
 	if (m_bShouldTalkingThink)
 	{
+		//Msg("TalkingThink()\n");
 		TalkingThink();
+		bShouldNextThink = false;
 	}
+
+	// We shouldn't ever stop thinking
+	if (bShouldNextThink)
+		SetNextClientThink(gpGlobals->curtime + 0.1f);
 }
 
 void C_PropGladosCore::OnDataChanged( DataUpdateType_t updateType )
@@ -179,17 +204,124 @@ void C_PropGladosCore::OnDataChanged( DataUpdateType_t updateType )
 	{
 		float flTalkingDelay = (CORETYPE_CURIOUS == m_iCoreType) ? (2.0f) : (0.0f);
 
-		StartTalking(flTalkingDelay);
+		if (m_bStartTalking)
+		{
+			//Msg("if (m_bStartTalking)\n");
+			StartTalking(flTalkingDelay);
+			SetupVOList();
+		}
 		m_bOldStartTalking = m_bStartTalking;
-		SetupVOList();
 	}
 	
 	if (m_bStartPanic != m_bOldStartPanic)
 	{
-		StartPanic();
+		if (m_bStartPanic)
+		{
+			//Msg("if (m_bStartPanic)\n");
+			StartPanic();
+		}
 		m_bOldStartPanic = m_bStartPanic;
 	}
 }
+
+void C_PropGladosCore::StartPanic( void )
+{
+	//Without this check, the crazy/cake core will skip to the next line without finishing its current line
+	if (m_speechEvents.Count() <= 0 || !m_speechEvents.IsValidIndex(m_iSpeechIter) || m_iszPanicSoundScriptName == NULL_STRING)
+	{
+		m_bShouldPanicThink = false;
+		m_bShouldTalkingThink = true;
+		return;
+	}
+
+	m_bShouldTalkingThink = false;
+	m_bShouldPanicThink = true;
+	m_bSuppressTalkingThink = true;
+		
+	SetNextClientThink( gpGlobals->curtime + 0.1f );
+}
+
+void C_PropGladosCore::StartTalking( float flDelay )
+{
+	if ( m_speechEvents.IsValidIndex( m_iSpeechIter ) &&  m_speechEvents.Count() > 0 )
+	{
+		StopSound( m_speechEvents[m_iSpeechIter] );
+	}
+
+	m_iSpeechIter = 0;
+
+	m_bShouldTalkingThink = true;
+	m_bShouldPanicThink = false;
+
+	float flThinkTime = gpGlobals->curtime + m_flBetweenVOPadding + flDelay;
+		
+	SetNextClientThink( flThinkTime );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Play panic vo and animations, then return to talking
+// Output :
+//-----------------------------------------------------------------------------
+void C_PropGladosCore::PanicThink ( void )
+{
+	if ( m_speechEvents.Count() <= 0 || !m_speechEvents.IsValidIndex( m_iSpeechIter ) || m_iszPanicSoundScriptName == NULL_STRING )
+	{
+		m_bShouldPanicThink = false;
+		m_bShouldTalkingThink = true;
+		//TalkingThink();
+		//SetNextClientThink( gpGlobals->curtime );
+		return;
+	}
+	
+	StopSound( m_speechEvents[m_iSpeechIter] );
+	EmitSound( m_iszPanicSoundScriptName );
+
+	float flCurDuration = GetSoundDuration(  m_iszPanicSoundScriptName, GetModelName() );
+
+	float flThinkTime = gpGlobals->curtime + m_flBetweenVOPadding + flCurDuration;
+
+	if (!m_bSuppressTalkingThink)
+	{
+		m_bShouldTalkingThink = true;
+		m_bShouldPanicThink = false;
+	}
+
+	m_bSuppressTalkingThink = false;
+
+
+	SetNextClientThink( flThinkTime );
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose: Start playing personality VO list
+//-----------------------------------------------------------------------------
+void C_PropGladosCore::TalkingThink( void )
+{
+	if ( m_speechEvents.Count() <= 0 || !m_speechEvents.IsValidIndex( m_iSpeechIter ) )
+	{
+		m_bShouldTalkingThink = false;
+		SetNextClientThink( gpGlobals->curtime );
+		return;
+	}
+
+	int iPrevIter = m_iSpeechIter-1;
+	if ( iPrevIter < 0 )
+		iPrevIter = 0;
+	
+	StopSound( m_speechEvents[iPrevIter] );
+
+	float flCurDuration = GetSoundDuration( m_speechEvents[m_iSpeechIter], GetModelName() );
+
+	EmitSound( m_speechEvents[m_iSpeechIter] );
+	SetNextClientThink( gpGlobals->curtime + m_flBetweenVOPadding + flCurDuration );
+
+
+	// wrap if we hit the end of the list
+	m_iSpeechIter = (m_iSpeechIter+1)%m_speechEvents.Count();
+
+}
+
 
 //-----------------------------------------------------------------------------
 // Purpose: Setup list of lines based on core personality
@@ -297,83 +429,4 @@ void C_PropGladosCore::SetupVOList( void )
 	m_iszDeathSoundScriptName =  AllocPooledString( "Portal.Glados_core.Death" );
 	m_iTotalLines = m_speechEvents.Count();
 	m_iSpeechIter = 0;
-}
-
-
-void C_PropGladosCore::StartPanic( void )
-{
-	m_bShouldTalkingThink = false;
-	m_bShouldPanicThink = true;
-	
-	SetNextClientThink( gpGlobals->curtime + 0.1f );
-}
-
-void C_PropGladosCore::StartTalking( float flDelay )
-{
-	if ( m_speechEvents.IsValidIndex( m_iSpeechIter ) &&  m_speechEvents.Count() > 0 )
-	{
-		StopSound( m_speechEvents[m_iSpeechIter] );
-	}
-
-	m_iSpeechIter = 0;
-
-	m_bShouldTalkingThink = true;
-	m_bShouldPanicThink = false;
-
-	float flThinkTime = gpGlobals->curtime + m_flBetweenVOPadding + flDelay;
-		
-	SetNextClientThink( flThinkTime );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Play panic vo and animations, then return to talking
-// Output :
-//-----------------------------------------------------------------------------
-void C_PropGladosCore::PanicThink ( void )
-{
-	if ( m_speechEvents.Count() <= 0 || !m_speechEvents.IsValidIndex( m_iSpeechIter ) || m_iszPanicSoundScriptName == NULL_STRING )
-	{
-		m_bShouldPanicThink = false;
-		SetNextClientThink( gpGlobals->curtime );
-		return;
-	}
-
-	StopSound( m_speechEvents[m_iSpeechIter] );
-	EmitSound( m_iszPanicSoundScriptName );
-
-	float flCurDuration = GetSoundDuration(  m_iszPanicSoundScriptName, GetModelName() );
-
-	float flThinkTime = gpGlobals->curtime + m_flBetweenVOPadding + flCurDuration;
-	
-	SetNextClientThink( flThinkTime );
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Start playing personality VO list
-//-----------------------------------------------------------------------------
-void C_PropGladosCore::TalkingThink( void )
-{
-	if ( m_speechEvents.Count() <= 0 || !m_speechEvents.IsValidIndex( m_iSpeechIter ) )
-	{
-		m_bShouldTalkingThink = false;
-		SetNextClientThink( gpGlobals->curtime );
-		return;
-	}
-
-	int iPrevIter = m_iSpeechIter-1;
-	if ( iPrevIter < 0 )
-		iPrevIter = 0;
-	
-	StopSound( m_speechEvents[iPrevIter] );
-
-	float flCurDuration = GetSoundDuration( m_speechEvents[m_iSpeechIter], GetModelName() );
-
-	EmitSound( m_speechEvents[m_iSpeechIter] );
-	SetNextClientThink( gpGlobals->curtime + m_flBetweenVOPadding + flCurDuration );
-
-
-	// wrap if we hit the end of the list
-	m_iSpeechIter = (m_iSpeechIter+1)%m_speechEvents.Count();
-
 }

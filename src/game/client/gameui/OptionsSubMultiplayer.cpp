@@ -1098,6 +1098,7 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 	
 	m_pHighQualityModelCheckBox = new CCvarToggleCheckButton( this, "High Quality Models", "#GameUI_HighModels", "cl_himodels" );
 	m_pShowPortalIDCheckBox = new CCvarToggleCheckButton(this, "CheckShowPortalID", "#GameUI_MultiplayerShowPortalID", "hud_showportalid");
+	m_pShowPortalInfoCheckBox = new CCvarToggleCheckButton(this, "CheckShowPortalInfo", "#GameUI_MultiplayerShowPortalInfo", "hud_showportals");
 	
 	m_pModelList = new CLabeledCommandComboBox( this, "Player model" );
 	m_ModelName[0] = 0;
@@ -1806,6 +1807,7 @@ void COptionsSubMultiplayer::OnApplyChanges()
     m_pLogoList->GetText(m_LogoName, sizeof(m_LogoName));
 	m_pHighQualityModelCheckBox->ApplyChanges();
 	m_pShowPortalIDCheckBox->ApplyChanges();
+	m_pShowPortalInfoCheckBox->ApplyChanges();
 
 	for ( int i=0; i<m_cvarToggleCheckButtons.GetCount(); ++i )
 	{

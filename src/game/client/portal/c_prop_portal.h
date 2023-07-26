@@ -165,6 +165,10 @@ public:
 	C_Prop_Portal			*m_pHitPortal;
 	C_Prop_Portal			*m_pAttackingPortal;
 
+	int	m_iCustomPortalColorSet;
+	int	m_iOldPortalColorSet;
+	int	m_iPortalColorSet;
+
 private:
 
 

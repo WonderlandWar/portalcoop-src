@@ -211,7 +211,13 @@ void CPointNeurotoxin::DamagePlayersThink()
 	
 	}
 #if 1
-	FOR_ALL_PLAYERS(pPlayer)
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+
+		if (!pPlayer)
+			continue;
+
 		CTakeDamageInfo info;
 		info.SetDamage(gpGlobals->frametime * 50.0f);
 		info.SetDamageType(DMG_NERVEGAS);

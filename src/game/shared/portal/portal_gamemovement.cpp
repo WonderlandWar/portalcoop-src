@@ -30,8 +30,13 @@
 #include "tier0/memdbgon.h"
 
 ConVar sv_player_trace_through_portals("sv_player_trace_through_portals", "1", FCVAR_REPLICATED | FCVAR_CHEAT, "Causes player movement traces to trace through portals." );
-ConVar sv_player_funnel_into_portals("sv_player_funnel_into_portals", "1", FCVAR_REPLICATED | FCVAR_ARCHIVE | FCVAR_ARCHIVE_XBOX, "Causes the player to auto correct toward the center of floor portals." );
+ConVar sv_player_funnel_into_portals("sv_player_funnel_into_portals", "0", FCVAR_REPLICATED | FCVAR_ARCHIVE | FCVAR_ARCHIVE_XBOX, "Forces player funnel" );
 ConVar pcoop_avoidplayers( "pcoop_avoidplayers", "1", FCVAR_REPLICATED ); 
+
+#ifdef CLIENT_DLL
+//ConVar cl_player_funnel_into_portals("cl_player_funnel_into_portals", "1", FCVAR_CLIENTCMD_CAN_EXECUTE | FCVAR_ARCHIVE | FCVAR_ARCHIVE_XBOX, "Causes the player to auto correct toward the center of floor portals." );
+static ConVar cl_player_funnel_into_portals("cl_player_funnel_into_portals", "1", FCVAR_USERINFO | FCVAR_ARCHIVE | FCVAR_SERVER_CAN_EXECUTE, "Causes the player to auto correct toward the center of floor portals.");
+#endif
 
 class CReservePlayerSpot;
 
@@ -150,7 +155,7 @@ void CPortalGameMovement::ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMov
 
 //	g_bAllowForcePortalTrace = false;
 //	g_bForcePortalTrace = false;
-
+	
 	pPlayer->UnforceButtons( IN_DUCK );
 	pPlayer->UnforceButtons( IN_JUMP );
 
@@ -314,6 +319,27 @@ void CPortalGameMovement::AirMove( void )
 	//
 	// Don't let the player screw their fling because of adjusting into a floor portal
 	//
+	
+#ifdef GAME_DLL
+
+	bool bShouldFunnel;
+
+	const char *sTrue = "1";
+	const char *sPingHudHint = NULL;
+
+	sPingHudHint = engine->GetClientConVarValue(engine->IndexOfEdict(player->edict()), "cl_player_funnel_into_portals");
+
+	if (!strcmp(sPingHudHint, sTrue))
+	{
+		bShouldFunnel = true;
+	}
+	else
+	{
+		bShouldFunnel = false;
+	}
+	
+#endif
+
 	if ( mv->m_vecVelocity[ 0 ] * mv->m_vecVelocity[ 0 ] + mv->m_vecVelocity[ 1 ] * mv->m_vecVelocity[ 1 ] > MIN_FLING_SPEED * MIN_FLING_SPEED )
 	{
 		if ( mv->m_vecVelocity[ 0 ] > MIN_FLING_SPEED * 0.5f && wishdir[ 0 ] < 0.0f )
@@ -326,11 +352,15 @@ void CPortalGameMovement::AirMove( void )
 		else if ( mv->m_vecVelocity[ 1 ] < -MIN_FLING_SPEED * 0.5f && wishdir[ 1 ] > 0.0f )
 			wishdir[ 1 ] = 0.0f;
 	}
-
+	
 	//
 	// Try to autocorrect the player to fall into the middle of the portal
 	//
-	else if ( sv_player_funnel_into_portals.GetBool() )
+#ifdef GAME_DLL
+	else if ( bShouldFunnel || sv_player_funnel_into_portals.GetBool() )
+#else
+	else if ( cl_player_funnel_into_portals.GetBool() || sv_player_funnel_into_portals.GetBool() )
+#endif
 	{
 		int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
 		if( iPortalCount != 0 )

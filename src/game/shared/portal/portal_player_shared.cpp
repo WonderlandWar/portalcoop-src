@@ -20,6 +20,7 @@
 #include "util.h"
 #include "trains.h"
 #endif
+#include "portal_player_shared.h"
 
 #include "engine/IEngineSound.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
@@ -471,8 +472,7 @@ CBaseEntity* CPortal_Player::FindUseEntityThroughPortal( void )
 	return pNearest;
 }
 
-
-#if 0
+#if OLD_HL2DM_ANIMSTATE
 
 //==========================
 // ANIMATION CODE
@@ -989,6 +989,11 @@ bool CPortal_Player::UseFoundEntity(CBaseEntity* pUseEntity)
 {
 	bool usedSomething = false;
 
+#ifdef GAME_DLL
+	CPointCommentaryNode *pCommentaryNode = dynamic_cast<CPointCommentaryNode*>(pUseEntity);
+	
+#endif
+
 	//!!!UNDONE: traceline here to prevent +USEing buttons through walls			
 	int caps = pUseEntity->ObjectCaps();
 #ifdef GAME_DLL
@@ -997,9 +1002,22 @@ bool CPortal_Player::UseFoundEntity(CBaseEntity* pUseEntity)
 
 	if (m_afButtonPressed & IN_USE)
 	{
-		// Robin: Don't play sounds for NPCs, because NPCs will allow respond with speech.
-		if (!pUseEntity->MyNPCPointer())
+#ifdef GAME_DLL	
+		if (pCommentaryNode)
 		{
+			inputdata_t inputdata;
+			inputdata.pActivator = this;
+			inputdata.pCaller = this;
+			pCommentaryNode->InputUse(inputdata);
+		}
+#endif
+		// Robin: Don't play sounds for NPCs, because NPCs will allow respond with speech.
+		if (!pUseEntity->MyNPCPointer() )
+		{
+			//Using commentary nodes shouldn't play a sound
+#ifdef GAME_DLL
+			if (!pCommentaryNode)
+#endif
 			EmitSound("HL2Player.Use");
 		}
 	}
@@ -1140,16 +1158,24 @@ void CPortal_Player::PlayerUse(void)
 		float fMustBeCloserThan = 2.0f;
 
 		CProp_Portal* pPortal = UTIL_Portal_FirstAlongRay(rayPortalTest, fMustBeCloserThan);
-
+				
 		if (pPortal)
 		{
 			SetHeldObjectPortal(pPortal);
 			pUseEntity = FindUseEntityThroughPortal();
 		}
 
+#ifdef GAME_DLL
+		if (!pUseEntity)
+		{
+			pUseEntity = dynamic_cast<CBaseEntity*>(GetNodeUnderCrosshair());
+		}
+#endif
 		if (pUseEntity)
 		{
-			SetHeldObjectOnOppositeSideOfPortal(true);
+			if (pPortal)
+				SetHeldObjectOnOppositeSideOfPortal(true);
+
 			usedSomething = UseFoundEntity(pUseEntity);
 		}
 		else if (m_afButtonPressed & IN_USE)

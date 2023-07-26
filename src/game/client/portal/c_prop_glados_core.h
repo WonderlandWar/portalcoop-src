@@ -57,6 +57,7 @@ public:
 	bool m_bOldStartTalking;
 	bool m_bOldStartPanic;
 
+	bool m_bSuppressTalkingThink;
 	bool m_bShouldTalkingThink;
 	bool m_bShouldPanicThink;
 

@@ -102,8 +102,10 @@ BEGIN_DATADESC( CBaseTrigger )
 	DEFINE_KEYFIELD( m_iFilterName,	FIELD_STRING,	"filtername" ),
 	DEFINE_FIELD( m_hFilter,	FIELD_EHANDLE ),
 	DEFINE_KEYFIELD( m_bDisabled,		FIELD_BOOLEAN,	"StartDisabled" ),
+	
 	DEFINE_UTLVECTOR( m_hTouchingEntities, FIELD_EHANDLE ),
-
+	
+	DEFINE_UTLVECTOR( m_hTouchingPlayers, FIELD_EHANDLE ),
 	// Inputs	
 	DEFINE_INPUTFUNC( FIELD_VOID, "Enable", InputEnable ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Disable", InputDisable ),
@@ -120,7 +122,8 @@ BEGIN_DATADESC( CBaseTrigger )
 	DEFINE_OUTPUT( m_OnEndTouchAll, "OnEndTouchAll"),
 	DEFINE_OUTPUT( m_OnTouching, "OnTouching" ),
 	DEFINE_OUTPUT( m_OnNotTouching, "OnNotTouching" ),
-
+	
+	DEFINE_OUTPUT( m_OnAllPlayersTouching, "OnAllPlayersTouching" ),
 END_DATADESC()
 
 IMPLEMENT_SERVERCLASS_ST( CBaseTrigger, DT_BaseTrigger )
@@ -470,6 +473,10 @@ void CBaseTrigger::StartTouch(CBaseEntity *pOther)
 	{
 		EHANDLE hOther;
 		hOther = pOther;
+
+		//We have to be delicate since touching players is acting weird
+		CBasePlayer *pPlayer = ToBasePlayer(pOther);
+		CHandle<CBasePlayer> hPlayer = pPlayer;
 		
 		bool bAdded = false;
 		if ( m_hTouchingEntities.Find( hOther ) == m_hTouchingEntities.InvalidIndex() )
@@ -477,8 +484,15 @@ void CBaseTrigger::StartTouch(CBaseEntity *pOther)
 			m_hTouchingEntities.AddToTail( hOther );
 			bAdded = true;
 		}
+		if ( m_hTouchingPlayers.Find( hPlayer ) == m_hTouchingPlayers.InvalidIndex() )
+		{
+			m_hTouchingPlayers.AddToTail( hPlayer );
+		}
 
 		m_OnStartTouch.FireOutput(pOther, this);
+				
+		if ( AllPlayersAreTouching() && pPlayer )
+			m_OnAllPlayersTouching.FireOutput( pPlayer, this );
 
 		if ( bAdded && ( m_hTouchingEntities.Count() == 1 ) )
 		{
@@ -500,7 +514,17 @@ void CBaseTrigger::EndTouch(CBaseEntity *pOther)
 	{
 		EHANDLE hOther;
 		hOther = pOther;
+
+		//We have to be delicate since touching players is acting weird
+		CBasePlayer *pPlayer = dynamic_cast<CBasePlayer*>(pOther);
+		CHandle<CBasePlayer> hPlayer = pPlayer;
+
 		m_hTouchingEntities.FindAndRemove( hOther );
+
+		if (pPlayer)
+		{
+			m_hTouchingPlayers.FindAndRemove( hPlayer );
+		}
 		
 		//FIXME: Without this, triggers fire their EndTouch outputs when they are disabled!
 		//if ( !m_bDisabled )
@@ -532,6 +556,8 @@ void CBaseTrigger::EndTouch(CBaseEntity *pOther)
 				Warning( "Dead player [%s] is still touching this trigger at [%f %f %f]", hOther->GetEntityName().ToCStr(), XYZ( hOther->GetAbsOrigin() ) );
 #endif
 				m_hTouchingEntities.Remove( i );
+				
+				m_hTouchingPlayers.Remove( i );
 			}
 			else
 			{
@@ -558,6 +584,29 @@ bool CBaseTrigger::IsTouching( CBaseEntity *pOther )
 	EHANDLE hOther;
 	hOther = pOther;
 	return ( m_hTouchingEntities.Find( hOther ) != m_hTouchingEntities.InvalidIndex() );
+}
+
+bool CBaseTrigger::AllPlayersAreTouching(void)
+{
+	//Only test if we can
+	if (!HasSpawnFlags(SF_TRIGGER_ALLOW_CLIENTS) && !HasSpawnFlags(SF_TRIGGER_ALLOW_ALL))
+		return false;
+
+	int iPlayerCount = 0;
+
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+		if (pPlayer)
+		{
+			++iPlayerCount;
+		}
+	}
+
+	if ( m_hTouchingPlayers.Count() == iPlayerCount )
+		return true;
+
+	return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -1327,6 +1376,8 @@ public:
 
 	static int ChangeList( levellist_t *pLevelList, int maxList );
 
+	bool m_bAllPlayersMustBeTouching;
+
 private:
 	void TouchChangeLevel( CBaseEntity *pOther );
 	void ChangeLevelNow( CBaseEntity *pActivator );
@@ -1376,6 +1427,8 @@ BEGIN_DATADESC( CChangeLevel )
 	DEFINE_AUTO_ARRAY( m_szLandmarkName, FIELD_CHARACTER ),
 //	DEFINE_FIELD( m_touchTime, FIELD_TIME ),	// don't save
 //	DEFINE_FIELD( m_bTouched, FIELD_BOOLEAN ),
+
+	DEFINE_KEYFIELD( m_bAllPlayersMustBeTouching, FIELD_BOOLEAN, "AllPlayersMustBeTouching" ),
 
 	// Function Pointers
 	DEFINE_FUNCTION( TouchChangeLevel ),
@@ -1601,6 +1654,9 @@ void CChangeLevel::WarnAboutActiveLead( void )
 
 void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 {
+	if ( !AllPlayersAreTouching() && m_bAllPlayersMustBeTouching )
+		return;
+
 	CBaseEntity	*pLandmark = FindLandmark( m_szLandmarkName );
 	levellist_t	levels[16];
 

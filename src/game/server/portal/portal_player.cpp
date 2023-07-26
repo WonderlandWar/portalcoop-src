@@ -219,6 +219,7 @@ SendPropBool(SENDINFO(m_bHasSprintDevice)),
 SendPropBool(SENDINFO(m_bSprintEnabled)),
 SendPropBool(SENDINFO(m_bSilentDropAndPickup)),
 SendPropBool(SENDINFO(m_bSuppressingCrosshair)),
+SendPropInt(SENDINFO(m_iCustomPortalColorSet)),
 
 END_SEND_TABLE()
 
@@ -252,6 +253,7 @@ DEFINE_SOUNDPATCH(m_pWooshSound),
 	DEFINE_FIELD(m_vWorldSpaceCenterHolder, FIELD_POSITION_VECTOR),
 	DEFINE_FIELD(m_hSurroundingLiquidPortal, FIELD_EHANDLE),
 	DEFINE_FIELD(m_flLastPingTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_iCustomPortalColorSet, FIELD_INTEGER),
 
 //DEFINE_THINKFUNC( HudHintThink ),
 
@@ -321,7 +323,7 @@ CPortal_Player::CPortal_Player()
 	m_bSilentDropAndPickup = false;
 
 	m_flLastPingTime = 0.0f;
-
+	
 	m_iszExpressionScene = NULL_STRING;
 	m_hExpressionSceneEnt = NULL;
 	m_flExpressionLoopTime = 0.0f;
@@ -338,6 +340,13 @@ CPortal_Player::~CPortal_Player(void)
 	if (pRagdoll)
 	{
 		UTIL_Remove(pRagdoll);
+	}
+	
+	//Hopefully solves the bug where disconnecting doesn't dissolve the player's portals
+	CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(Weapon_OwnsThisType("weapon_portalgun"));
+	if (pPortalgun)
+	{
+		pPortalgun->FizzleOwnedPortals();
 	}
 }
 
@@ -743,7 +752,7 @@ void CPortal_Player::PlayCoopPingEffect( void )
 
 		if (pPortalgun)
 		{
-			iLinkageGroupID = pPortalgun->m_iPortalLinkageGroupID;
+			iLinkageGroupID = pPortalgun->m_iPortalColorSet;
 
 			if (iLinkageGroupID == 1)
 			{
@@ -1077,9 +1086,7 @@ void CPortal_Player::PlayerDeathThink(void)
 	{
 		if (sv_portalgun_fizzle_on_owner_death_always.GetBool())
 		{
-			CBaseCombatWeapon *pWeapon = Weapon_OwnsThisType("weapon_portalgun");
-
-			CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pWeapon);
+			CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(Weapon_OwnsThisType("weapon_portalgun"));
 			if (pPortalgun)
 			{
 				pPortalgun->FizzleOwnedPortals();
@@ -1406,53 +1413,7 @@ void CPortal_Player::SetupBones(matrix3x4_t* pBoneToWorld, int boneMask)
 // Set the activity based on an event or current state
 void CPortal_Player::SetAnimation( PLAYER_ANIM playerAnim )
 {
-	Activity idealActivity = ACT_DOD_CROUCHWALK_AIM; //Choose a random act that won't ever be used
 
-	// This could stand to be redone. Why is playerAnim abstracted from activity? (sjb)
-	if ( playerAnim == PLAYER_JUMP )
-	{
-		idealActivity = ACT_MP_JUMP;
-	}
-
-	int animDesired = -1;
-
-	if (idealActivity != ACT_DOD_CROUCHWALK_AIM)
-	{
-		SetActivity( idealActivity );
-
-		animDesired = SelectWeightedSequence( Weapon_TranslateActivity ( idealActivity ) );
-
-		if (animDesired == -1)
-		{
-			animDesired = SelectWeightedSequence( idealActivity );
-
-			if ( animDesired == -1 )
-			{
-				animDesired = 0;
-			}
-		}
-	
-		// Already using the desired animation?
-		if ( GetSequence() == animDesired )
-			return;
-
-		m_flPlaybackRate = 1.0;
-		ResetSequence( animDesired );
-		SetCycle( 0 );
-		return;
-	}
-
-	// Already using the desired animation?
-	if ( GetSequence() == animDesired )
-		return;
-
-	//Msg( "Set animation to %d\n", animDesired );
-	// Reset to first frame of desired animation
-	ResetSequence( animDesired );
-	SetCycle( 0 );
-
-	if (idealActivity == ACT_DOD_CROUCHWALK_AIM)
-	BaseClass::SetAnimation( playerAnim );
 }
 
 CAI_Expresser* CPortal_Player::CreateExpresser()
@@ -1818,8 +1779,14 @@ void CPortal_Player::VPhysicsShadowUpdate(IPhysicsObject* pPhysics)
 //	WRITE_EHANDLE( 0 );
 //	MessageEnd();
 //}
+
+extern void CommentarySystem_PePlayerRunCommand( CBasePlayer *player, CUserCmd *ucmd );
+
 void CPortal_Player::PlayerRunCommand(CUserCmd* ucmd, IMoveHelper* moveHelper)
 {
+
+	//CommentarySystem_PePlayerRunCommand( this, &m_LastCmd );
+	
 	if (m_bFixEyeAnglesFromPortalling)
 	{
 		//the idea here is to handle the notion that the player has portalled, but they sent us an angle update before receiving that message.
@@ -1837,7 +1804,7 @@ void CPortal_Player::PlayerRunCommand(CUserCmd* ucmd, IMoveHelper* moveHelper)
 
 		m_bFixEyeAnglesFromPortalling = false;
 	}
-
+	
 	BaseClass::PlayerRunCommand(ucmd, moveHelper);
 }
 

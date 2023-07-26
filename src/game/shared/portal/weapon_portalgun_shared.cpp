@@ -29,6 +29,7 @@
 ConVar use_server_portal_particles( "use_server_portal_particles", "0", FCVAR_REPLICATED );
 ConVar use_server_portal_crosshair_test("use_server_portal_crosshair_test", "1", FCVAR_REPLICATED, "Changes if the crosshair placement indicator should be predicted or use the server");
 ConVar sv_playtesting("sv_playtesting", "0", FCVAR_REPLICATED, "If the owner is hosting a server, is in the server as a player, and running a playtest with 2 other players, then enable this for proper portalgun linkages");
+extern ConVar sv_allow_customized_portal_colors;
 
 #ifdef CLIENT_DLL
 	#define CWeaponPortalgun C_WeaponPortalgun
@@ -414,6 +415,11 @@ bool CWeaponPortalgun::Deploy( void )
 				Assert( (m_iPortalLinkageGroupID >= 0) && (m_iPortalLinkageGroupID < 256) );
 			}
 		}
+		
+		CPortal_Player *pPlayer = ToPortalPlayer( pOwner );
+
+		if (pPlayer)
+			m_iCustomPortalColorSet = pPlayer->m_iCustomPortalColorSet;
 
 		m_hPrimaryPortal = CProp_Portal::FindPortal( m_iPortalLinkageGroupID, false, true );
 		m_hSecondaryPortal = CProp_Portal::FindPortal( m_iPortalLinkageGroupID, true, true );
@@ -752,6 +758,7 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 
 		float fDelay = vTracerOrigin.DistTo( tr.endpos ) / ( ( pPlayer ) ? ( BLAST_SPEED ) : ( BLAST_SPEED_NON_PLAYER ) );
 
+#if 0
 		DoEffectBlast(pOwner, pPortal->m_bIsPortal2, ePlacedBy, vTracerOrigin, vFinalPosition, qFireAngles, fDelay, m_iPortalLinkageGroupID );
 		if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_NEAR)
 		{
@@ -760,6 +767,17 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 			else
 				pHitPortal->DoFizzleEffect(PORTAL_FIZZLE_NEAR_BLUE, m_iPortalLinkageGroupID);
 		}
+#else
+		DoEffectBlast(pOwner, pPortal->m_bIsPortal2, ePlacedBy, vTracerOrigin, vFinalPosition, qFireAngles, fDelay, m_iPortalColorSet );
+		if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_NEAR)
+		{
+			if (bPortal2)
+				pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_NEAR_RED, m_iPortalColorSet );
+			else
+				pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_NEAR_BLUE, m_iPortalColorSet );
+		}
+
+#endif
 		else
 		{
 			pPortal->PlacePortal(vFinalPosition, qFinalAngles, fPlacementSuccess, true);
@@ -1240,6 +1258,18 @@ void CWeaponPortalgun::Think( void )
 
 	CPortal_Player *pPlayer = ToPortalPlayer( GetOwner() );
 
+	if (pPlayer)
+	{
+		m_iCustomPortalColorSet = pPlayer->m_iCustomPortalColorSet;
+	
+		if (m_iCustomPortalColorSet && sv_allow_customized_portal_colors.GetBool())
+		{
+			m_iPortalColorSet = m_iCustomPortalColorSet - 1;
+		}
+		else
+			m_iPortalColorSet = m_iPortalLinkageGroupID;
+
+	}
 	if ( !pPlayer || pPlayer->GetActiveWeapon() != this )
 	{
 #ifdef GAME_DLL

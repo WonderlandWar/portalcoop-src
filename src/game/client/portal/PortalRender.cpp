@@ -32,7 +32,7 @@ static ConVar r_forcecheapwater( "r_forcecheapwater", "0", FCVAR_CLIENTDLL | FCV
 
 
 ConVar r_portal_use_stencils( "r_portal_use_stencils", "1", FCVAR_CLIENTDLL, "Render portal views using stencils (if available)" ); //draw portal views using stencil rendering
-ConVar r_portal_stencil_depth( "r_portal_stencil_depth", "2", FCVAR_CLIENTDLL | FCVAR_ARCHIVE, "When using stencil views, this changes how many views within views we see" );
+ConVar r_portal_stencil_depth( "r_portal_stencil_depth", "3", FCVAR_CLIENTDLL | FCVAR_ARCHIVE, "When using stencil views, this changes how many views within views we see" );
 
 //-----------------------------------------------------------------------------
 //

@@ -184,6 +184,10 @@ public:
 	unsigned char m_iOldPortalLinkageGroupID; 
 	unsigned char m_iPortalLinkageGroupID; //which portal linkage group this gun is tied to, usually set by mapper, or inherited from owning player's index
 
+	int m_iCustomPortalColorSet;
+	int	m_iOldPortalColorSet;
+	int m_iPortalColorSet;
+
 	bool m_bCanAttack;
 
 	CHandle<CProp_Portal> m_hPrimaryPortal;

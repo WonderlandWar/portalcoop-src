@@ -233,8 +233,8 @@ void CHUDQuickInfo::Paint()
 
 	const unsigned char iAlphaStart = 150;	   
 
-	Color portal1Color = UTIL_Portal_Color( 1, pPortalgun->m_iPortalLinkageGroupID );
-	Color portal2Color = UTIL_Portal_Color( 2, pPortalgun->m_iPortalLinkageGroupID );
+	Color portal1Color = UTIL_Portal_Color( 1, pPortalgun->m_iPortalColorSet );
+	Color portal2Color = UTIL_Portal_Color( 2, pPortalgun->m_iPortalColorSet );
 
 	portal1Color[ 3 ] = iAlphaStart;
 	portal2Color[ 3 ] = iAlphaStart;

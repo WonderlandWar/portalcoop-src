@@ -311,6 +311,9 @@ void CPropGladosCore::PanicThink ( void )
 	float flCurDuration = GetSoundDuration(  m_iszPanicSoundScriptName.ToCStr(), GLADOS_CORE_MODEL_NAME );
 
 #else
+	//Allows panicking again
+	m_bStartPanic = false;
+
 	float flCurDuration = 0;
 #endif
 	SetThink( &CPropGladosCore::TalkingThink );
@@ -365,6 +368,10 @@ void CPropGladosCore::TalkingThink( void )
 	int iLookSequence = LookupSequence( STRING(m_iszLookAnimationName) );
 
 #if !SERVER_SIDED_SOUNDS
+
+	//Allows talking again
+	m_bStartTalking = false;
+
 	float m_iSpeechIter = 1;
 #endif
 	if ( iCurSequence != iLookSequence && m_iSpeechIter > 0 && m_iCoreType != CORETYPE_NONE )

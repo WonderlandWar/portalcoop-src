@@ -1279,7 +1279,7 @@ void CPredictionCopy::CopyFields( int chain_count, datamap_t *pRootMap, typedesc
 
 		case FIELD_TIME:
 		case FIELD_TICK:
-			Assert( 0 );
+		//	Assert( 0 );
 			break;
 
 		case FIELD_STRING:

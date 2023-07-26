@@ -158,11 +158,16 @@ IMaterial *CreateTempMaterialForPlayerLogo( int iPlayerIndex, player_info_t *inf
 {
 	// Doesn't have a logo?
 	if ( !info->customFiles[0] )	
+	{
+		Warning("No Logo!\n");
 		return NULL;
-
+	}
 	IMaterial *logo = materials->FindMaterial( VarArgs("decals/playerlogo%2.2d", iPlayerIndex), TEXTURE_GROUP_DECAL );
 	if ( IsErrorMaterial( logo ) )
+	{
+		Warning("Error Material!!\n");
 		return NULL;
+	}
 
 	char logohex[ 16 ];
 	Q_binarytohex( (byte *)&info->customFiles[0], sizeof( info->customFiles[0] ), logohex, sizeof( logohex ) );
@@ -176,15 +181,22 @@ IMaterial *CreateTempMaterialForPlayerLogo( int iPlayerIndex, player_info_t *inf
 	{
 		char custname[ 512 ];
 		Q_snprintf( custname, sizeof( custname ), "download/user_custom/%c%c/%s.dat", logohex[0], logohex[1], logohex );
+
 		// it may have been downloaded but not copied under materials folder
 		if ( !filesystem->FileExists( custname ) )
-			return NULL; // not downloaded yet
+		{
+			Warning("!filesystem->FileExists\n");
+			return NULL;
+		}
 
 		// copy from download folder to materials/temp folder
 		// this is done since material system can access only materials/*.vtf files
 
 		if ( !engine->CopyLocalFile( custname, fulltexname) )
+		{
+			Warning("!engine->CopyLocalFile\n");
 			return NULL;
+		}
 	}
 
 	return logo;
@@ -203,12 +215,13 @@ void TE_PlayerDecal( IRecipientFilter& filter, float delay,
 {
 	if ( cl_playerspraydisable.GetBool() )
 		return;
-
+		
 	// No valid target?
 	C_BaseEntity *ent = cl_entitylist->GetEnt( entity );
 	if ( !ent )
 		return;
 
+	
 	// Find player logo for shooter
 	player_info_t info;
 	engine->GetPlayerInfo( player, &info );
@@ -218,6 +231,8 @@ void TE_PlayerDecal( IRecipientFilter& filter, float delay,
 	IMaterial *logo = CreateTempMaterialForPlayerLogo( player, &info, texname, 512 );
 	if ( !logo )
 		return;
+	
+	Msg("JUST CREATE THE SPRAY!!!!\n");
 
 	ITexture *texture = materials->FindTexture( texname, TEXTURE_GROUP_DECAL );
 	if ( IsErrorTexture( texture ) ) 

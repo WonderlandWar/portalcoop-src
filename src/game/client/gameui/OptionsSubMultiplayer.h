@@ -85,6 +85,7 @@ private:
     CCvarSlider *m_pSecondaryColorSlider;
 	CCvarToggleCheckButton *m_pHighQualityModelCheckBox;
 	CCvarToggleCheckButton *m_pShowPortalIDCheckBox;
+	CCvarToggleCheckButton *m_pShowPortalInfoCheckBox;
 
 	// Mod specific general checkboxes
 	vgui::Dar< CCvarToggleCheckButton * > m_cvarToggleCheckButtons;

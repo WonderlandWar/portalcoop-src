@@ -16,6 +16,8 @@
 #include "view_shared.h"
 #include "viewrender.h"
 
+//In Portal: Cooperative, you can theoretically have an infinite number of recursive views, these value needs to be lowered from 11 to 4
+
 #define MAX_PORTAL_RECURSIVE_VIEWS 11 //maximum number of recursions we allow when drawing views through portals. Seeing as how 5 is extremely choppy under best conditions and is barely visible, 10 is a safe limit. Adding one because 0 tends to be the primary view in most arrays of this size
 
 class CPortalRenderable

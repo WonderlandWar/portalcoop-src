@@ -184,6 +184,8 @@ public:
 
 	CProp_Portal *m_pPrimaryPortal;
 	CProp_Portal *m_pSecondaryPortal;
+
+	CNetworkVar(int, m_iCustomPortalColorSet);
 			
 private:
 	
@@ -214,9 +216,7 @@ private:
 
 	PortalPlayerStatistics_t m_StatsThisLevel;
 	float m_fTimeLastNumSecondsUpdate;
-
-	int		m_iNumCamerasDetatched;
-	
+		
 	QAngle						m_qPrePortalledViewAngles;
 	bool						m_bFixEyeAnglesFromPortalling;
 	VMatrix						m_matLastPortalled;
@@ -230,8 +230,6 @@ private:
 
 
 public:
-
-	unsigned char m_iPortalLinkageGroupID; //which portal linkage group this gun is tied to, usually set by mapper, or inherited from owning player's index
 
 	CNetworkVar( bool, m_bPitchReorientation );
 	CNetworkHandle( CProp_Portal, m_hPortalEnvironment ); //if the player is in a portal environment, this is the associated portal

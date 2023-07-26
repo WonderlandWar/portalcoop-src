@@ -5440,7 +5440,7 @@ int C_BaseEntity::ComputePackedSize_R( datamap_t *map )
 {
 	if ( !map )
 	{
-		Assert( 0 );
+//		Assert( 0 );
 		return 0;
 	}
 
@@ -5487,8 +5487,8 @@ int C_BaseEntity::ComputePackedSize_R( datamap_t *map )
 		case FIELD_EDICT:
 		case FIELD_POSITION_VECTOR:
 		case FIELD_FUNCTION:
-			Assert( 0 );
-			break;
+		//	Assert( 0 );
+		//	break;
 
 		case FIELD_EMBEDDED:
 			{

@@ -3,6 +3,9 @@
 // Purpose: 
 //
 //=============================================================================//
+#ifdef PORTAL_PLAYERANIMSTATE_H
+#define DONT_USE_PORTALANIMSTATE
+#endif
 
 #ifndef PORTAL_PLAYERANIMSTATE_H
 #define PORTAL_PLAYERANIMSTATE_H

@@ -147,6 +147,9 @@ public:
 	CProp_Portal			*m_pHitPortal;
 	CProp_Portal			*m_pAttackingPortal;
 
+	CNetworkVar(int, m_iCustomPortalColorSet);
+	CNetworkVar(int, m_iPortalColorSet);
+
 protected:
 
 	CNetworkVar(bool, m_bActivated); //a portal can exist and not be active

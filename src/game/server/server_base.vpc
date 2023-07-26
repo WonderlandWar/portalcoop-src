@@ -275,6 +275,7 @@ $Project
 		$File	"colorcorrection.cpp"
 		$File	"colorcorrectionvolume.cpp"
 		$File	"CommentarySystem.cpp"
+		$File	"CommentarySystem.h"
 		$File	"controlentities.cpp"
 		$File	"cplane.cpp"
 		$File	"CRagdollMagnet.cpp"

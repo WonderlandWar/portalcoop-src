@@ -1010,6 +1010,9 @@
     <ClInclude Include="..\..\public\collisionutils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="CommentarySystem.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="CRagdollMagnet.h">
       <Filter>Source Files</Filter>
     </ClInclude>

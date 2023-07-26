@@ -43,6 +43,8 @@ ConVar sv_spawn_with_suit("sv_spawn_with_suit", "0", FCVAR_REPLICATED, "Sets whe
 ConVar sv_portalgun_spawn("sv_portalgun_spawn", "1", FCVAR_REPLICATED, "Sets if the player should spawn with the portalgun");
 ConVar sv_portalgun_color("sv_portalgun_color", "2", FCVAR_REPLICATED, "Sets what portalgun colors players spawn with. 0 = Blue, 1 = Orange, 2 = Both");
 
+ConVar sv_allow_customized_portal_colors("sv_allow_customized_portal_colors", "0", FCVAR_REPLICATED, "Sets if clients can choose their own portal color.");
+
 
 REGISTER_GAMERULES_CLASS( CPortalGameRules );
 
@@ -338,6 +340,31 @@ void CPortalGameRules::ClientSettingsChanged(CBasePlayer *pPlayer)
 
 			ClientPrint(pPortalPlayer, HUD_PRINTTALK, szReturnString);
 		}
+	}
+	
+	const char *szColorSet = engine->GetClientConVarValue(engine->IndexOfEdict(pPlayer->edict()), "cl_portal_color_set");
+	
+	if (!strcmp(szColorSet, "0"))
+		pPortalPlayer->m_iCustomPortalColorSet = 0;
+	if (!strcmp(szColorSet, "1"))
+		pPortalPlayer->m_iCustomPortalColorSet = 1;
+	if (!strcmp(szColorSet, "2"))
+		pPortalPlayer->m_iCustomPortalColorSet = 2;
+	if (!strcmp(szColorSet, "3"))
+		pPortalPlayer->m_iCustomPortalColorSet = 3;
+	if (!strcmp(szColorSet, "4"))
+		pPortalPlayer->m_iCustomPortalColorSet = 4;
+
+	CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+	if (pPortalgun)
+	{
+		if (pPortalgun && pPortalgun->m_hPrimaryPortal.Get())
+			pPortalgun->m_hPrimaryPortal.Get()->m_iCustomPortalColorSet = pPortalPlayer->m_iCustomPortalColorSet;
+
+		if (pPortalgun && pPortalgun->m_hSecondaryPortal.Get())
+			pPortalgun->m_hSecondaryPortal.Get()->m_iCustomPortalColorSet = pPortalPlayer->m_iCustomPortalColorSet;
+
+		pPortalgun->m_iCustomPortalColorSet = pPortalPlayer->m_iCustomPortalColorSet;
 	}
 
 	BaseClass::ClientSettingsChanged(pPlayer);

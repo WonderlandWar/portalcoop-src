@@ -1094,7 +1094,7 @@ void CMultiPlayerAnimState::ComputeMainSequence()
 	VPROF( "CBasePlayerAnimState::ComputeMainSequence" );
 
 	CBaseAnimatingOverlay *pPlayer = GetBasePlayer();
-
+	
 	// Have our class or the mod-specific class determine what the current activity is.
 	Activity idealActivity = CalcMainActivity();
 

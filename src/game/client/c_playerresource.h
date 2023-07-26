@@ -54,6 +54,7 @@ public : // IGameResources intreface
 	virtual int		GetHealth( int index );
 #ifdef PORTAL	
 	const Color GetPortalgunColor( int index );
+	const Color GetPortalColor( int index );
 #endif
 
 	virtual void ClientThink();
