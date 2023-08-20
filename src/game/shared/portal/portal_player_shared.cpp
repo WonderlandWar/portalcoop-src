@@ -40,10 +40,15 @@ acttable_t	unarmedActtable[] =
 	{ ACT_HL2MP_JUMP,					ACT_HL2MP_JUMP_MELEE,					false },
 };
 
-const char *g_pszChellConcepts[] =
+const char *g_pszPortalPlayerConcepts[] =
 {
+	"CONCEPT_PLAYER_DEAD",
 	"CONCEPT_CHELL_IDLE",
-	"CONCEPT_CHELL_DEAD",
+	"CONCEPT_ABBY_IDLE",
+	"CONCEPT_MEL_IDLE",
+	"CONCEPT_MALE_PORTAL_PLAYER_IDLE",
+	//Escape Idles
+	"CONCEPT_MEL_ESCAPE_IDLE",
 };
 
 extern ConVar sv_footsteps;
@@ -89,7 +94,7 @@ void CPortal_Player::GetStepSoundVelocities( float *velwalk, float *velrun )
 void CPortal_Player::PlayStepSound( Vector &vecOrigin, surfacedata_t *psurface, float fvol, bool force )
 {
 #ifndef CLIENT_DLL
-//	IncrementStepsTaken();
+	PortalGameRules()->IncrementStepsTaken();
 #endif
 
 	BaseClass::PlayStepSound( vecOrigin, psurface, fvol, force );
@@ -161,42 +166,44 @@ CBaseEntity *CPortal_Player::FindUseEntity()
 	CBaseEntity *pObject = tr.m_pEnt;
 
 	// TODO: Removed because we no longer have ghost animatings. We may need similar code that clips rays against transformed objects.
-//#ifndef CLIENT_DLL
-//	// Check for ghost animatings (these aren't hit in the normal trace because they aren't solid)
-//	if ( !IsUseableEntity(pObject, 0) )
-//	{
-//		Ray_t rayGhostAnimating;
-//		rayGhostAnimating.Init( searchCenter, searchCenter + forward * 1024 );
-//
-//		CBaseEntity *list[1024];
-//		int nCount = UTIL_EntitiesAlongRay( list, 1024, rayGhostAnimating, 0 );
-//
-//		// Loop through all entities along the pick up ray
-//		for ( int i = 0; i < nCount; i++ )
-//		{
-//			CGhostAnimating *pGhostAnimating = dynamic_cast<CGhostAnimating*>( list[i] );
-//
-//			// If the entity is a ghost animating
-//			if( pGhostAnimating )
-//			{
-//				trace_t trGhostAnimating;
-//				enginetrace->ClipRayToEntity( rayGhostAnimating, MASK_ALL, pGhostAnimating, &trGhostAnimating );
-//
-//				if ( trGhostAnimating.fraction < tr.fraction )
-//				{
-//					// If we're not grabbing the clipped ghost
-//					VPlane plane = pGhostAnimating->GetLocalClipPlane();
-//					UTIL_Portal_PlaneTransform( pGhostAnimating->GetCloneTransform(), plane, plane );
-//					if ( plane.GetPointSide( trGhostAnimating.endpos ) != SIDE_FRONT )
-//					{
-//						tr = trGhostAnimating;
-//						pObject = tr.m_pEnt;
-//					}
-//				}
-//			}
-//		}
-//	}
-//#endif
+	/*
+#ifndef CLIENT_DLL
+	//Check for ghost animatings (these aren't hit in the normal trace because they aren't solid)
+	if ( !IsUseableEntity(pObject, 0) )
+	{
+		Ray_t rayGhostAnimating;
+		rayGhostAnimating.Init( searchCenter, searchCenter + forward * 1024 );
+
+		CBaseEntity *list[1024];
+		int nCount = UTIL_EntitiesAlongRay( list, 1024, rayGhostAnimating, 0 );
+
+		//Loop through all entities along the pick up ray
+		for ( int i = 0; i < nCount; i++ )
+		{
+			CGhostAnimating *pGhostAnimating = dynamic_cast<CGhostAnimating*>( list[i] );
+
+			//If the entity is a ghost animating
+			if( pGhostAnimating )
+			{
+				trace_t trGhostAnimating;
+				enginetrace->ClipRayToEntity( rayGhostAnimating, MASK_ALL, pGhostAnimating, &trGhostAnimating );
+
+				if ( trGhostAnimating.fraction < tr.fraction )
+				{
+					//If we're not grabbing the clipped ghost
+					VPlane plane = pGhostAnimating->GetLocalClipPlane();
+					UTIL_Portal_PlaneTransform( pGhostAnimating->GetCloneTransform(), plane, plane );
+					if ( plane.GetPointSide( trGhostAnimating.endpos ) != SIDE_FRONT )
+					{
+						tr = trGhostAnimating;
+						pObject = tr.m_pEnt;
+					}
+				}
+			}
+		}
+	}
+#endif
+	*/
 
 	int count = 0;
 	// UNDONE: Might be faster to just fold this range into the sphere query
@@ -962,6 +969,17 @@ void CPortal_Player::PickupObject(CBaseEntity* pObject, bool bLimitMassAndSize)
 	PlayerPickupObject(this, pObject);
 }
 
+float CPortal_Player::GetImplicitVerticalStepSpeed() const
+{
+	return m_flImplicitVerticalStepSpeed;
+}
+
+void CPortal_Player::SetImplicitVerticalStepSpeed( float speed )
+{
+	Assert( !IS_NAN( speed ) );
+	m_flImplicitVerticalStepSpeed = speed;
+}
+
 void CPortal_Player::ForceDuckThisFrame(void)
 {
 	if (m_Local.m_bDucked != true)
@@ -972,6 +990,12 @@ void CPortal_Player::ForceDuckThisFrame(void)
 		AddFlag(FL_DUCKING);
 		SetVCollisionState(GetAbsOrigin(), GetAbsVelocity(), VPHYS_CROUCH);
 	}
+}
+
+void CPortal_Player::SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin )
+{
+	const Vector vOriginOffset = vOldOrigin - vNewOrigin;
+	m_vEyeOffset = vOriginOffset;
 }
 
 void CPortal_Player::UnDuck(void)
@@ -1194,3 +1218,212 @@ void CPortal_Player::PlayerUse(void)
 		m_afButtonPressed &= ~IN_USE;
 	}
 }
+
+#if USEMOVEMENTFORPORTALLING
+
+
+void CPortal_Player::PostTeleportationCameraFixup( const CProp_Portal *pEnteredPortal )
+{
+#if 0
+	CProp_Portal *pExitPortal = pEnteredPortal->m_hLinkedPortal;
+	if( !pExitPortal )
+		return;
+
+	// Get transformed up
+	Vector vTransformedUp, vTransformedForward, vForward, vUp;
+	AngleVectors( pl.v_angle, &vForward, NULL, &vUp );
+
+	VectorRotate( m_PortalLocal.m_Up, pEnteredPortal->m_matrixThisToLinked.As3x4(), vTransformedUp );
+
+	const Vector vForwardCrossAbsUp = CrossProduct( vForward, ABS_UP );
+	const Vector vForwardCrossViewUp = CrossProduct( vForward, vUp );
+
+	// Dont bother if the vectors are the same (wall<->wall or ceiling<->floor portal)
+	if( CloseEnough( vTransformedUp, m_PortalLocal.m_Up ) == false )
+	{
+		bool bLookingInBadDirection = false;
+		const float flRightCrossNewRight = DotProduct( vForwardCrossAbsUp, vForwardCrossViewUp );
+		// Check if our up vector is more upside down than rightside up
+		if( flRightCrossNewRight < 0.f )
+		{
+			bLookingInBadDirection = true;
+		}
+
+		//m_PortalLocal.m_Up = vTransformedUp;
+
+		// Let SnapCamera mess with our up vector
+		SnapCamera( bLookingInBadDirection );
+	}
+#endif
+}
+
+
+void CPortal_Player::SnapCamera( bool bOverPitched )
+{	
+#if 0
+	// Default to set the player's up view
+	StickCameraCorrectionMethod correctionMethod = DO_NOTHING;
+
+	// Get our vectors
+	Vector vForward, vUp, vRight, vNewForward;
+	Vector vQuaternionRollAxis = Vector(0,0,0);
+	AngleVectors( pl.v_angle, &vForward, &vRight, &vUp );
+	bool bRollCorrect = false, bPitchCorrect = false;
+
+	// Setup data we'll need to test for specific cases
+	const float flForwardDotLocalUp = DotProduct( vForward, m_PortalLocal.m_vLocalUp );
+	Vector vForwardInXY = vForward - ( m_PortalLocal.m_vLocalUp * flForwardDotLocalUp );
+	vForwardInXY.NormalizeInPlace();
+
+	const float flUpDotAbsUp = DotProduct( m_PortalLocal.m_Up, ABS_UP );
+
+//	const float flUpDot = fabs( pEnterPortal->m_matrixThisToLinked.m[2][2] ); //How much does zUp still look like zUp after going through this portal
+
+//	bool bSignificantAngle = (flUpDot < COS_PI_OVER_SIX && (sv_portal_new_player_trace.GetBool() || (flUpDot >= EQUAL_EPSILON)));
+
+	// Portalling
+	//if( nCameraState == STICK_CAMERA_PORTAL )
+	{
+		{
+			correctionMethod = SNAP_UP;
+
+#ifdef DEBUG_STICK_CAM
+			DevMsg("Portal: Snap up");
+#endif
+		}
+	}
+
+	// Instantly snap the player's view into a good state, and use a quaternion view punch to offset their
+	//		view to where it was before the snap then decay the quaternion.
+	if( correctionMethod == QUATERNION_CORRECT )
+	{
+		const Vector vForwardTarget = DotProduct( vForward, ABS_UP ) > 0 ? ABS_UP : -ABS_UP; 
+		const float flForwardDotRollAxis = DotProduct( vForward, vQuaternionRollAxis );
+
+		// Project forward vector onto the plane we just came off of
+		Vector vForwardInPlane = vForward - ( vQuaternionRollAxis * flForwardDotRollAxis );
+		vForwardInPlane.NormalizeInPlace();
+
+		const float flRightDotTarget = DotProduct( vRight, vForwardTarget );
+		const float flRightAngle = 90.0f - RAD2DEG( acos( flRightDotTarget ) );
+		// Determine how rolled we are
+		const float flRollAngle = -flRightAngle;
+
+		// Create matrix to undo roll
+		VMatrix rotMatrix;
+		MatrixBuildRotationAboutAxis( rotMatrix, vQuaternionRollAxis, flRollAngle );
+		// Create quaternion to preserve roll for punch
+		Quaternion qRoll(0,0,0,1);	// Identity
+
+		if( bRollCorrect )
+		{
+			AxisAngleQuaternion( vQuaternionRollAxis, -flRollAngle, qRoll );
+			// Roll our forward vector
+			vForward = rotMatrix * vForward;
+		}
+
+		// Determine how much pitch we need to do
+		const float flRolledForwardDotUp = DotProduct( vForward, vForwardTarget );
+		float flPitchAngle = RAD2DEG( acos( flRolledForwardDotUp ) );	// This angle will get us straight up
+		// Over-pitch if we're looking in a "bad direction" (ie. over-pitched in target orientation)
+		if( bOverPitched )
+		{
+			flPitchAngle = flPitchAngle > 0 ? flPitchAngle + 1 : flPitchAngle - 1;
+		}
+		else
+		{
+			flPitchAngle = flPitchAngle > 0 ? flPitchAngle - 1 : flPitchAngle + 1;
+		}
+
+		// Build our pitch matrix
+		Vector vRotAxis = CrossProduct( vForward, vForwardTarget );
+		vRotAxis.NormalizeInPlace();
+		MatrixBuildRotationAboutAxis( rotMatrix, vRotAxis, flPitchAngle );
+
+		// Build quaternion to preserve this pitch for punch
+		Quaternion qPitch(0,0,0,1);	// Identity
+
+		if( bPitchCorrect )
+		{
+			AxisAngleQuaternion( vRotAxis, -flPitchAngle, qPitch );
+
+			// Pitch our forward vector
+			vForward = rotMatrix * vForward;
+		}
+
+		// Accumulate rotations
+		Quaternion qPunch;
+		QuaternionNormalize( qRoll );
+		QuaternionNormalize( qPitch );
+		QuaternionMult( qRoll, qPitch, qPunch );
+		// Punch ourselves in the face from the 4th dimension
+		//SetQuaternionPunch( qPunch );
+
+		// Get our new angles
+		QAngle vNewAngles;
+		VectorAngles( vForward, vUp, vNewAngles );
+
+		pl.v_angle = vNewAngles;
+
+#ifdef GAME_DLL
+		// Only snap player's eyes in a singleplayer game
+		/*if( g_pGameRules->IsMultiplayer() == false )
+		{
+			pl.fixangle = FIXANGLE_ABSOLUTE;
+		}*/
+#else
+		if( IsLocalPlayer() )
+		{
+			engine->SetViewAngles( pl.v_angle );
+			if( prediction->InPrediction() )
+			{
+				prediction->SetViewAngles( pl.v_angle );
+			}
+		}
+#endif
+
+		m_PortalLocal.m_Up = m_PortalLocal.m_StickNormal;
+		m_PortalLocal.m_bDoneCorrectPitch = true;
+
+	}
+	// Snap up vector to be our view up then have it rotate from there to our local up
+	else if( correctionMethod == SNAP_UP )
+	{
+		Vector vNewUp;
+		AngleVectors( pl.v_angle, NULL, NULL, &vNewUp );
+
+		// Check if our up is more abs down than abs up.  If so, don't let it get too far behind our forward
+		if( DotProduct(vNewUp, m_PortalLocal.m_vLocalUp ) < -0.0f )
+		{
+			// Make up be coplanar with stick normal and orthogonal to forward
+			vNewUp -= vForwardInXY * DotProduct( vForwardInXY, vNewUp );
+			vNewUp.NormalizeInPlace();
+
+			// Determine rotation axis
+			const Vector vForwardCrossUp = CrossProduct( vForwardInXY, m_PortalLocal.m_vLocalUp );
+			m_PortalLocal.m_vStickRotationAxis = DotProduct( vForwardCrossUp, vNewUp ) > 0.f ? -vForwardInXY.Normalized() : vForwardInXY.Normalized();
+		}
+		else
+		{
+			m_PortalLocal.m_vStickRotationAxis = CrossProduct( vUp, m_PortalLocal.m_vLocalUp ).Normalized();
+		}
+
+		m_PortalLocal.m_Up = vNewUp;
+		m_PortalLocal.m_bDoneStickInterp = false;
+
+	}	
+	// Rotate our up vector from where it currently is to our local up
+	else if( correctionMethod == ROTATE_UP )
+	{
+		m_PortalLocal.m_vStickRotationAxis = CrossProduct( m_PortalLocal.m_Up, m_PortalLocal.m_vLocalUp ).Normalized();
+		m_PortalLocal.m_bDoneStickInterp = false;
+	}
+
+#ifdef DEBUG_STICK_CAM
+	DevMsg("\n");
+#endif
+#endif
+}
+
+
+#endif

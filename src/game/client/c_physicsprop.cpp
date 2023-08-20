@@ -32,10 +32,11 @@ IMPLEMENT_CLIENTCLASS_DT(C_PhysicsPropOverride, DT_PhysicsPropOverride, CPhysics
 	RecvPropBool( RECVINFO( m_bAwake ) ),
 END_RECV_TABLE()
 
+#if 1
 LINK_ENTITY_TO_CLASS(prop_physics, C_PhysicsProp)
 LINK_ENTITY_TO_CLASS(prop_physics_respawnable, C_PhysicsPropRespawnable)
 LINK_ENTITY_TO_CLASS(prop_physics_override, C_PhysicsPropOverride)
-
+#endif
 
 ConVar r_PhysPropStaticLighting( "r_PhysPropStaticLighting", "1" );
 

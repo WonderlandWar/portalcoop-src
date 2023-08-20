@@ -178,7 +178,7 @@ public:
 	
 	float TraceFirePortal( bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy, bool bTest = false );
 	float FirePortal( bool bPortal2, Vector *pVector = 0, bool bTest = false );
-	bool PortalTraceClippedByBlockers(bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy);
+	bool PortalTraceClippedByBlockers( bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy, bool bTest );
 	bool ShouldStealCoopPortal(CProp_Portal *pHitPortal, float fPlacementSuccess);
 
 	unsigned char m_iOldPortalLinkageGroupID; 

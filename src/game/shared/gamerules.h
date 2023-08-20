@@ -116,6 +116,9 @@ abstract_class CGameRules : public CAutoGameSystemPerFrame
 public:
 	DECLARE_CLASS_GAMEROOT( CGameRules, CAutoGameSystemPerFrame );
 
+	DECLARE_NETWORKCLASS_NOBASE();
+	DECLARE_SIMPLE_DATADESC();
+		
 	virtual char const *Name() { return "CGameRules"; }
 
 	// Stuff shared between client and server.
@@ -419,6 +422,22 @@ public:
 
 	virtual bool IsManualMapChangeOkay( const char **pszReason ){ return true; }
 
+	// Bonus Logic
+	
+#ifdef GAME_DLL
+	bool	m_bPauseBonusProgress;
+#endif
+
+	// Never let the client set its own progress, it's networked
+#ifdef GAME_DLL
+	void					PauseBonusProgress( bool bPause = true );
+	void					SetBonusProgress( int iBonusProgress );
+	void					SetBonusChallenge( int iBonusChallenge );
+#endif
+
+	int						GetBonusProgress() const;
+	int						GetBonusChallenge() const;
+	
 #ifndef CLIENT_DLL
 private:
 	float m_flNextVerboseLogOutput;

@@ -181,6 +181,7 @@ BEGIN_NETWORK_TABLE( C_WeaponPortalgun, DT_WeaponPortalgun )
 	RecvPropInt( RECVINFO (m_bCanAttack) ),
 	RecvPropInt( RECVINFO( m_iPortalLinkageGroupID ) ),
 	RecvPropInt( RECVINFO( m_iCustomPortalColorSet ) ),	
+	RecvPropInt( RECVINFO( m_iPortalColorSet ) ),
 	RecvPropEHandle( RECVINFO (m_hPrimaryPortal) ),
 	RecvPropEHandle( RECVINFO (m_hSecondaryPortal) )
 END_NETWORK_TABLE()
@@ -191,6 +192,9 @@ BEGIN_PREDICTION_DATA( C_WeaponPortalgun )
 	DEFINE_PRED_FIELD( m_iLastFiredPortal, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bOpenProngs, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_EffectState,	FIELD_INTEGER,	FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_iPortalLinkageGroupID,	FIELD_INTEGER,	FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_iCustomPortalColorSet,	FIELD_INTEGER,	FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_iPortalColorSet,	FIELD_INTEGER,	FTYPEDESC_INSENDTABLE ),
 	
 //	DEFINE_FIELD( m_fCanPlacePortal1OnThisSurface, FIELD_FLOAT ),
 //	DEFINE_FIELD( m_fCanPlacePortal2OnThisSurface, FIELD_FLOAT ),
@@ -754,6 +758,9 @@ void C_WeaponPortalgun::DoEffectHolding( void )
 	{
 		m_Beams[i].SetVisibleViewModel( false );
 		m_Beams[i].SetVisible3rdPerson();
+
+		m_Beams[i].SetVisibleViewModel( !GetPlayerOwner()->IsLocalPlayer() ); // This will fix beams not rendering in third person for players that don't own this weapon
+
 		m_Beams[i].SetBrightness( 128.0f );
 	}
 }

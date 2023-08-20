@@ -177,6 +177,10 @@ const char *PS_SD_Static_World_StaticProps_ClippedProp_t::szTraceSurfaceName = "
 const int PS_SD_Static_World_StaticProps_ClippedProp_t::iTraceSurfaceFlags = 0;
 CBaseEntity *PS_SD_Static_World_StaticProps_ClippedProp_t::pTraceEntity = NULL;
 
+ConVar portal_ghost_force_hitbox("portal_ghost_force_hitbox", "0", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY, "(1 = Legacy behavior) Force potentially ghosted renderables to use their hitboxes to test against portal holes instead of collision AABBs" );
+ConVar portal_ghost_show_bbox("portal_ghost_show_bbox", "0", FCVAR_REPLICATED | FCVAR_CHEAT, "Render AABBs around the bounding box used for ghost renderable bounds checking (either hitbox or collision AABB)" );
+
+
 CPortalSimulator::CPortalSimulator( void )
 : m_bLocalDataIsReady(false),
 	m_bGenerateCollision(true),
@@ -209,7 +213,7 @@ CPortalSimulator::CPortalSimulator( void )
 #else
 	PS_SD_Static_World_StaticProps_ClippedProp_t::pTraceEntity = GetClientWorldEntity();
 #endif
-#ifdef GAME_DLL
+
 	m_InternalData.Simulation.hCollisionEntity = (CPSCollisionEntity *)CreateEntityByName( "portalsimulator_collisionentity" );
 	Assert( m_InternalData.Simulation.hCollisionEntity != NULL );
 	if( m_InternalData.Simulation.hCollisionEntity )
@@ -217,10 +221,13 @@ CPortalSimulator::CPortalSimulator( void )
 		m_InternalData.Simulation.hCollisionEntity->m_pOwningSimulator = this;
 		MarkAsOwned( m_InternalData.Simulation.hCollisionEntity );
 		m_InternalData.Simulation.Dynamic.EntFlags[m_InternalData.Simulation.hCollisionEntity->entindex()] |= PSEF_OWNS_PHYSICS;
-
+#ifdef GAME_DLL
 		DispatchSpawn( m_InternalData.Simulation.hCollisionEntity );
-	}
+#else
+		cl_entitylist->AddNonNetworkableEntity( m_InternalData.Simulation.hCollisionEntity );
+		m_InternalData.Simulation.hCollisionEntity.Get()->Spawn();
 #endif
+	}
 }
 
 
@@ -242,6 +249,9 @@ CPortalSimulator::~CPortalSimulator( void )
 
 	if( m_InternalData.Placement.pHoleShapeCollideable )
 		physcollision->DestroyCollide( m_InternalData.Placement.pHoleShapeCollideable );
+	
+	if( m_InternalData.Placement.pAABBAngleTransformCollideable )
+		physcollision->DestroyCollide( m_InternalData.Placement.pAABBAngleTransformCollideable );
 
 	if( m_InternalData.Simulation.hCollisionEntity )
 	{
@@ -316,6 +326,9 @@ void CPortalSimulator::MoveTo( const Vector &ptCenter, const QAngle &angles )
 	{
 		if( m_InternalData.Placement.pHoleShapeCollideable )
 			physcollision->DestroyCollide( m_InternalData.Placement.pHoleShapeCollideable );
+		
+		if( m_InternalData.Placement.pAABBAngleTransformCollideable )
+			physcollision->DestroyCollide( m_InternalData.Placement.pAABBAngleTransformCollideable );
 
 		float fHolePlanes[6*4];
 
@@ -354,12 +367,17 @@ void CPortalSimulator::MoveTo( const Vector &ptCenter, const QAngle &angles )
 		fHolePlanes[(5*4) + 2] = m_InternalData.Placement.vRight.z;
 		fHolePlanes[(5*4) + 3] = m_InternalData.Placement.vRight.Dot( m_InternalData.Placement.ptCenter + (m_InternalData.Placement.vRight * (PORTAL_HALF_WIDTH * 0.98f)) );
 
+		//CPhysConvex *pAABBTransformConvexes;
+
 		CPolyhedron *pPolyhedron = GeneratePolyhedronFromPlanes( fHolePlanes, 6, PORTAL_POLYHEDRON_CUT_EPSILON, true );
 		Assert( pPolyhedron != NULL );
+		//pAABBTransformConvexes = physcollision->ConvexFromConvexPolyhedron( *pPolyhedron );
 		CPhysConvex *pConvex = physcollision->ConvexFromConvexPolyhedron( *pPolyhedron );
 		pPolyhedron->Release();
 		Assert( pConvex != NULL );
 		m_InternalData.Placement.pHoleShapeCollideable = physcollision->ConvertConvexToCollide( &pConvex, 1 );
+
+	//	m_InternalData.Placement.pAABBAngleTransformCollideable = physcollision->ConvertConvexToCollide( &pAABBTransformConvexes, 4 );
 	}
 
 	for( int i = 0; i != iFixEntityCount; ++i )
@@ -562,7 +580,7 @@ bool CPortalSimulator::EntityIsInPortalHole( CBaseEntity *pEntity ) const
 	return false;
 }
 
-bool CPortalSimulator::EntityHitBoxExtentIsInPortalHole( CBaseAnimating *pBaseAnimating ) const
+bool CPortalSimulator::EntityHitBoxExtentIsInPortalHole( CBaseAnimating *pBaseAnimating, bool bUseCollisionAABB ) const
 {
 	if( m_bLocalDataIsReady == false )
 		return false;
@@ -571,57 +589,84 @@ bool CPortalSimulator::EntityHitBoxExtentIsInPortalHole( CBaseAnimating *pBaseAn
 	Vector vMinExtent;
 	Vector vMaxExtent;
 
-	CStudioHdr *pStudioHdr = pBaseAnimating->GetModelPtr();
-	if ( !pStudioHdr )
-		return false;
-
-	mstudiohitboxset_t *set = pStudioHdr->pHitboxSet( pBaseAnimating->m_nHitboxSet );
-	if ( !set )
-		return false;
-
-	Vector position;
-	QAngle angles;
-
-	for ( int i = 0; i < set->numhitboxes; i++ )
+	Vector ptCenter = (vMinExtent + vMaxExtent) * 0.5f;
+	
+	if ( !bUseCollisionAABB || portal_ghost_force_hitbox.GetBool() )
 	{
-		mstudiobbox_t *pbox = set->pHitbox( i );
+		CStudioHdr *pStudioHdr = pBaseAnimating->GetModelPtr();
+		if ( !pStudioHdr )
+			return false;
 
-		pBaseAnimating->GetBonePosition( pbox->bone, position, angles );
+		mstudiohitboxset_t *set = pStudioHdr->pHitboxSet( pBaseAnimating->m_nHitboxSet );
+		if ( !set )
+			return false;
 
-		// Build a rotation matrix from orientation
-		matrix3x4_t fRotateMatrix;
-		AngleMatrix( angles, fRotateMatrix );
+		Vector position;
+		QAngle angles;
 
-		//Vector pVerts[8];
-		Vector vecPos;
-		for ( int i = 0; i < 8; ++i )
+		for ( int i = 0; i < set->numhitboxes; i++ )
 		{
-			vecPos[0] = ( i & 0x1 ) ? pbox->bbmax[0] : pbox->bbmin[0];
-			vecPos[1] = ( i & 0x2 ) ? pbox->bbmax[1] : pbox->bbmin[1];
-			vecPos[2] = ( i & 0x4 ) ? pbox->bbmax[2] : pbox->bbmin[2];
+			mstudiobbox_t *pbox = set->pHitbox( i );
 
-			Vector vRotVec;
+			pBaseAnimating->GetBonePosition( pbox->bone, position, angles );
 
-			VectorRotate( vecPos, fRotateMatrix, vRotVec );
-			vRotVec += position;
+			// Build a rotation matrix from orientation
+			matrix3x4_t fRotateMatrix;
+			AngleMatrix( angles, fRotateMatrix );
 
-			if ( bFirstVert )
+			//Vector pVerts[8];
+			Vector vecPos;
+			for ( int i = 0; i < 8; ++i )
 			{
-				vMinExtent = vRotVec;
-				vMaxExtent = vRotVec;
-				bFirstVert = false;
-			}
-			else
-			{
-				vMinExtent = vMinExtent.Min( vRotVec );
-				vMaxExtent = vMaxExtent.Max( vRotVec );
+				vecPos[0] = ( i & 0x1 ) ? pbox->bbmax[0] : pbox->bbmin[0];
+				vecPos[1] = ( i & 0x2 ) ? pbox->bbmax[1] : pbox->bbmin[1];
+				vecPos[2] = ( i & 0x4 ) ? pbox->bbmax[2] : pbox->bbmin[2];
+
+				Vector vRotVec;
+
+				VectorRotate( vecPos, fRotateMatrix, vRotVec );
+				vRotVec += position;
+
+				if ( bFirstVert )
+				{
+					vMinExtent = vRotVec;
+					vMaxExtent = vRotVec;
+					bFirstVert = false;
+				}
+				else
+				{
+					vMinExtent = vMinExtent.Min( vRotVec );
+					vMaxExtent = vMaxExtent.Max( vRotVec );
+				}
 			}
 		}
-	}
+		
+		vMinExtent -= ptCenter;
+		vMaxExtent -= ptCenter;
+#ifdef CLIENT_DLL
+		// offset the center to render origin
+		Vector vOffset = pBaseAnimating->GetRenderOrigin() - pBaseAnimating->GetAbsOrigin();
+		ptCenter += vOffset;
+#endif // CLIENT_DLL
 
-	Vector ptCenter = (vMinExtent + vMaxExtent) * 0.5f;
-	vMinExtent -= ptCenter;
-	vMaxExtent -= ptCenter;
+	}
+	else
+	{
+		CCollisionProperty *pCollisionProp = pBaseAnimating->CollisionProp();
+		pCollisionProp->WorldSpaceAABB( &vMinExtent, &vMaxExtent);
+
+		ptCenter = (vMinExtent + vMaxExtent) * 0.5f;
+		vMinExtent -= ptCenter;
+		vMaxExtent -= ptCenter;
+
+	}
+	
+#ifdef CLIENT_DLL
+	if ( portal_ghost_show_bbox.GetBool() )
+	{
+		NDebugOverlay::BoxAngles( ptCenter, vMinExtent, vMaxExtent, vec3_angle, 200, 200, 50, 50, NDEBUG_PERSIST_TILL_NEXT_SERVER );
+	}
+#endif // CLIENT_DLL
 
 	trace_t Trace;
 	physcollision->TraceBox( ptCenter, ptCenter, vMinExtent, vMaxExtent, m_InternalData.Placement.pHoleShapeCollideable, vec3_origin, vec3_angle, &Trace );
@@ -749,7 +794,6 @@ void CPortalSimulator::TakeOwnershipOfEntity( CBaseEntity *pEntity )
 
 	UpdateShadowClonesPortalSimulationFlags( pEntity, PSEF_IS_IN_PORTAL_HOLE, m_InternalData.Simulation.Dynamic.EntFlags[pEntity->entindex()] );
 
-	if (m_pCallbacks)
 	m_pCallbacks->PortalSimulator_TookOwnershipOfEntity( pEntity );
 
 	if( IsSimulatingVPhysics() )
@@ -961,11 +1005,9 @@ void CPortalSimulator::TakePhysicsOwnership( CBaseEntity *pEntity )
 				for( int i = m_pLinkedPortal->m_InternalData.Simulation.Dynamic.ShadowClones.FromLinkedPortal.Count(); --i >= 0; )
 					AssertMsg( m_pLinkedPortal->m_InternalData.Simulation.Dynamic.ShadowClones.FromLinkedPortal[i]->GetClonedEntity() != pEntity, "Already cloning to linked portal." );
 			);
-#ifdef GAME_DLL
+
 			CPhysicsShadowClone *pClone = CPhysicsShadowClone::CreateShadowClone( m_pLinkedPortal->m_InternalData.Simulation.pPhysicsEnvironment, hEnt, "CPortalSimulator::TakePhysicsOwnership(): To Linked Portal", &m_InternalData.Placement.matThisToLinked.As3x4() );
-#else
-			CPhysicsShadowClone *pClone = CPhysicsShadowClone::CreateShadowClone( m_pLinkedPortal->m_InternalData.Simulation.pPhysicsEnvironment, hEnt, "CPortalSimulator::TakePhysicsOwnership(): To Linked Portal", &m_InternalData.Placement.matThisToLinked.As3x4() );
-#endif
+			
 			if( pClone )
 			{
 
@@ -2910,11 +2952,15 @@ public:
 static CPS_AutoGameSys_EntityListener s_CPS_AGS_EL_Singleton;
 
 
-IMPLEMENT_NETWORKCLASS_ALIASED(PSCollisionEntity, DT_PSCollisionEntity)
-BEGIN_NETWORK_TABLE(CPSCollisionEntity, DT_PSCollisionEntity)
-END_NETWORK_TABLE();
+#ifdef GAME_DLL
+IMPLEMENT_SERVERCLASS_ST( CPSCollisionEntity, DT_PSCollisionEntity )
+END_SEND_TABLE()
+#else
+IMPLEMENT_CLIENTCLASS_DT( CPSCollisionEntity, DT_PSCollisionEntity, CPSCollisionEntity )
+END_RECV_TABLE()
+#endif // ifdef GAME_DLL
 
-LINK_ENTITY_TO_CLASS_ALIASED( portalsimulator_collisionentity, PSCollisionEntity );
+LINK_ENTITY_TO_CLASS( portalsimulator_collisionentity, CPSCollisionEntity );
 
 static bool s_PortalSimulatorCollisionEntities[MAX_EDICTS] = { false };
 
@@ -2936,6 +2982,7 @@ CPSCollisionEntity::~CPSCollisionEntity( void )
 		m_pOwningSimulator->m_InternalData.Simulation.hCollisionEntity = NULL;
 		m_pOwningSimulator = NULL;
 	}
+
 	s_PortalSimulatorCollisionEntities[entindex()] = false;
 }
 

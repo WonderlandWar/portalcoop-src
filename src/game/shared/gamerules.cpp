@@ -42,6 +42,10 @@ ConVar log_verbose_enable( "log_verbose_enable", "0", FCVAR_GAMEDLL, "Set to 1 t
 ConVar log_verbose_interval( "log_verbose_interval", "3.0", FCVAR_GAMEDLL, "Determines the interval (in seconds) for the verbose server log." );
 #endif // CLIENT_DLL
 
+ConVar sv_bonus_challenge( "sv_bonus_challenge", "0", FCVAR_REPLICATED, "Set to values other than 0 to select a bonus map challenge type." );
+ConVar sv_current_bonus_challenge( "sv_current_bonus_challenge", "0", FCVAR_REPLICATED | FCVAR_HIDDEN, "The current bonus challenge" );
+ConVar sv_bonus_progress( "sv_bonus_progress", "0", FCVAR_REPLICATED | FCVAR_HIDDEN, "The current bonus progress" );
+
 static CViewVectors g_DefaultViewVectors(
 	Vector( 0, 0, 64 ),			//VEC_VIEW (m_vView)
 								
@@ -69,6 +73,9 @@ IMPLEMENT_NETWORKCLASS_ALIASED( GameRulesProxy, DT_GameRulesProxy )
 
 // Don't send any of the CBaseEntity stuff..
 BEGIN_NETWORK_TABLE_NOBASE( CGameRulesProxy, DT_GameRulesProxy )
+
+
+
 END_NETWORK_TABLE()
 
 
@@ -114,6 +121,51 @@ void CGameRulesProxy::NotifyNetworkStateChanged()
 
 ConVar	old_radius_damage( "old_radiusdamage", "0.0", FCVAR_REPLICATED );
 
+BEGIN_NETWORK_TABLE_NOBASE( CGameRules, DT_GameRules )
+END_NETWORK_TABLE();
+
+BEGIN_SIMPLE_DATADESC( CGameRules )
+
+#ifdef GAME_DLL
+	DEFINE_FIELD( m_bPauseBonusProgress, FIELD_BOOLEAN ),
+#endif
+
+END_DATADESC()
+
+#ifdef GAME_DLL
+void CGameRules::PauseBonusProgress( bool bPause )
+{
+	m_bPauseBonusProgress = bPause;
+}
+
+void CGameRules::SetBonusProgress( int iBonusProgress )
+{
+
+	//Msg("iBonusProgress: %i\n", iBonusProgress);
+
+	if ( !m_bPauseBonusProgress )
+		sv_bonus_progress.SetValue( iBonusProgress );
+}
+
+void CGameRules::SetBonusChallenge( int iBonusChallenge )
+{
+	//Msg("iBonusChallenge: %i\n", iBonusChallenge);
+	//m_iBonusChallenge = iBonusChallenge;
+	sv_current_bonus_challenge.SetValue(iBonusChallenge);
+	//Msg("m_iBonusChallenge: %i\n", m_iBonusChallenge);
+}
+#endif
+
+int CGameRules::GetBonusProgress() const
+{
+	return sv_bonus_progress.GetInt();
+}
+
+int CGameRules::GetBonusChallenge() const
+{
+	return sv_current_bonus_challenge.GetInt();
+}
+
 #ifdef CLIENT_DLL //{
 
 bool CGameRules::IsBonusChallengeTimeBased( void )
@@ -154,6 +206,11 @@ CGameRules::CGameRules() : CAutoGameSystemPerFrame( "CGameRules" )
 	ClearMultiDamage();
 
 	m_flNextVerboseLogOutput = 0.0f;
+	
+	SetBonusChallenge(sv_bonus_challenge.GetInt());
+	sv_bonus_challenge.SetValue( 0 );
+
+	m_bPauseBonusProgress = false;
 }
 
 //-----------------------------------------------------------------------------

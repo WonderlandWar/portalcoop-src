@@ -213,7 +213,7 @@ CStudioHdr *C_BaseFlex::OnNewModel()
 			memset( m_flFlexDelayedWeight, 0, sizeof( float ) * m_cFlexDelayedWeight );
 		}
 
-		m_iv_flexWeight.SetMaxCount( hdr->numflexcontrollers() );
+		m_iv_flexWeight.SetMaxCount( gpGlobals->curtime, hdr->numflexcontrollers() );
 
 		m_iMouthAttachment = LookupAttachment( "mouth" );
 

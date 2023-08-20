@@ -178,12 +178,11 @@ void COptionsDialog::OnGameUIHidden()
 static void CC_OpenOptionsDialog2(const CCommand &args)
 {
 	vgui::Panel *parent = (vgui::Panel *)NULL;
-	COptionsDialog *pOptions = NULL;
 
 	if (!g_pOptionsDialog)
-		pOptions = new COptionsDialog(parent);
+		g_pOptionsDialog = new COptionsDialog(parent);
 	
-	if (!pOptions || !g_pOptionsDialog)
+	if (!g_pOptionsDialog)
 		return;
 
 	VPANEL GameUiDll = enginevgui->GetPanel(PANEL_GAMEUIDLL);

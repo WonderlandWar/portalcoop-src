@@ -58,6 +58,18 @@ BEGIN_NETWORK_TABLE_NOBASE( CPortalGameRules, DT_PortalGameRules )
 	#endif
 END_NETWORK_TABLE()
 
+BEGIN_SIMPLE_DATADESC( CPortalGameRules )
+
+	DEFINE_FIELD(m_StatsThisLevel.iNumPortalsPlaced, FIELD_INTEGER),
+	DEFINE_FIELD(m_StatsThisLevel.iNumStepsTaken, FIELD_INTEGER),
+	DEFINE_FIELD(m_StatsThisLevel.fNumSecondsTaken, FIELD_FLOAT),
+
+#ifdef GAME_DLL
+	DEFINE_FIELD(m_fTimeLastNumSecondsUpdate, FIELD_TIME),
+#endif
+
+END_DATADESC()
+
 LINK_ENTITY_TO_CLASS_ALIASED( portal_gamerules, PortalGameRulesProxy );
 
 #ifdef GAME_DLL
@@ -148,6 +160,7 @@ void CC_Create_PortalWeightBox( void )
 		entity->SetModel( PORTAL_WEIGHT_BOX_MODEL_NAME );
 		entity->SetName( MAKE_STRING("box") );
 		entity->AddSpawnFlags( SF_PHYSPROP_ENABLE_PICKUP_OUTPUT );
+		entity->m_iPingIcon = PING_ICON_BOX;
 		entity->Precache();
 		DispatchSpawn(entity);
 
@@ -183,6 +196,7 @@ void CC_Create_PortalWeightBox( void )
 	C_PhysicsProp *entity = dynamic_cast< C_PhysicsProp * >(CreateEntityByName("prop_physics"));
 	if (entity)
 	{
+		cl_entitylist->AddNonNetworkableEntity( entity->GetIClientUnknown() );
 		entity->PrecacheModel( PORTAL_WEIGHT_BOX_MODEL_NAME );
 		entity->SetModel( PORTAL_WEIGHT_BOX_MODEL_NAME );
 		entity->Precache();
@@ -237,6 +251,7 @@ void CC_Create_PortalMetalSphere( void )
 		entity->SetModel( PORTAL_METAL_SPHERE_MODEL_NAME );
 		entity->SetName( MAKE_STRING("sphere") );
 		entity->AddSpawnFlags( SF_PHYSPROP_ENABLE_PICKUP_OUTPUT );
+		entity->m_iPingIcon = PING_ICON_BOX;
 		entity->Precache();
 		DispatchSpawn(entity);
 
@@ -273,6 +288,7 @@ void CC_Create_PortalMetalSphere( void )
 	C_PhysicsProp *entity = dynamic_cast< C_PhysicsProp * >(CreateEntityByName("prop_physics"));
 	if (entity)
 	{
+		cl_entitylist->AddNonNetworkableEntity( entity->GetIClientUnknown() );
 		entity->PrecacheModel( PORTAL_METAL_SPHERE_MODEL_NAME );
 		entity->SetModel( PORTAL_METAL_SPHERE_MODEL_NAME );
 		entity->Precache();
@@ -398,6 +414,15 @@ const char *CPortalGameRules::GetGameDescription( void )
 	CPortalGameRules::CPortalGameRules()
 	{
 		m_bMegaPhysgun = false;
+
+		m_StatsThisLevel.iNumPortalsPlaced = 0;
+		m_StatsThisLevel.iNumStepsTaken = 0;
+		m_StatsThisLevel.fNumSecondsTaken = 0;
+
+		m_bReadyToCountProgress = false;
+		m_bShouldSetPreStartTime = true;
+		m_flPreStartTime = 0.0f;
+
 		g_pCVar->FindVar( "sv_maxreplay" )->SetValue( "1.5" );
 	}
 
@@ -1318,6 +1343,8 @@ const char *CPortalGameRules::GetGameDescription( void )
 	{
 	}
 
+	extern ConVar sv_bonus_challenge;
+
 	void CPortalGameRules::Think( void )
 	{
 		BaseClass::Think();
@@ -1330,6 +1357,13 @@ const char *CPortalGameRules::GetGameDescription( void )
 			// FIXME: Is there a better place for this?
 			m_bMegaPhysgun = ( GlobalEntity_GetState("super_phys_gun") == GLOBAL_ON );
 		}
+		if (GetBonusChallenge() == PORTAL_CHALLENGE_TIME)
+		UpdateSecondsTaken();
+
+
+		//m_iBonusChallenge = sv_bonus_challenge.GetInt();
+		//sv_bonus_challenge.SetValue(0);
+
 	}
 
 	//-----------------------------------------------------------------------------
@@ -1363,7 +1397,11 @@ bool CPortalGameRules::Init()
 #if !defined ( CLIENT_DLL )
 	// Portal never wants alternate ticks. Some low end hardware sets it in dxsupport.cfg so this will catch those cases.
 	sv_alternateticks.SetValue( 0 );
+		
+	m_fTimeLastNumSecondsUpdate = gpGlobals->curtime;
+
 #endif // !CLIENT_DLL
+
 
 	return BaseClass::Init();
 }
@@ -1437,6 +1475,12 @@ float CPortalGameRules::GetAutoAimScale( CBasePlayer *pPlayer )
 	}
 }
 
+void CPortalGameRules::LevelShutdown( void )
+{
+	BaseClass::LevelShutdown();
+	ResetThisLevelStats();
+}
+
 //-----------------------------------------------------------------------------
 // This takes the long way around to see if a prop should emit a DLIGHT when it
 // ignites, to avoid having Alyx-related code in props.cpp.
@@ -1461,15 +1505,96 @@ bool CPortalGameRules::ShouldRemoveRadio( void )
 
 #endif//CLIENT_DLL
 
+
+#ifdef GAME_DLL
+
+
+bool CPortalGameRules::ServerIsFull( void )
+{	
+	int iPlayerCount = 0;
+
+	for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
+		if (pPlayer)
+			++iPlayerCount;
+	}
+		
+	if (iPlayerCount == gpGlobals->maxClients)
+		return true;
+
+	return false;
+	
+}
+
+void CPortalGameRules::IncrementPortalsPlaced(void)
+{
+	m_StatsThisLevel.iNumPortalsPlaced++;
+
+	if (GetBonusChallenge() == PORTAL_CHALLENGE_PORTALS)
+		SetBonusProgress(static_cast<int>(m_StatsThisLevel.iNumPortalsPlaced));
+}
+
+void CPortalGameRules::IncrementStepsTaken(void)
+{
+	m_StatsThisLevel.iNumStepsTaken++;
+
+	if (GetBonusChallenge() == PORTAL_CHALLENGE_STEPS)
+		SetBonusProgress(static_cast<int>(m_StatsThisLevel.iNumStepsTaken));
+}
+
+extern void RespawnAllPlayers();
+
+ConVar sv_bonus_map_challenge_wait_time("sv_bonus_map_challenge_wait_time", "5.0", FCVAR_REPLICATED, "Determines how long it takes for the challenge to start after all players are connected.");
+
+void CPortalGameRules::UpdateSecondsTaken(void)
+{
+
+	float fSecondsSinceLastUpdate = (gpGlobals->curtime - m_fTimeLastNumSecondsUpdate);
+	m_StatsThisLevel.fNumSecondsTaken += fSecondsSinceLastUpdate;
+	m_fTimeLastNumSecondsUpdate = gpGlobals->curtime;
+	
+	// This assumes that maxClients is the same as "Players" in the challenge mode config
+	if ( ServerIsFull() && !m_bReadyToCountProgress )
+	{
+		if (m_bShouldSetPreStartTime)
+		{
+			m_flPreStartTime = (m_fTimeLastNumSecondsUpdate + sv_bonus_map_challenge_wait_time.GetFloat());
+			m_bShouldSetPreStartTime = false;
+		}
+
+		if ( m_fTimeLastNumSecondsUpdate >= m_flPreStartTime )
+		{
+			m_bReadyToCountProgress = true;
+			RespawnAllPlayers();
+			m_StatsThisLevel.fNumSecondsTaken = 0;
+		}
+	}
+
+	if ( m_bReadyToCountProgress )
+		SetBonusProgress(static_cast<int>(m_StatsThisLevel.fNumSecondsTaken));
+}
+
+void CPortalGameRules::ResetThisLevelStats(void)
+{
+	m_bPauseBonusProgress = false; // This is done because prop_portal_stats_display sets this value to true when displaying stats
+
+	m_StatsThisLevel.iNumPortalsPlaced = 0;
+	m_StatsThisLevel.iNumStepsTaken = 0;
+	m_StatsThisLevel.fNumSecondsTaken = 0.0f;
+
+	
+	if (GetBonusChallenge() != PORTAL_CHALLENGE_NONE)
+		SetBonusProgress(0);
+}
+#endif
+
 #ifdef CLIENT_DLL
 
 bool CPortalGameRules::IsBonusChallengeTimeBased( void )
 {
-	CBasePlayer* pPlayer = UTIL_PlayerByIndex( 1 );
-	if ( !pPlayer )
-		return true;
+	int iBonusChallenge = GetBonusChallenge();
 
-	int iBonusChallenge = pPlayer->GetBonusChallenge();
 	if ( iBonusChallenge == PORTAL_CHALLENGE_TIME || iBonusChallenge == PORTAL_CHALLENGE_NONE )
 		return true;
 
@@ -1555,3 +1680,28 @@ void CPortalGameRules::GoToIntermission( void )
 #endif
 	
 }
+
+#ifdef GAME_DLL
+CON_COMMAND(displaychallengetype_server, "Shows what challenge the gamerules is running")
+{
+
+	if ( !PortalGameRules() )
+		return;
+
+	int iBonusChallenge = PortalGameRules()->GetBonusChallenge();
+	
+	Msg("(server)iBonusChallenge: %i\n", iBonusChallenge);
+}
+#else
+CON_COMMAND(displaychallengetype_client, "Shows what challenge the gamerules is running")
+{
+
+	if ( !PortalGameRules() )
+		return;
+
+	int iBonusChallenge = PortalGameRules()->GetBonusChallenge();
+	
+	Msg("(client)iBonusChallenge: %i\n", iBonusChallenge);
+}
+
+#endif

@@ -12,16 +12,18 @@
 #include "vguiscreen.h"
 #include "point_bonusmaps_accessor.h"
 #include "portal_shareddefs.h"
-
+#include "portal_gamerules.h"
+#include "props.h"
+#include "gameui/bonusmapsdatabase.h"
 
 #define PORTAL_STATS_DISPLAY_MODEL_NAME "models/props/Round_elevator_body.mdl"
 
 
-class CPropPortalStatsDisplay : public CBaseAnimating
+class CPropPortalStatsDisplay : public CDynamicProp
 {
 public:
 
-	DECLARE_CLASS( CPropPortalStatsDisplay, CBaseAnimating );
+	DECLARE_CLASS( CPropPortalStatsDisplay, CDynamicProp );
 	DECLARE_DATADESC();
 	DECLARE_SERVERCLASS();
 
@@ -44,6 +46,7 @@ public:
 
 	void	InputUpdateStats( inputdata_t &inputdata );
 	void	InputResetPlayerStats( inputdata_t &inputdata );
+	void	InputTestChallengeMode( inputdata_t &inputdata );
 
 private:
 
@@ -52,7 +55,7 @@ private:
 	CNetworkVar( int, m_iNumPortalsPlaced );
 	CNetworkVar( int, m_iNumStepsTaken );
 	CNetworkVar( float, m_fNumSecondsTaken );
-
+	
 	CNetworkVar( int, m_iBronzeObjective );
 	CNetworkVar( int, m_iSilverObjective );
 	CNetworkVar( int, m_iGoldObjective );
@@ -67,6 +70,9 @@ private:
 	COutputEvent m_OnMetSilverObjective;
 	COutputEvent m_OnMetGoldObjective;
 	COutputEvent m_OnFailedAllObjectives;
+
+	COutputEvent m_IfIsChallengeMode;
+	COutputEvent m_IfIsNotChallengeMode;
 
 private:
 
@@ -94,9 +100,11 @@ BEGIN_DATADESC( CPropPortalStatsDisplay )
 	DEFINE_FIELD( m_iNumStepsTaken, FIELD_INTEGER ),
 	DEFINE_FIELD( m_fNumSecondsTaken, FIELD_FLOAT ),
 
+#if 1
 	DEFINE_FIELD( m_iBronzeObjective, FIELD_INTEGER ),
 	DEFINE_FIELD( m_iSilverObjective, FIELD_INTEGER ),
 	DEFINE_FIELD( m_iGoldObjective, FIELD_INTEGER ),
+#endif
 
 	DEFINE_AUTO_ARRAY( szChallengeFileName, FIELD_CHARACTER ),
 	DEFINE_AUTO_ARRAY( szChallengeMapName, FIELD_CHARACTER ),
@@ -110,12 +118,16 @@ BEGIN_DATADESC( CPropPortalStatsDisplay )
 	DEFINE_INPUTFUNC( FIELD_VOID, "Enable", InputEnable ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "UpdateStats", InputUpdateStats ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "ResetPlayerStats", InputResetPlayerStats ),
+	
+	DEFINE_INPUTFUNC( FIELD_VOID, "TestChallengeMode", InputTestChallengeMode ),
 
 	DEFINE_OUTPUT ( m_OnMetBronzeObjective, "OnMetBronzeObjective" ),
 	DEFINE_OUTPUT ( m_OnMetSilverObjective, "OnMetSilverObjective" ),
 	DEFINE_OUTPUT ( m_OnMetGoldObjective, "OnMetGoldObjective" ),
 	DEFINE_OUTPUT ( m_OnFailedAllObjectives, "OnFailedAllObjectives" ),
-
+	
+	DEFINE_OUTPUT ( m_IfIsChallengeMode, "IfIsChallengeMode" ),	
+	DEFINE_OUTPUT ( m_IfIsNotChallengeMode, "IfIsNotChallengeMode" ),
 END_DATADESC()
 
 IMPLEMENT_SERVERCLASS_ST( CPropPortalStatsDisplay, DT_PropPortalStatsDisplay )
@@ -124,11 +136,11 @@ IMPLEMENT_SERVERCLASS_ST( CPropPortalStatsDisplay, DT_PropPortalStatsDisplay )
 	SendPropInt( SENDINFO(m_iNumPortalsPlaced) ),
 	SendPropInt( SENDINFO(m_iNumStepsTaken) ),
 	SendPropFloat( SENDINFO(m_fNumSecondsTaken) ),
-
+#if 1
 	SendPropInt( SENDINFO(m_iBronzeObjective) ),
 	SendPropInt( SENDINFO(m_iSilverObjective) ),
 	SendPropInt( SENDINFO(m_iGoldObjective) ),
-
+#endif
 	SendPropString( SENDINFO( szChallengeFileName ) ),
 	SendPropString( SENDINFO( szChallengeMapName ) ),
 	SendPropString( SENDINFO( szChallengeName ) ),
@@ -182,17 +194,20 @@ void CPropPortalStatsDisplay::Spawn( void )
 	SetModel( szModel );
 
 	SetSolid( SOLID_VPHYSICS );
-	VPhysicsInitStatic();
+	//VPhysicsInitStatic();
 
 	BaseClass::Spawn();
 
 	int iBronze, iSilver, iGold;
+
 	BonusMapChallengeObjectives( iBronze, iSilver, iGold );
+
 	m_iBronzeObjective = iBronze;
 	m_iSilverObjective = iSilver;
 	m_iGoldObjective = iGold;
 
-	BonusMapChallengeNames( szChallengeFileName.GetForModify(), szChallengeMapName.GetForModify(), szChallengeName.GetForModify() );
+	
+	BonusMapsDatabase()->GetCurrentChallengeNames( szChallengeFileName.GetForModify(), szChallengeMapName.GetForModify(), szChallengeName.GetForModify() );
 
 	m_bEnabled = false;
 
@@ -258,23 +273,31 @@ void CPropPortalStatsDisplay::Enable( void )
 		return;
 
 	// Don't show stats display in non challenge mode!
-	CBasePlayer *pPlayer = UTIL_PlayerByIndex(1);
-	if ( pPlayer && pPlayer->GetBonusChallenge() == 0 )
+	if ( PortalGameRules()->GetBonusChallenge() == 0 )
 		return;
+	
+	IGameEvent *event = gameeventmanager->CreateEvent( "bonusmap_save" );
+	if ( event )
+	{
+		gameeventmanager->FireEvent( event );
+	}
 
 	m_bEnabled = true;
 
-	m_iDisplayObjective = pPlayer->GetBonusChallenge() - 1;
+	m_iDisplayObjective = PortalGameRules()->GetBonusChallenge() - 1;
 
+
+#if 1 // This sadly won't be supported in portalcoop
 	// Check if they beat objectives
-	if ( pPlayer->GetBonusProgress() <= m_iBronzeObjective )
+	if ( PortalGameRules()->GetBonusProgress() <= m_iBronzeObjective )
 		m_OnMetBronzeObjective.FireOutput( this, this );
-	else if ( pPlayer->GetBonusProgress() <= m_iSilverObjective )
+	else if ( PortalGameRules()->GetBonusProgress() <= m_iSilverObjective )
 		m_OnMetSilverObjective.FireOutput( this, this );
-	else if ( pPlayer->GetBonusProgress() <= m_iGoldObjective )
+	else if ( PortalGameRules()->GetBonusProgress() <= m_iGoldObjective )
 		m_OnMetGoldObjective.FireOutput( this, this );
 	else
 		m_OnFailedAllObjectives.FireOutput( this, this );
+#endif
 
 	ScreenVisible( true );
 }
@@ -291,33 +314,28 @@ void CPropPortalStatsDisplay::InputEnable( inputdata_t &inputdata )
 
 void CPropPortalStatsDisplay::InputUpdateStats( inputdata_t &inputdata )
 {
-	CPortal_Player *pPlayer = (CPortal_Player *)UTIL_GetCommandClient();
-	if( pPlayer == NULL )
-		pPlayer = GetPortalPlayer( 1 ); //last ditch effort
-
-	if( pPlayer )
 	{
-		m_iNumPortalsPlaced = pPlayer->NumPortalsPlaced();
-		m_iNumStepsTaken = pPlayer->NumStepsTaken();
-		m_fNumSecondsTaken = pPlayer->NumSecondsTaken();
+		m_iNumPortalsPlaced = PortalGameRules()->NumPortalsPlaced();
+		m_iNumStepsTaken = PortalGameRules()->NumStepsTaken();
+		m_fNumSecondsTaken = PortalGameRules()->NumSecondsTaken();
 
 		// Now that we've recorded it, don't let it change
-		pPlayer->PauseBonusProgress();
+		PortalGameRules()->PauseBonusProgress();
 	}
 }
 
 void CPropPortalStatsDisplay::InputResetPlayerStats( inputdata_t &inputdata )
 {
-	CPortal_Player *pPlayer = (CPortal_Player *)UTIL_GetCommandClient();
-	if( pPlayer == NULL )
-		pPlayer = GetPortalPlayer( 1 ); //last ditch effort
-
-	if( pPlayer )
-	{
-		pPlayer->ResetThisLevelStats();
-	}
+	PortalGameRules()->ResetThisLevelStats();
 }
 
+void CPropPortalStatsDisplay::InputTestChallengeMode( inputdata_t &inputdata )
+{
+	if ( g_pGameRules->GetBonusChallenge() )
+		m_IfIsChallengeMode.FireOutput( inputdata.pActivator, inputdata.pCaller );
+	else
+		m_IfIsNotChallengeMode.FireOutput( inputdata.pActivator, inputdata.pCaller );
+}
 void CPropPortalStatsDisplay::GetControlPanelInfo( int nPanelIndex, const char *&pPanelName )
 {
 	pPanelName = "portal_stats_display_screen";

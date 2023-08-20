@@ -185,15 +185,17 @@ const Color C_PlayerResource::GetPortalgunColor(int iIndex)
 		if (pPortalgun)
 		{
 			//Stupid hacks since doing pPortalgun->m_iPortalColorSet always returns as 0 for some reason, unless the player is the local player
-			int iPortalColorSet = 0;
+			//Fix: It only was set for the predicted portalguns, now we network it.
+			int iPortalColorSet = pPortalgun->m_iPortalColorSet;
 			
+			/*
 			if (pPortalgun->m_iCustomPortalColorSet && sv_allow_customized_portal_colors.GetBool())
 			{
 				iPortalColorSet = pPortalgun->m_iCustomPortalColorSet - 1;
 			}
 			else
 				iPortalColorSet = pPortalgun->m_iPortalLinkageGroupID;
-
+			*/
 
 			if (iPortalColorSet == 1)
 			{

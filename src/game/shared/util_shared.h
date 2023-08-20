@@ -384,6 +384,33 @@ CBasePlayer *UTIL_PlayerByUserId( int userID );
 // decodes a buffer using a 64bit ICE key (inplace)
 void		UTIL_DecodeICE( unsigned char * buffer, int size, const unsigned char *key);
 
+//assumes the object is already in a mostly passable space
+#define FL_AXIS_DIRECTION_NONE	( 0 )
+#define FL_AXIS_DIRECTION_X		( 1 << 0 )
+#define FL_AXIS_DIRECTION_NX	( 1 << 1 )
+#define FL_AXIS_DIRECTION_Y		( 1 << 2 )
+#define FL_AXIS_DIRECTION_NY	( 1 << 3 )
+#define FL_AXIS_DIRECTION_Z		( 1 << 4 )
+#define FL_AXIS_DIRECTION_NZ	( 1 << 5 )
+
+struct FindClosestPassableSpace_TraceAdapter_t;
+typedef void (*FN_RayTraceAdapterFunc)( const Ray_t &ray, trace_t *pResult, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter );
+typedef bool (*FN_PointIsOutsideWorld)( const Vector &vTest, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter );
+
+//derive from this to tack on additional data to your adapted functions
+struct FindClosestPassableSpace_TraceAdapter_t
+{
+	FN_RayTraceAdapterFunc pTraceFunc;
+	FN_PointIsOutsideWorld pPointOutsideWorldFunc;
+
+	ITraceFilter *pTraceFilter;
+	unsigned int fMask;
+};
+
+bool		UTIL_FindClosestPassableSpace( const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, unsigned int iIterations, Vector &vCenterOut, int nAxisRestrictionFlags, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter );
+bool		UTIL_FindClosestPassableSpace( const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, ITraceFilter *pTraceFilter, unsigned int fMask, unsigned int iIterations, Vector &vCenterOut, int nAxisRestrictionFlags = FL_AXIS_DIRECTION_NONE );
+bool		UTIL_FindClosestPassableSpace( CBaseEntity *pEntity, const Vector &vIndecisivePush, unsigned int fMask, unsigned int iIterations, Vector &vOriginOut, Vector *pStartingPosition = NULL, int nAxisRestrictionFlags = FL_AXIS_DIRECTION_NONE );
+bool		UTIL_FindClosestPassableSpace( CBaseEntity *pEntity, const Vector &vIndecisivePush, unsigned int fMask, Vector *pStartingPosition = NULL, int nAxisRestrictionFlags = FL_AXIS_DIRECTION_NONE );
 
 //--------------------------------------------------------------------------------------------------------------
 /**
@@ -619,6 +646,9 @@ class RealTimeCountdownTimer : public CountdownTimer
 char* ReadAndAllocStringValue( KeyValues *pSub, const char *pName, const char *pFilename = NULL );
 
 int UTIL_StringFieldToInt( const char *szValue, const char **pValueStrings, int iNumStrings );
+// From MapBase
+int UTIL_CountNumBitsSet( unsigned int nVar );
+int UTIL_CountNumBitsSet( uint64 nVar );
 
 //-----------------------------------------------------------------------------
 // Holidays

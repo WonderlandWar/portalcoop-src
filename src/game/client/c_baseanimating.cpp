@@ -1140,7 +1140,7 @@ CStudioHdr *C_BaseAnimating::OnNewModel()
 
 	Assert( hdr->GetNumPoseParameters() <= ARRAYSIZE( m_flPoseParameter ) );
 
-	m_iv_flPoseParameter.SetMaxCount( hdr->GetNumPoseParameters() );
+	m_iv_flPoseParameter.SetMaxCount( gpGlobals->curtime, hdr->GetNumPoseParameters() );
 	
 	int i;
 	for ( i = 0; i < hdr->GetNumPoseParameters() ; i++ )
@@ -1158,7 +1158,7 @@ CStudioHdr *C_BaseAnimating::OnNewModel()
 
 	int boneControllerCount = MIN( hdr->numbonecontrollers(), ARRAYSIZE( m_flEncodedController ) );
 
-	m_iv_flEncodedController.SetMaxCount( boneControllerCount );
+	m_iv_flEncodedController.SetMaxCount( gpGlobals->curtime, boneControllerCount );
 
 	for ( i = 0; i < boneControllerCount ; i++ )
 	{
@@ -4650,7 +4650,7 @@ void C_BaseAnimating::PostDataUpdate( DataUpdateType_t updateType )
 		CStudioHdr *hdr = GetModelPtr();
 		if ( hdr && !( hdr->flags() & STUDIOHDR_FLAGS_STATIC_PROP ) )
 		{
-			m_iv_flCycle.Reset();
+			m_iv_flCycle.Reset( gpGlobals->curtime );
 		}
 	}
 }

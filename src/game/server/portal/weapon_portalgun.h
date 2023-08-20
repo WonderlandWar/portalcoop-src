@@ -41,8 +41,8 @@ public:
 	void SetLinkageGroupID( int iPortalLinkageGroupID) { m_iPortalLinkageGroupID = iPortalLinkageGroupID; }
 
 	CNetworkVar(unsigned char, m_iPortalLinkageGroupID); //which portal linkage group this gun is tied to, usually set by mapper, or inherited from owning player's index
-	CNetworkVar(int, m_iCustomPortalColorSet);
-	int m_iPortalColorSet;
+	CNetworkVar( int, m_iCustomPortalColorSet );
+	CNetworkVar( int, m_iPortalColorSet )
 		
 	// HACK HACK! Used to make the gun visually change when going through a cleanser!
 	CNetworkVar( float,	m_fEffectsMaxSize1 );
@@ -114,7 +114,7 @@ public:
 
 	float TraceFirePortal( bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy, bool bTest = false );
 	float FirePortal( bool bPortal2, Vector *pVector = 0, bool bTest = false );
-	bool PortalTraceClippedByBlockers(bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy);
+	bool PortalTraceClippedByBlockers( bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy, bool bTest );
 	bool ShouldStealCoopPortal(CProp_Portal *pHitPortal, float fPlacementSuccess);
 
 	CSoundPatch		*m_pMiniGravHoldSound;

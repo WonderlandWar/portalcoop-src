@@ -148,10 +148,7 @@ public:
 	// Data handlers
 	virtual bool	IsPlayer( void ) const { return true; }
 	virtual int		GetHealth() const { return m_iHealth; }
-
-	int		GetBonusProgress() const { return m_iBonusProgress; }
-	int		GetBonusChallenge() const { return m_iBonusChallenge; }
-
+	
 	// observer mode
 	virtual int			GetObserverMode() const;
 	void				SetObserverMode ( int iNewMode );
@@ -322,6 +319,10 @@ public:
 
 	float					GetTimeBase( void ) const;
 	float					GetFinalPredictedTime() const;
+	float					PredictedServerTime() const;
+
+	float					m_fLastUpdateServerTime;
+	int						m_nLastUpdateTickBase;
 
 	bool					IsInVGuiInputMode() const;
 	bool					IsInViewModelVGuiInputMode() const;
@@ -504,6 +505,7 @@ protected:
 
 	float			m_flStepSoundTime;
 	bool			m_IsFootprintOnLeft;
+	CDiscontinuousInterpolatedVar< Vector >	m_iv_vecViewOffset;
 
 private:
 	// Make sure no one calls this...
@@ -516,12 +518,7 @@ private:
 	EHANDLE			m_hUseEntity;
 	
 	float			m_flMaxspeed;
-
-	int				m_iBonusProgress;
-	int				m_iBonusChallenge;
-
-	CInterpolatedVar< Vector >	m_iv_vecViewOffset;
-
+	
 	// Not replicated
 	Vector			m_vecWaterJumpVel;
 	float			m_flWaterJumpTime;  // used to be called teleport_time

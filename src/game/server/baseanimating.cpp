@@ -3462,8 +3462,8 @@ void CBaseAnimating::RefreshCollisionBounds( void )
 
 void CBaseAnimating::RemoveGlowTime( float fTime )
 {
-	SetContextThink( &CBaseAnimating::RemoveGlowThink, fTime, "RemoveGlowThink" );
-	SetNextThink(gpGlobals->curtime);
+	SetContextThink( &CBaseAnimating::RemoveGlowThink, gpGlobals->curtime + fTime, "RemoveGlowThink" );
+	//SetNextThink(gpGlobals->curtime + fTime);
 }
 
 void CBaseAnimating::RemoveGlowThink( void )

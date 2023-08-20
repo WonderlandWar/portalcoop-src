@@ -95,8 +95,6 @@ void C_PortalBlast::Init( bool bIsPortal2, PortalPlacedByType ePlacedBy, const V
 
 	C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
 	C_BasePlayer *pPlayer = dynamic_cast<C_BasePlayer*>(hEntity.Get());
-	
-
 
 	//Probably unnecessary
 	if (pPlayer)

@@ -196,9 +196,16 @@ $Project
 		$File	"gameui\PanelListPanel.cpp"
 		$File	"gameui\PanelListPanel.h"
 		$File	"$SRCDIR\common\GameUI\IGameUI.h"
+		$File	"gameui/TGAImagePanel.cpp"
+		$File	"gameui/TGAImagePanel.h"
+		$File	"gameui/MouseMessageForwardingPanel.cpp"
+		$File	"gameui/MouseMessageForwardingPanel.h"
 		
 		$File	"$SRCDIR\common\imageutils.cpp"
 		$File	"$SRCDIR\common\imageutils.h"
+		
+		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.cpp"
+		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.h"
 		
 
 		$Folder	"Controls"
@@ -229,6 +236,9 @@ $Project
 		{
 			$File	"gameui\MultiplayerAdvancedDialog.cpp"
 			$File	"gameui\MultiplayerAdvancedDialog.h"
+					
+			$File	"gameui/BonusMapsDialog.cpp"
+			$File	"gameui/BonusMapsDialog.h"
 		}
 		
 		$Folder	"Options Dialog"

@@ -1652,6 +1652,131 @@ bool UTIL_EntityIsIntersectingPortalWithLinkedAlsoBeingFloorOrCeiling(const CBas
 	return false;
 }
 
+struct FindClosestPassableSpace_TraceAdapter_Portal_t : public FindClosestPassableSpace_TraceAdapter_t
+{
+	const CProp_Portal *pPortal;
+};
+
+struct FindClosestPassableSpace_TraceAdapter_Portal_StayInFront_t : FindClosestPassableSpace_TraceAdapter_Portal_t
+{
+	VPlane shiftedPlane;//we only want the center of the starting box to stay in front, not every trace. So we create a plane of solidity that is not necessarily coplanar with the portal quad
+	Vector vExtentSigns; //when testing planar distance we need to use the extent closest to the solidity plane, multiply the ray extents by these to get that point.
+};
+
+static const Ray_t *AdjustRayToPlane( const Ray_t &originalRay, Ray_t &alterableRay, const Vector &vExtentSigns, const VPlane &Plane, float &fDeltaScale )
+{
+	Vector vExtentShift;
+	vExtentShift.x = originalRay.m_Extents.x * vExtentSigns.x;
+	vExtentShift.y = originalRay.m_Extents.y * vExtentSigns.y;
+	vExtentShift.z = originalRay.m_Extents.z * vExtentSigns.z;
+	float fExtentShiftDist = Plane.m_Normal.Dot( vExtentShift );
+
+	if( (Plane.DistTo( originalRay.m_Start ) + fExtentShiftDist) < 0.0f )
+	{
+		//start solid
+		NULL;
+	}
+	else if( (Plane.DistTo( originalRay.m_Start + originalRay.m_Delta ) + fExtentShiftDist) < 0.0f )
+	{
+		//end will be behind shifted plane, shorten the delta now, then expand the results on the tail end
+		alterableRay = originalRay;
+
+		float fEndDist = (Plane.DistTo( originalRay.m_Start + originalRay.m_Delta ) + fExtentShiftDist);
+		float fDeltaLength = originalRay.m_Delta.Length();
+		Vector vDeltaNormalized = originalRay.m_Delta / fDeltaLength;
+		float fNewDeltaLength = fDeltaLength - (Plane.m_Normal.Dot( vDeltaNormalized ) * fEndDist);
+		alterableRay.m_Delta = vDeltaNormalized * fNewDeltaLength;
+
+		fDeltaScale = fNewDeltaLength / fDeltaLength;
+		return &alterableRay;
+	}
+	else
+	{
+		fDeltaScale = 1.0f;
+	}
+	return &originalRay;
+}
+
+static void PortalTraceFunc_CenterMustStayInFront( const Ray_t &ray, trace_t *pResult, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter )
+{
+	const FindClosestPassableSpace_TraceAdapter_Portal_StayInFront_t *pCastedData = (const FindClosestPassableSpace_TraceAdapter_Portal_StayInFront_t *)pTraceAdapter;
+	
+	float fDeltaScale;
+	Ray_t alterableRay;
+	const Ray_t *pUseRay = AdjustRayToPlane( ray, alterableRay, pCastedData->vExtentSigns, pCastedData->shiftedPlane, fDeltaScale );
+	if( pUseRay == NULL )
+	{
+		//start solid
+		UTIL_ClearTrace( *pResult );
+		pResult->startsolid = true;
+		pResult->fraction = 0.0f;
+		pResult->allsolid = true; //TODO: bother calculating if it leaves solid?
+		return;
+	}
+
+	UTIL_Portal_TraceRay( pCastedData->pPortal, *pUseRay, pTraceAdapter->fMask, pTraceAdapter->pTraceFilter, pResult, true );
+
+	if( pUseRay == &alterableRay )
+	{
+		//fixup any abnormalities from using a shortened ray
+		if( !pResult->DidHit() )
+		{
+			pResult->m_pEnt = (CProp_Portal *)pCastedData->pPortal;
+			pResult->plane	= pCastedData->pPortal->m_plane_Origin;
+			pResult->plane.dist = pCastedData->shiftedPlane.m_Dist;
+		}
+		
+		pResult->fraction *= fDeltaScale;
+		pResult->fractionleftsolid *= fDeltaScale;		
+	}
+}
+
+static bool PortalPointOutsideWorldFunc( const Vector &vTest, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter )
+{
+	trace_t tr;
+	Ray_t testRay;
+	testRay.Init( vTest, vTest );
+
+	CTraceFilterWorldOnly traceFilter;
+
+	UTIL_Portal_TraceRay( ((FindClosestPassableSpace_TraceAdapter_Portal_t *)pTraceAdapter)->pPortal, testRay, MASK_SOLID_BRUSHONLY, &traceFilter, &tr );
+	return tr.startsolid;
+}
+
+static bool PortalPointOutsideWorldFunc_CenterMustStayInFront( const Vector &vTest, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter )
+{
+	const FindClosestPassableSpace_TraceAdapter_Portal_StayInFront_t *pCastedData = (const FindClosestPassableSpace_TraceAdapter_Portal_StayInFront_t *)pTraceAdapter;
+	if( pCastedData->shiftedPlane.DistTo( vTest ) < 0.0f )
+		return true;
+
+	return PortalPointOutsideWorldFunc( vTest, pTraceAdapter );
+}
+
+bool UTIL_FindClosestPassableSpace_InPortal_CenterMustStayInFront( const CProp_Portal *pPortal, const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, ITraceFilter *pTraceFilter, unsigned int fMask, unsigned int iIterations, Vector &vCenterOut )
+{
+	FindClosestPassableSpace_TraceAdapter_Portal_StayInFront_t adapter;
+	adapter.pTraceFunc = PortalTraceFunc_CenterMustStayInFront;
+	adapter.pPointOutsideWorldFunc = PortalPointOutsideWorldFunc_CenterMustStayInFront;
+	adapter.pTraceFilter = pTraceFilter;
+	adapter.fMask = fMask;
+
+	adapter.pPortal = pPortal;
+
+	adapter.vExtentSigns.x = -Sign( pPortal->m_plane_Origin.normal.x );
+	adapter.vExtentSigns.y = -Sign( pPortal->m_plane_Origin.normal.y );
+	adapter.vExtentSigns.z = -Sign( pPortal->m_plane_Origin.normal.z );
+	
+	//when caclulating the shift plane, all we need to be sure of is that the most penetrating extent is coplanar with the shift plane when the center would be coplanar with the original plane
+	Vector vCoplanarExtent;
+	vCoplanarExtent.x = vExtents.x * adapter.vExtentSigns.x;
+	vCoplanarExtent.y = vExtents.y * adapter.vExtentSigns.y;
+	vCoplanarExtent.z = vExtents.z * adapter.vExtentSigns.z;
+
+	adapter.shiftedPlane.m_Normal = pPortal->m_plane_Origin.normal;
+	adapter.shiftedPlane.m_Dist = pPortal->m_plane_Origin.dist + (pPortal->m_plane_Origin.normal.Dot( vCoplanarExtent ) ); //the dot is known to be negative, shifting the plane back so the extent is coplanar with it.
+	
+	return UTIL_FindClosestPassableSpace( vCenter, vExtents, vIndecisivePush, iIterations, vCenterOut, FL_AXIS_DIRECTION_NONE, &adapter );
+}
 
 bool CProp_Portal::IsFloorPortal(float fThreshold) const
 {

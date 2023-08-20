@@ -113,7 +113,135 @@ END_PREDICTION_DATA()
 
 extern ConVar use_server_portal_particles;
 
+#if !USEMOVEMENTFORPORTALLING
+void EntityPortalledMessageHandler( C_BaseEntity *pEntity, C_Portal_Base2D *pPortal, float fTime, bool bForcedDuck )
+{
+#if( PLAYERPORTALDEBUGSPEW == 1 )
+	Warning( "EntityPortalledMessageHandler() %f -=- %f %i======================\n", fTime, engine->GetLastTimeStamp(), prediction->GetLastAcknowledgedCommandNumber() );
+#endif
 
+	C_PortalGhostRenderable *pGhost = pPortal->GetGhostRenderableForEntity( pEntity );
+	if( !pGhost )
+	{
+		//high velocity edge case. Entity portalled before it ever created a clone. But will need one for the interpolated origin history
+		if( C_PortalGhostRenderable::ShouldCloneEntity( pEntity, pPortal, false ) )
+		{
+			pGhost = C_PortalGhostRenderable::CreateGhostRenderable( pEntity, pPortal );
+			if( pGhost )
+			{
+				Assert( !pPortal->m_hGhostingEntities.IsValidIndex( pPortal->m_hGhostingEntities.Find( pEntity ) ) );
+				pPortal->m_hGhostingEntities.AddToTail( pEntity );
+				Assert( pPortal->m_GhostRenderables.IsValidIndex( pPortal->m_GhostRenderables.Find( pGhost ) ) );
+				pGhost->PerFrameUpdate();
+			}
+		}
+	}
+
+	if( pGhost )
+	{
+		C_PortalGhostRenderable::CreateInversion( pGhost, pPortal, fTime );
+	}
+	
+	if( pEntity->IsPlayer() )
+	{
+		((C_Portal_Player *)pEntity)->PlayerPortalled( pPortal, fTime, bForcedDuck );
+		return;
+	}	
+
+	pEntity->AddEFlags( EFL_DIRTY_ABSTRANSFORM );
+
+	VMatrix matTransform = pPortal->MatrixThisToLinked();
+
+	CDiscontinuousInterpolatedVar< QAngle > &rotInterp = pEntity->GetRotationInterpolator();
+	CDiscontinuousInterpolatedVar< Vector > &posInterp = pEntity->GetOriginInterpolator();
+
+
+	if( cl_portal_teleportation_interpolation_fixup_method.GetInt() == 0 )
+	{
+		UTIL_TransformInterpolatedAngle( rotInterp, matTransform.As3x4(), fTime );
+		UTIL_TransformInterpolatedPosition( posInterp, matTransform, fTime );
+	}
+	else
+	{
+		rotInterp.InsertDiscontinuity( matTransform.As3x4(), fTime );
+		posInterp.InsertDiscontinuity( matTransform.As3x4(), fTime );
+	}
+
+	if ( pEntity->IsToolRecording() )
+	{
+		static EntityTeleportedRecordingState_t state;
+
+		KeyValues *msg = new KeyValues( "entity_teleported" );
+		msg->SetPtr( "state", &state );
+		state.m_bTeleported = true;
+		state.m_bViewOverride = false;
+		state.m_vecTo = pEntity->GetAbsOrigin();
+		state.m_qaTo = pEntity->GetAbsAngles();
+		state.m_teleportMatrix = matTransform.As3x4();
+
+		// Post a message back to all IToolSystems
+		Assert( (int)pEntity->GetToolHandle() != 0 );
+		ToolFramework_PostToolMessage( pEntity->GetToolHandle(), msg );
+
+		msg->deleteThis();
+	}
+	
+	C_Portal_Player* pPlayer = C_Portal_Player::GetLocalPortalPlayer( GET_ACTIVE_SPLITSCREEN_SLOT() );
+	if ( pPlayer && pEntity == pPlayer->GetAttachedObject() )
+	{
+		C_BaseAnimating *pAnim = pEntity->GetBaseAnimating();	
+		if ( pAnim && pAnim->IsUsingRenderOriginOverride() )
+		{
+			pPlayer->ResetHeldObjectOutOfEyeTransitionDT();
+		}
+	}
+}
+#else
+//-----------------------------------------------------------------------------
+// Purpose: Store the local player's angles right before the player is teleported
+//-----------------------------------------------------------------------------
+void __MsgFunc_PrePlayerPortalled(bf_read &msg)
+{
+	long iEncodedEHandle;
+	int iEntity, iSerialNum;
+
+	//grab portal EHANDLE
+	iEncodedEHandle = msg.ReadLong();
+
+	if( iEncodedEHandle == INVALID_NETWORKED_EHANDLE_VALUE )
+		return;
+
+	iEntity = iEncodedEHandle & ((1 << MAX_EDICT_BITS) - 1);
+	iSerialNum = iEncodedEHandle >> MAX_EDICT_BITS;
+
+	EHANDLE hPortal( iEntity, iSerialNum );
+	C_Prop_Portal *pPortal = ( C_Prop_Portal *)(hPortal.Get());
+
+	if( pPortal == NULL )
+		return;
+
+	//grab other entity's EHANDLE
+
+	iEncodedEHandle = msg.ReadLong();
+
+	if( iEncodedEHandle == INVALID_NETWORKED_EHANDLE_VALUE )
+		return;	
+
+	iEntity = iEncodedEHandle & ((1 << MAX_EDICT_BITS) - 1);
+	iSerialNum = iEncodedEHandle >> MAX_EDICT_BITS;
+
+	EHANDLE hEntity( iEntity, iSerialNum );
+	C_BaseEntity *pEntity = hEntity.Get();
+	if( pEntity == NULL )
+		return;
+	
+	C_Portal_Player *pPlayer = dynamic_cast<C_Portal_Player*>( pEntity );
+	if ( !pPlayer || !pPlayer->IsLocalPlayer() )
+		return;
+	
+	pPlayer->PrePlayerPortalled(  );
+
+}
 void __MsgFunc_EntityPortalled(bf_read &msg)
 {
 	long iEncodedEHandle;
@@ -134,8 +262,6 @@ void __MsgFunc_EntityPortalled(bf_read &msg)
 
 	if( pPortal == NULL )
 		return;
-
-
 
 	//grab other entity's EHANDLE
 
@@ -204,7 +330,7 @@ void __MsgFunc_EntityPortalled(bf_read &msg)
 
 
 	if( bIsPlayer )
-		((C_Portal_Player *)pEntity)->PlayerPortalled( pPortal );
+		((C_Portal_Player *)pEntity)->PlayerPortalled( pPortal, gpGlobals->curtime, false );
 
 	if ( pEntity->IsToolRecording() )
 	{
@@ -225,6 +351,7 @@ void __MsgFunc_EntityPortalled(bf_read &msg)
 		msg->deleteThis();
 	}
 }
+#endif // USEMOVEMENTFORPORTALLING
 
 static ConVar portal_demohack( "portal_demohack", "0", FCVAR_ARCHIVE, "Do the demo_legacy_rollback setting to help during demo playback of going through portals." );
 
@@ -233,6 +360,7 @@ class C_PortalInitHelper : public CAutoGameSystem
 	virtual bool Init()
 	{
 		//HOOK_MESSAGE( PlayerPortalled );
+		HOOK_MESSAGE( PrePlayerPortalled );
 		HOOK_MESSAGE( EntityPortalled );
 		if ( portal_demohack.GetBool() )
 		{
@@ -406,7 +534,14 @@ void C_Prop_Portal::UpdatePartitionListEntry()
 
 bool C_Prop_Portal::TestCollision(const Ray_t &ray, unsigned int fContentsMask, trace_t& tr)
 {
-	physcollision->TraceBox(ray, MASK_ALL, NULL, m_pCollisionShape, m_ptOrigin, m_qAbsAngle, &tr);
+	if ( !m_pCollisionShape )
+	{
+		//HACK: This is a last-gasp type fix for a crash caused by m_pCollisionShape not yet being set up
+		// during a restore.
+		UpdateCollisionShape();
+	}
+
+	physcollision->TraceBox( ray, MASK_ALL, NULL, m_pCollisionShape, m_ptOrigin, m_qAbsAngle, &tr );
 	return tr.DidHit();
 }
 
@@ -461,10 +596,7 @@ void C_Prop_Portal::Activate( void )
 void C_Prop_Portal::ClientThink( void )
 {
 
-	if (m_iCustomPortalColorSet && sv_allow_customized_portal_colors.GetBool())
-		m_iPortalColorSet = m_iCustomPortalColorSet - 1;
-	else
-		m_iPortalColorSet = m_iLinkageGroupID;
+	SetupPortalColorSet();
 
 	bool bDidAnything = false;
 	if( m_fStaticAmount > 0.0f )
@@ -603,13 +735,13 @@ void C_Prop_Portal::Simulate()
 
 			if ( bActivePlayerWeapon )
 			{
-				if( !m_PortalSimulator.EntityHitBoxExtentIsInPortalHole( pWeapon->GetOwner() ) && 
-					!m_PortalSimulator.EntityHitBoxExtentIsInPortalHole( pWeapon ) )
+				if( !m_PortalSimulator.EntityHitBoxExtentIsInPortalHole( pWeapon->GetOwner(), false ) && 
+					!m_PortalSimulator.EntityHitBoxExtentIsInPortalHole( pWeapon, false ) )
 					continue;
 			}
 			else if( pEntity->IsPlayer() )
 			{
-				if( !m_PortalSimulator.EntityHitBoxExtentIsInPortalHole( (C_BaseAnimating*)pEntity ) )
+				if( !m_PortalSimulator.EntityHitBoxExtentIsInPortalHole( (C_BaseAnimating*)pEntity, false ) )
 					continue;
 			}
 			else
@@ -626,6 +758,7 @@ void C_Prop_Portal::Simulate()
 		}
 	}
 
+#if 1
 	//now, fix up our list of ghosted renderables.
 	{
 		bool *bStillInUse = (bool *)stackalloc( sizeof( bool ) * (m_GhostRenderables.Count() + m_hGhostingEntities.Count()) );
@@ -718,13 +851,42 @@ void C_Prop_Portal::Simulate()
 		}
 	}
 
+#endif
+
 	//ensure the shared clip plane is up to date
 	C_Prop_Portal *pLinkedPortal = m_hLinkedPortal.Get();
+
+
+	// When the portal is flat on the ground or on a ceiling, tweak the clip plane offset to hide the player feet sticking 
+	// through the floor. We can't use this offset in other configurations -- it visibly would cut of parts of the model.
+	float flTmp = fabsf(DotProduct(pLinkedPortal->m_plane_Origin.normal, Vector(0, 0, 1)));
+	flTmp = fabsf(flTmp - 1.0f);
+	float flClipPlaneFudgeOffset = (flTmp < 0.01f) ? 2.0f : -2.0f;
 
 	m_fGhostRenderablesClip[0] = pLinkedPortal->m_plane_Origin.normal.x;
 	m_fGhostRenderablesClip[1] = pLinkedPortal->m_plane_Origin.normal.y;
 	m_fGhostRenderablesClip[2] = pLinkedPortal->m_plane_Origin.normal.z;
 	m_fGhostRenderablesClip[3] = pLinkedPortal->m_plane_Origin.dist - 0.75f;
+	
+	m_fGhostRenderablesClipForPlayer[0] = pLinkedPortal->m_plane_Origin.normal.x;
+	m_fGhostRenderablesClipForPlayer[1] = pLinkedPortal->m_plane_Origin.normal.y;
+	m_fGhostRenderablesClipForPlayer[2] = pLinkedPortal->m_plane_Origin.normal.z;
+	m_fGhostRenderablesClipForPlayer[3] = pLinkedPortal->m_plane_Origin.dist + flClipPlaneFudgeOffset;
+
+}
+
+
+C_PortalGhostRenderable *C_Prop_Portal::GetGhostRenderableForEntity( C_BaseEntity *pEntity )
+{
+	//Disable this for now
+#if 0
+	for( int i = 0; i != m_GhostRenderables.Count(); ++i )
+	{
+		if( m_GhostRenderables[i]->m_hGhostedRenderable == pEntity )
+			return m_GhostRenderables[i];
+	}
+#endif
+	return NULL;
 }
 
 void C_Prop_Portal::UpdateOnRemove( void )
@@ -1047,10 +1209,7 @@ int C_Prop_Portal::DrawModel( int flags )
 
 	//g_pPortalRender->m_iLinkageGroupID = m_iLinkageGroupID;
 
-	if ( m_iCustomPortalColorSet && sv_allow_customized_portal_colors.GetBool())
-		m_iPortalColorSet = m_iCustomPortalColorSet - 1;
-	else
-		m_iPortalColorSet = m_iLinkageGroupID;
+	SetupPortalColorSet();
 	
 	if ( g_pPortalRender->ShouldUseStencilsToRenderPortals() )
 	{
@@ -1152,9 +1311,11 @@ bool C_Prop_Portal::IsActivedAndLinked( void ) const
 
 void C_Prop_Portal::Touch(C_BaseEntity *pOther)
 {
-	if( pOther->IsPlayer() )
-		return;
+//	if( pOther->IsPlayer() )
+//		return;
 
+	Msg("Touch\n");
+	
 	// Don't do anything on touch if it's not active
 	if( !IsActive() || (m_hLinkedPortal.Get() == NULL) )
 	{
@@ -1332,8 +1493,8 @@ bool C_Prop_Portal::ShouldCreateAttachedParticles(void)
 void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 {
 	// Don't fizzle me if I moved from a location another portalgun shot
-	if (m_pAttackingPortal)
-		m_pAttackingPortal->m_pHitPortal = NULL;
+	if (m_pPortalReplacingMe)
+		m_pPortalReplacingMe->m_pHitPortal = NULL;
 	
 	if( IsActive() )
 	{
@@ -1480,11 +1641,7 @@ void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDela
 //	if ( iEffect != PORTAL_FIZZLE_SUCCESS && iEffect != PORTAL_FIZZLE_CLOSE )
 //		iEffect = PORTAL_FIZZLE_BAD_SURFACE;
 
-
-	if (m_iCustomPortalColorSet && sv_allow_customized_portal_colors.GetBool())
-		m_iPortalColorSet = m_iCustomPortalColorSet - 1;
-	else
-		m_iPortalColorSet = m_iLinkageGroupID;
+	SetupPortalColorSet();
 	
 	// Pick a fizzle effect
 	switch ( iEffect )

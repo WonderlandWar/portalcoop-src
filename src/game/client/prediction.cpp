@@ -1804,7 +1804,7 @@ void CPrediction::SetViewOrigin( Vector& org )
 	player->SetLocalOrigin( org );
 	player->m_vecNetworkOrigin = org;
 
-	player->m_iv_vecOrigin.Reset();
+	player->m_iv_vecOrigin.Reset( gpGlobals->curtime );
 }
 
 //-----------------------------------------------------------------------------
@@ -1835,7 +1835,7 @@ void CPrediction::SetViewAngles( QAngle& ang )
 		return;
 
 	player->SetViewAngles( ang );
-	player->m_iv_angRotation.Reset();
+	player->m_iv_angRotation.Reset( gpGlobals->curtime );
 }
 
 //-----------------------------------------------------------------------------

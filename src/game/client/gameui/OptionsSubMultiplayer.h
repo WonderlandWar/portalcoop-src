@@ -86,6 +86,7 @@ private:
 	CCvarToggleCheckButton *m_pHighQualityModelCheckBox;
 	CCvarToggleCheckButton *m_pShowPortalIDCheckBox;
 	CCvarToggleCheckButton *m_pShowPortalInfoCheckBox;
+	CCvarToggleCheckButton *m_pShowPingAlertsCheckBox;
 
 	// Mod specific general checkboxes
 	vgui::Dar< CCvarToggleCheckButton * > m_cvarToggleCheckButtons;

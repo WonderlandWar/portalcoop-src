@@ -4114,8 +4114,6 @@ void CLogicPlayerProxy::InputSetPortalgunColor( inputdata_t &inputdata )
 {
 	int iDataValue = inputdata.value.Int();
 	
-	Msg("iDataValue: %i\n", iDataValue);
-
 	if ( m_bUseActivator )
 	{
 		CPortal_Player *pPortalPlayer = ToPortalPlayer(inputdata.pActivator);
@@ -4199,8 +4197,6 @@ void CLogicPlayerProxy::InputSetPortalgunLinkageID(inputdata_t &inputdata)
 {
 	int iDataValue = inputdata.value.Int();
 	
-	Msg("iDataValue: %i\n", iDataValue);
-
 	if ( m_bUseActivator )
 	{
 		CPortal_Player *pPortalPlayer = ToPortalPlayer(inputdata.pActivator);

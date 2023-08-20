@@ -59,6 +59,8 @@ public:
 
 	const char *ToCStr() const						{ return ( pszValue ) ? pszValue : ""; 	}
 	
+	//const char *ToCStrRaw() const						{ return pszValue; 	}
+	
 protected:
 	const char *pszValue;
 };

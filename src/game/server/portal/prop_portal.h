@@ -21,6 +21,25 @@ static const char *s_pDelayedPlacementContext = "DelayedPlacementContext";
 static const char *s_pTestRestingSurfaceContext = "TestRestingSurfaceContext";
 static const char *s_pFizzleThink = "FizzleThink";
 
+class CFunc_Portalled : public CBaseEntity
+{
+	DECLARE_CLASS( CFunc_Portalled, CBaseEntity )
+	DECLARE_DATADESC()
+public:
+
+	void OnPrePortalled( CBaseEntity *pEntity, bool m_bFireType );
+	void OnPostPortalled( CBaseEntity *pEntity, bool m_bFireType );
+	
+private:
+
+	bool m_bFireOnDeparture;
+	bool m_bFireOnArrival;
+	bool m_bFireOnPlayer;
+
+	COutputEvent m_OnEntityPrePortalled;
+	COutputEvent m_OnEntityPostPortalled;
+};
+
 //#define DONT_USE_MICROPHONESORSPEAKERS
 
 class CPhysicsCloneArea;
@@ -56,6 +75,11 @@ public:
 	CNetworkHandle(CBaseEntity, m_hPlacedBy);
 
 	COutputEvent m_OnPlacedSuccessfully;		// Output in hammer for when this portal was successfully placed (not attempted and fizzed).
+
+	COutputEvent m_OnEntityTeleportFromMe;
+	COutputEvent m_OnPlayerTeleportFromMe;
+	COutputEvent m_OnEntityTeleportToMe;
+	COutputEvent m_OnPlayerTeleportToMe;
 
 	cplane_t m_plane_Origin; //a portal plane on the entity origin
 	
@@ -104,6 +128,9 @@ public:
 	void					PlacePortal( const Vector &vOrigin, const QAngle &qAngles, float fPlacementSuccess, bool bDelay = false );
 	void					NewLocation( const Vector &vOrigin, const QAngle &qAngles );
 
+	virtual void			PreTeleportTouchingEntity( CBaseEntity *pOther );
+	virtual void			PostTeleportTouchingEntity( CBaseEntity *pOther );
+
 	void					ResetModel( void ); //sets the model and bounding box
 	void					DoFizzleEffect( int iEffect, int iLinkageGroupID = 0, bool bDelayedPos = true ); //display cool visual effect
 	void					Fizzle( void ); //go inactive
@@ -122,6 +149,8 @@ public:
 	void					UpdatePortalLinkage( void );
 	void					UpdatePortalTeleportMatrix( void ); //computes the transformation from this portal to the linked portal, and will update the remote matrix as well
 
+	void					SetupPortalColorSet( void );
+
 	//void					SendInteractionMessage( CBaseEntity *pEntity, bool bEntering ); //informs clients that the entity is interacting with a portal (mostly used for clip planes)
 
 	bool					SharedEnvironmentCheck( CBaseEntity *pEntity ); //does all testing to verify that the object is better handled with this portal instead of the other
@@ -130,7 +159,12 @@ public:
 	// The four corners of the portal in worldspace, updated on placement. The four points will be coplanar on the portal plane.
 	Vector m_vPortalCorners[4];
 
-	CNetworkVarEmbedded( CPortalSimulator, m_PortalSimulator );
+	CNetworkVarEmbedded( CPortalSimulator, m_PortalSimulator );	
+	
+	inline Vector			GetLocalMins( void ) const { return Vector( 0.0f, -PORTAL_HALF_WIDTH, -PORTAL_HALF_HEIGHT ); }
+	inline Vector			GetLocalMaxs( void ) const { return Vector( 64.0f, PORTAL_HALF_WIDTH, PORTAL_HALF_HEIGHT ); }
+
+	void					UpdateCollisionShape( void );
 
 	//virtual bool			CreateVPhysics( void );
 	//virtual void			VPhysicsDestroyObject( void );
@@ -145,13 +179,16 @@ public:
 	virtual bool			IsPredicted() const { return true; }
 
 	CProp_Portal			*m_pHitPortal;
-	CProp_Portal			*m_pAttackingPortal;
+	CProp_Portal			*m_pPortalReplacingMe;
 
 	CNetworkVar(int, m_iCustomPortalColorSet);
-	CNetworkVar(int, m_iPortalColorSet);
+	int	m_iPortalColorSet;
+	
+	void					OnEntityTeleportedToPortal( CBaseEntity *pEntity );
+	void					OnEntityTeleportedFromPortal( CBaseEntity *pEntity );
 
 protected:
-
+	
 	CNetworkVar(bool, m_bActivated); //a portal can exist and not be active
 	CNetworkVar(bool, m_bOldActivatedState); //the old state
 
@@ -159,7 +196,8 @@ private:
 
 	unsigned char			m_bShouldUseLinkageID; //test if we should use linkage ID
 	
-	CNetworkHandle( CBaseEntity, m_hFiredByPlayer );
+	CNetworkHandle( CBaseEntity, m_hFiredByPlayer );	
+	CHandle<CFunc_Portalled> m_NotifyOnPortalled; //an entity that forwards notifications of teleports to map logic entities
 
 	CPhysCollide			*m_pCollisionShape;
 	void					RemovePortalMicAndSpeaker();	// Cleans up the portal's internal audio members
@@ -174,10 +212,19 @@ public:
 	void					ChangeLinkageGroup( unsigned char iLinkageGroupID );
 	void SetFiredByPlayer( CBasePlayer *pPlayer );
 	inline CBasePlayer *GetFiredByPlayer( void ) const { return (CBasePlayer *)m_hFiredByPlayer.Get(); }
+	
+	inline void SetFuncPortalled( CFunc_Portalled *pPortalledEnt = NULL ) { m_NotifyOnPortalled = pPortalledEnt; }
 
 	//find a portal with the designated attributes, or creates one with them, favors active portals over inactive
 	static CProp_Portal		*FindPortal( unsigned char iLinkageGroupID, bool bPortal2, bool bCreateIfNothingFound = false );
 	static const CUtlVector<CProp_Portal *> *GetPortalLinkageGroup( unsigned char iLinkageGroupID );
+
+	
+	virtual float GetMinimumExitSpeed( bool bPlayer, bool bEntranceOnFloor, bool bExitOnFloor, const Vector &vEntityCenterAtExit, CBaseEntity *pEntity );
+	virtual float GetMaximumExitSpeed( bool bPlayer, bool bEntranceOnFloor, bool bExitOnFloor, const Vector &vEntityCenterAtExit, CBaseEntity *pEntity );
+	
+	//does all the gruntwork of figuring out flooriness and calling the two above
+	static void				GetExitSpeedRange( CProp_Portal *pEntrancePortal, bool bPlayer, float &fExitMinimum, float &fExitMaximum, const Vector &vEntityCenterAtExit, CBaseEntity *pEntity );
 
 	CNetworkVar(int, m_nPlacementAttemptParity); //Increments every time we try to move the portal in a predictable way. Will send a network packet to catch cases where placement succeeds on the client, but fails on the server.
 };

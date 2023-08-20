@@ -307,6 +307,9 @@ public:
 		if ( pPlayer->IsFakeClient() )
 			return;
 #endif
+
+		//This works terribly in multiplayer
+#if 0
 		CPointCommentaryNode *pCurrentNode = dynamic_cast<CPointCommentaryNode*>(pPlayer->GetNodeUnderCrosshair());
 		//CPointCommentaryNode *pCurrentNode = GetNodeUnderCrosshair();
 
@@ -328,8 +331,6 @@ public:
 			m_hCurrentNode = pCurrentNode;
 		}
 
-//This works terribly in multiplayer
-#if 0
 
 		// Check for commentary node activations
 		if ( pPlayer )
@@ -904,6 +905,10 @@ void CPointCommentaryNode::SetUnderCrosshair( bool bUnderCrosshair )
 {
 	if ( bUnderCrosshair )
 	{
+		//This is necessary because otherwise the node won't rotate.
+		if (m_bUnderCrosshair)
+			return;
+
 		// Start animating
 		m_bUnderCrosshair = true;
 	
@@ -939,6 +944,22 @@ void CPointCommentaryNode::SpinThink( void )
 {
 	// Rotate if we're active, or under the crosshair. Don't rotate if we're
 	// under the crosshair, but we've already been listened to.
+
+	bool bFoundValidNode = false;
+	
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+		if (!pPlayer)
+			continue;
+
+		CPointCommentaryNode *pNode = pPlayer->GetNodeUnderCrosshair();
+
+		bFoundValidNode = (pNode == this);
+	}
+
+	SetUnderCrosshair(bFoundValidNode);
+
 	if ( m_bActive || (m_bUnderCrosshair && m_nSkin == 0) )
 	{
 		if ( m_bActive )

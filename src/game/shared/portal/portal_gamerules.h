@@ -34,6 +34,14 @@
 
 extern ConVar	tf_avoidteammates;
 
+
+struct PortalPlayerStatistics_t
+{
+	int iNumPortalsPlaced;
+	int iNumStepsTaken;
+	float fNumSecondsTaken;
+};
+
 class CPortalGameRulesProxy : public CGameRulesProxy
 {
 public:
@@ -54,22 +62,49 @@ public:
 	virtual bool	ShouldCollide( int collisionGroup0, int collisionGroup1 );
 	virtual bool	ShouldUseRobustRadiusDamage(CBaseEntity *pEntity);
 	virtual void	ClientSettingsChanged( CBasePlayer *pPlayer );
-	virtual void GoToIntermission( void );
+	virtual void	GoToIntermission( void );
 #ifndef CLIENT_DLL
 	virtual bool	ShouldAutoAim( CBasePlayer *pPlayer, edict_t *target );
 	virtual float	GetAutoAimScale( CBasePlayer *pPlayer );
+
+	virtual void	LevelShutdown( void );
+
+	virtual bool	ServerIsFull( void );
+
+	float m_flPreStartTime;
+	bool m_bReadyToCountProgress;
+	bool m_bShouldSetPreStartTime;
+
 #endif
 
 #ifdef CLIENT_DLL
 	virtual bool IsBonusChallengeTimeBased( void );
 #endif
 
-	bool	MegaPhyscannonActive(void) { return m_bMegaPhysgun; }
 
+	bool	MegaPhyscannonActive(void) { return m_bMegaPhysgun; }
+	
+	PortalPlayerStatistics_t m_StatsThisLevel;
+	
+#ifdef GAME_DLL
+	void IncrementPortalsPlaced( void );
+	void IncrementStepsTaken( void );
+	void UpdateSecondsTaken( void );
+
+	void ResetThisLevelStats( void );
+	
+	float m_fTimeLastNumSecondsUpdate;
+
+#endif
+	int NumPortalsPlaced( void ) const { return m_StatsThisLevel.iNumPortalsPlaced; }
+	int NumStepsTaken( void ) const { return m_StatsThisLevel.iNumStepsTaken; }
+	float NumSecondsTaken( void ) const { return m_StatsThisLevel.fNumSecondsTaken; }
 
 private:
 	// Rules change for the mega physgun
 	CNetworkVar( bool, m_bMegaPhysgun );
+
+	DECLARE_SIMPLE_DATADESC();
 
 #ifdef CLIENT_DLL
 

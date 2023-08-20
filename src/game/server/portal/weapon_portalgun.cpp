@@ -44,6 +44,7 @@ BEGIN_NETWORK_TABLE( CWeaponPortalgun, DT_WeaponPortalgun )
 	SendPropInt( SENDINFO( m_EffectState ) ),
 	SendPropInt( SENDINFO( m_iPortalLinkageGroupID ) ),
 	SendPropInt( SENDINFO( m_iCustomPortalColorSet ) ),	
+	SendPropInt( SENDINFO( m_iPortalColorSet ) ),
 	SendPropBool( SENDINFO (m_bCanAttack) ),
 	SendPropEHandle( SENDINFO (m_hPrimaryPortal) ),
 	SendPropEHandle( SENDINFO (m_hSecondaryPortal) )
@@ -98,10 +99,10 @@ void CWeaponPortalgun::Spawn( void )
 	
 	if (!m_bForceAlwaysUseSetID)
 	{
-		if( GameRules()->IsMultiplayer() )
+		if( GameRules()->IsMultiplayer() || !GetOwner()->IsPlayer() )
 		{
 			CBaseEntity *pOwner = GetOwner();
-			if( pOwner && pOwner->IsPlayer() )
+			if( pOwner )
 			{
 				m_iPortalLinkageGroupID = pOwner->entindex();
 
@@ -136,9 +137,9 @@ void CWeaponPortalgun::Activate()
 		OpenProngs( ( pHeldObject ) ? ( true ) : ( false ) );
 		if (!m_bForceAlwaysUseSetID)
 		{
-			if( GameRules()->IsMultiplayer() )
+			if( GameRules()->IsMultiplayer() || !GetOwner()->IsPlayer() )
 			{
-				m_iPortalLinkageGroupID = pPlayer->entindex();
+				m_iPortalLinkageGroupID = GetOwner()->entindex();
 
 				if (sv_playtesting.GetBool())
 					m_iPortalLinkageGroupID = m_iPortalLinkageGroupID - 1;
@@ -171,22 +172,34 @@ void CWeaponPortalgun::Drop(const Vector &vecVelocity)
 
 void CWeaponPortalgun::FizzleOwnedPortals()
 {
-	CProp_Portal *pPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, false);
-	if (pPortal)
-	pPortal->Fizzle();
+
+	for (int i = 0; i <= 1; ++i)
+	{
+		if (i >= 2)
+			break;
+
+		bool bPortal2 = i == 1;
 		
-	pPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, true);
-	if (pPortal)
-	pPortal->Fizzle();
+		CProp_Portal *pPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, bPortal2 );
+		if (pPortal)
+		{
+			pPortal->Fizzle();
+
+			if ( pPortal->GetNextThink( s_pDelayedPlacementContext ) > gpGlobals->curtime )
+			{
+				pPortal->SetContextThink( NULL, gpGlobals->curtime, s_pDelayedPlacementContext ); 
+			}
+		}
+	}
 }
 
 void CWeaponPortalgun::OnPickedUp( CBaseCombatCharacter *pNewOwner )
 {
 	if(!m_bForceAlwaysUseSetID)
 	{
-		if( GameRules()->IsMultiplayer() )
+		if (GameRules()->IsMultiplayer() || !pNewOwner->IsPlayer())
 		{
-			if( pNewOwner && pNewOwner->IsPlayer() )
+		//	if( pNewOwner && pNewOwner->IsPlayer() )
 			{
 				m_iPortalLinkageGroupID = pNewOwner->entindex();
 

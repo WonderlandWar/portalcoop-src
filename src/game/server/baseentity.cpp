@@ -307,6 +307,10 @@ IMPLEMENT_SERVERCLASS_ST_NOBASE( CBaseEntity, DT_BaseEntity )
 	SendPropArray3( SENDINFO_ARRAY3(m_nModelIndexOverrides), SendPropInt( SENDINFO_ARRAY(m_nModelIndexOverrides), SP_MODEL_INDEX_BITS, 0 ) ),
 #endif
 
+#ifdef PORTAL
+	SendPropInt( SENDINFO( m_iPingIcon ) ),
+#endif
+
 END_SEND_TABLE()
 
 
@@ -1893,6 +1897,10 @@ BEGIN_DATADESC_NO_BASE( CBaseEntity )
 
 //	DEFINE_FIELD( m_bToolRecording,		FIELD_BOOLEAN ),
 //	DEFINE_FIELD( m_ToolHandle,		FIELD_INTEGER ),
+
+#ifdef PORTAL	
+	DEFINE_KEYFIELD( m_iPingIcon, FIELD_INTEGER, "pingicon" ),
+#endif
 
 	// NOTE: This is tricky. TeamNum must be saved, but we can't directly
 	// read it in, because we can only set it after the team entity has been read in,

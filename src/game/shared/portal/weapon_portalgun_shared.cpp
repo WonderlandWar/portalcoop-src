@@ -27,7 +27,7 @@
 #endif
 
 ConVar use_server_portal_particles( "use_server_portal_particles", "0", FCVAR_REPLICATED );
-ConVar use_server_portal_crosshair_test("use_server_portal_crosshair_test", "1", FCVAR_REPLICATED, "Changes if the crosshair placement indicator should be predicted or use the server");
+ConVar use_server_portal_crosshair_test("use_server_portal_crosshair_test", "0", FCVAR_REPLICATED, "Changes if the crosshair placement indicator should be predicted or use the server");
 ConVar sv_playtesting("sv_playtesting", "0", FCVAR_REPLICATED, "If the owner is hosting a server, is in the server as a player, and running a playtest with 2 other players, then enable this for proper portalgun linkages");
 extern ConVar sv_allow_customized_portal_colors;
 
@@ -405,7 +405,7 @@ bool CWeaponPortalgun::Deploy( void )
 #ifndef CLIENT_DLL
 		if (!m_bForceAlwaysUseSetID)
 		{
-			if( GameRules()->IsMultiplayer() )
+			if( GameRules()->IsMultiplayer() || !GetOwner()->IsPlayer())
 			{
 				m_iPortalLinkageGroupID = pOwner->entindex();
 
@@ -582,10 +582,6 @@ void CWeaponPortalgun::DoEffectBlast(CBaseEntity *pOwner, bool bPortal2, int iPl
 #define CBaseTrigger C_BaseTrigger
 #endif
 
-ConVar sv_debug_portal_placement_success_presteal("sv_debug_portal_placement_success_presteal", "0", FCVAR_REPLICATED);
-ConVar sv_debug_portal_placement_success_poststeal("sv_debug_portal_placement_success_poststeal", "0", FCVAR_REPLICATED);
-ConVar sv_debug_portal_placement_success_shootcheck("sv_debug_portal_placement_success_shootcheck", "0", FCVAR_REPLICATED);
-
 float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool bTest /*= false*/ )
 {
 	Vector vEye;
@@ -694,19 +690,12 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 
 	trace_t tr;
 	float fPlacementSuccess = TraceFirePortal( bPortal2, vTraceStart, vDirection, tr, vFinalPosition, qFinalAngles, ePlacedBy, bTest );
-
-	if (sv_debug_portal_placement_success_presteal.GetBool())
-	{
-		const char *sPlacementSuccess = GetPlacementSuccess(fPlacementSuccess);
-		Msg("Pre-Steal Check: fPlacementSuccess: %s\n", sPlacementSuccess);
-	}
-	
+		
 	if ( sv_portal_placement_never_fail.GetBool() )
 	{
 		fPlacementSuccess = 1.0f;
 	}
 	
-
 	Ray_t ray;
 
 	ray.Init(vTraceStart, tr.endpos);
@@ -720,13 +709,7 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 	{
 		fPlacementSuccess = PORTAL_ANALOG_SUCCESS_STEAL;
 	}
-
-	if (sv_debug_portal_placement_success_poststeal.GetBool())
-	{
-		const char *sPlacementSuccess = GetPlacementSuccess(fPlacementSuccess);
-		Msg("Post-Steal Check: fPlacementSuccess: %s\n", sPlacementSuccess);
-	}
-
+	
 	if ( !bTest )
 	{
 		pPortal->m_pHitPortal = pHitPortal;
@@ -734,15 +717,10 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 		{
 			vFinalPosition = pHitPortal->GetAbsOrigin();
 			qFinalAngles = pHitPortal->GetAbsAngles();
-			pHitPortal->m_pAttackingPortal = pPortal;
+			pHitPortal->m_pPortalReplacingMe = pPortal;
 			pPortal->m_iDelayedFailure = PORTAL_FIZZLE_SUCCESS;
 		}
 		
-		if (sv_debug_portal_placement_success_shootcheck.GetBool())
-		{
-			const char *sPlacementSuccess = GetPlacementSuccess(fPlacementSuccess);
-			Msg("Shoot Check: fPlacementSuccess: %s\n", sPlacementSuccess);
-		}
 		// If it was a failure, put the effect at exactly where the player shot instead of where the portal bumped to
 		if ( fPlacementSuccess < 0.5f ) //0.5f or greater is a success
 			vFinalPosition = tr.endpos;
@@ -772,9 +750,9 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 		if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_NEAR)
 		{
 			if (bPortal2)
-				pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_NEAR_RED, m_iPortalColorSet );
+				pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_NEAR_RED, m_iPortalColorSet, false );
 			else
-				pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_NEAR_BLUE, m_iPortalColorSet );
+				pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_NEAR_BLUE, m_iPortalColorSet, false );
 		}
 
 #endif
@@ -876,94 +854,9 @@ float CWeaponPortalgun::TraceFirePortal( bool bPortal2, const Vector &vTraceStar
 	
 	// Clip this to any number of entities that can block us
 	//(bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy)
-	if (PortalTraceClippedByBlockers(bPortal2, vTraceStart, vDirection, tr, vFinalPosition, qFinalAngles, iPlacedBy))
+	if (PortalTraceClippedByBlockers(bPortal2, vTraceStart, vDirection, tr, vFinalPosition, qFinalAngles, iPlacedBy, bTest) )
 		return PORTAL_ANALOG_SUCCESS_CLEANSER;
-	/*
-	// Trace to the surface to see if there's a rotating door in the way
-	CBaseEntity *list[1024];
-	CUtlVector<CTriggerPortalCleanser*> vFizzlersAlongRay;
-
-	Ray_t ray;
-	ray.Init( vTraceStart, tr.endpos );
-
 	
-	int nCount = AllEdictsAlongRay( list, 1024, ray, 0 );
-	// Loop through all entities along the ray between the gun and the surface
-	for ( int i = 0; i < nCount; i++ )
-	{
-		if (dynamic_cast<CTriggerPortalCleanser*>(list[i]) != NULL)
-		{
-			CTriggerPortalCleanser *pTrigger = static_cast<CTriggerPortalCleanser*>(list[i]);
-			
-			if ( pTrigger && !pTrigger->m_bDisabled )
-			{
-#if 0
-#if defined( GAME_DLL )
-				Warning("CWeaponPortalgun::PortalTraceClippedByBlockers(server) : CLEANSER!!!!!\n");
-#else
-				Warning("CWeaponPortalgun::PortalTraceClippedByBlockers(client) : CLEANSER!!!!!\n");
-#endif
-#endif
-				vFizzlersAlongRay.AddToTail(pTrigger);
-			}
-		}
-	}
-	
-		CTriggerPortalCleanser *pHitFizzler = NULL;
-		trace_t nearestFizzlerTrace;
-		float flNearestFizzler = FLT_MAX;
-		bool bFizzlerHit = false;
-
-		for ( int n = 0; n < vFizzlersAlongRay.Count(); ++n )
-		{
-			Vector vMin;
-			Vector vMax;
-			vFizzlersAlongRay[n]->GetCollideable()->WorldSpaceSurroundingBounds( &vMin, &vMax );
-
-			trace_t fizzlerTrace;
-			IntersectRayWithBox( tr.startpos, tr.endpos - tr.startpos, vMin, vMax, 0.0f, &fizzlerTrace );
-
-			float flDist = ( fizzlerTrace.endpos - fizzlerTrace.startpos ).LengthSqr();
-
-			if ( flDist < flNearestFizzler )
-			{
-				flNearestFizzler = flDist;
-				pHitFizzler = vFizzlersAlongRay[n];
-				nearestFizzlerTrace = fizzlerTrace;
-				bFizzlerHit = true;
-			}
-			
-			if ( bFizzlerHit )
-			{
-				tr = nearestFizzlerTrace;
-
-				tr.plane.normal = -vDirection;
-
-	#if defined( GAME_DLL )
-	//			pHitFizzler->SetPortalShot();
-	#endif
-
-				CProp_Portal *pPortal = bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get();//CProp_Portal::FindPortal( m_iPortalLinkageGroupID, bIsSecondPortal, true );
-				if( pPortal )
-				{
-					pPortal->m_iDelayedFailure = PORTAL_FIZZLE_CLEANSER;
-					VectorAngles( tr.plane.normal, pPortal->m_qDelayedAngles );
-					pPortal->m_vDelayedPosition = tr.endpos;
-
-					vFinalPosition = pPortal->m_vDelayedPosition;
-					qFinalAngles = pPortal->m_qDelayedAngles;
-					return PORTAL_ANALOG_SUCCESS_CLEANSER;
-				}
-				else
-				{
-					vFinalPosition = tr.endpos;
-					VectorAngles( tr.plane.normal, qFinalAngles );
-					return PORTAL_ANALOG_SUCCESS_CLEANSER;
-				}
-				return true;
-			}
-		}
-	*/
 
 	Vector vUp( 0.0f, 0.0f, 1.0f );
 	if( ( tr.plane.normal.x > -0.001f && tr.plane.normal.x < 0.001f ) && ( tr.plane.normal.y > -0.001f && tr.plane.normal.y < 0.001f ) )
@@ -985,7 +878,7 @@ float CWeaponPortalgun::TraceFirePortal( bool bPortal2, const Vector &vTraceStar
 // Purpose: Clips a complex trace segment against a variety of entities that
 //			we'd like to collide with.
 //-----------------------------------------------------------------------------
-bool CWeaponPortalgun::PortalTraceClippedByBlockers(bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy)
+bool CWeaponPortalgun::PortalTraceClippedByBlockers(bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy, bool bTest )
 {
 	// Deal with this segment of the trace
 //	tr = pTraceResults[nNumResultSegments - 1].trSegment;
@@ -1070,7 +963,7 @@ bool CWeaponPortalgun::PortalTraceClippedByBlockers(bool bPortal2, const Vector 
 #endif
 
 			CProp_Portal *pPortal = bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get();//CProp_Portal::FindPortal( m_iPortalLinkageGroupID, bIsSecondPortal, true );
-			if( pPortal )
+			if( pPortal && !bTest )
 			{
 				pPortal->m_iDelayedFailure = PORTAL_FIZZLE_CLEANSER;
 				VectorAngles( tr.plane.normal, pPortal->m_qDelayedAngles );
@@ -1297,6 +1190,14 @@ void CWeaponPortalgun::Think( void )
 
 	// Test portal placement
 #ifdef GAME_DLL
+
+	// Doing this somehow makes portals more responsive...
+	if (m_bCanFirePortal1)
+		FirePortal(false, 0, 1);
+	if (m_bCanFirePortal2)
+		FirePortal(true, 0, 2);
+
+
 	if (use_server_portal_crosshair_test.GetBool())
 	{
 		m_fCanPlacePortal1OnThisSurface = ( ( m_bCanFirePortal1 ) ? ( FirePortal( false, 0, 1 ) ) : ( 0.0f ) );

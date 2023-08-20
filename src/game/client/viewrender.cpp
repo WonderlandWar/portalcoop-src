@@ -3478,7 +3478,11 @@ void CRendering3dView::BuildRenderableRenderLists( int viewID )
 	if( m_pMainView->ShouldDrawEntities() && ( viewID != VIEW_SHADOW_DEPTH_TEXTURE ) )
 	{
 		ClientLeafSystem()->ComputeTranslucentRenderLeaf( 
-			info.m_LeafCount, info.m_pLeafList, info.m_pLeafFogVolume, m_pMainView->BuildRenderablesListsNumber(), viewID );
+			info.m_LeafCount,
+			info.m_pLeafList,
+			info.m_pLeafFogVolume,
+			m_pMainView->BuildRenderablesListsNumber(),
+			viewID );
 	}
 
 	SetupRenderablesList( viewID );

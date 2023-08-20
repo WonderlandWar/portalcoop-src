@@ -106,6 +106,8 @@ public:
 	virtual void			PortalSimulator_TookOwnershipOfEntity(C_BaseEntity *pEntity);
 	virtual void			PortalSimulator_ReleasedOwnershipOfEntity(C_BaseEntity *pEntity);
 
+	void					SetupPortalColorSet(void);
+
 	struct Portal_PreDataChanged
 	{
 		bool					m_bActivated;
@@ -146,6 +148,11 @@ public:
 	bool					IsActivedAndLinked( void ) const;
 
 	CPortalSimulator		m_PortalSimulator;
+	
+	inline Vector			GetLocalMins( void ) const { return Vector( 0.0f, -PORTAL_HALF_WIDTH, -PORTAL_HALF_HEIGHT ); }
+	inline Vector			GetLocalMaxs( void ) const { return Vector( 64.0f, PORTAL_HALF_WIDTH, PORTAL_HALF_HEIGHT ); }
+
+	void					UpdateCollisionShape( void );
 
 	virtual C_BaseEntity *	PortalRenderable_GetPairedEntity( void ) { return this; };
 	
@@ -163,18 +170,29 @@ public:
 	//bool DrawPortalsUsingStencils( CViewRender *pViewRender, int iLinkageGroupID ); 
 
 	C_Prop_Portal			*m_pHitPortal;
-	C_Prop_Portal			*m_pAttackingPortal;
+	C_Prop_Portal			*m_pPortalReplacingMe;
 
 	int	m_iCustomPortalColorSet;
 	int	m_iOldPortalColorSet;
 	int	m_iPortalColorSet;
-
-private:
-
-
+	
+	virtual float GetMinimumExitSpeed( bool bPlayer, bool bEntranceOnFloor, bool bExitOnFloor, const Vector &vEntityCenterAtExit, CBaseEntity *pEntity ); //return -FLT_MAX for no minimum
+	virtual float GetMaximumExitSpeed( bool bPlayer, bool bEntranceOnFloor, bool bExitOnFloor, const Vector &vEntityCenterAtExit, CBaseEntity *pEntity ); //return FLT_MAX for no maximum
+	
+	//does all the gruntwork of figuring out flooriness and calling the two above
+	static void				GetExitSpeedRange( CProp_Portal *pEntrancePortal, bool bPlayer, float &fExitMinimum, float &fExitMaximum, const Vector &vEntityCenterAtExit, CBaseEntity *pEntity );
+	
+	C_PortalGhostRenderable *GetGhostRenderableForEntity( C_BaseEntity *pEntity );
+	
 	CUtlVector<EHANDLE>		m_hGhostingEntities;
 	CUtlVector<C_PortalGhostRenderable *>		m_GhostRenderables;
 	float					m_fGhostRenderablesClip[4];
+	float					m_fGhostRenderablesClipForPlayer[4];
+
+	virtual PINGICON GetPingIcon() { return PING_ICON_PORTAL; }
+
+private:
+	
 	friend class CPortalRenderable;
 
 

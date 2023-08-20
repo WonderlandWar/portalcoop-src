@@ -477,6 +477,10 @@ BEGIN_RECV_TABLE_NOBASE(C_BaseEntity, DT_BaseEntity)
 #ifdef TF_CLIENT_DLL
 	RecvPropArray3( RECVINFO_ARRAY(m_nModelIndexOverrides),	RecvPropInt( RECVINFO(m_nModelIndexOverrides[0]) ) ),
 #endif
+	
+#ifdef PORTAL
+	RecvPropInt( RECVINFO( m_iPingIcon ) ),
+#endif
 
 END_RECV_TABLE()
 
@@ -1538,12 +1542,12 @@ void C_BaseEntity::SetShadowUseOtherEntity( C_BaseEntity *pEntity )
 	m_ShadowDirUseOtherEntity = pEntity;
 }
 
-CInterpolatedVar< QAngle >& C_BaseEntity::GetRotationInterpolator()
+CDiscontinuousInterpolatedVar< QAngle >& C_BaseEntity::GetRotationInterpolator()
 {
 	return m_iv_angRotation;
 }
 
-CInterpolatedVar< Vector >& C_BaseEntity::GetOriginInterpolator()
+CDiscontinuousInterpolatedVar< Vector >& C_BaseEntity::GetOriginInterpolator()
 {
 	return m_iv_vecOrigin;
 }
@@ -2874,6 +2878,22 @@ void C_BaseEntity::OnLatchInterpolatedVariables( int flags )
 	{
 		AddToInterpolationList();
 	}
+}
+
+float CBaseEntity::GetEffectiveInterpolationCurTime( float currentTime )
+{
+	if ( GetPredictable() || IsClientCreated() )
+	{
+		C_BasePlayer *localplayer = C_BasePlayer::GetLocalPlayer();
+		if ( localplayer )
+		{
+			currentTime = localplayer->GetFinalPredictedTime();
+			currentTime -= TICK_INTERVAL;
+			currentTime += ( gpGlobals->interpolation_amount * TICK_INTERVAL );
+		}
+	}
+
+	return currentTime;
 }
 
 int CBaseEntity::BaseInterpolatePart1( float &currentTime, Vector &oldOrigin, QAngle &oldAngles, Vector &oldVel, int &bNoMoreChanges )
@@ -5929,7 +5949,7 @@ void C_BaseEntity::Interp_Reset( VarMapping_t *map )
 		VarMapEntry_t *e = &map->m_Entries[ i ];
 		IInterpolatedVar *watcher = e->watcher;
 
-		watcher->Reset();
+		watcher->Reset( gpGlobals->curtime );
 	}
 }
 

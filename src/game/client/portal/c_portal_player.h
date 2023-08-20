@@ -34,6 +34,10 @@ public:
 	C_Portal_Player();
 	~C_Portal_Player( void );
 
+	virtual void Spawn( void );
+
+	virtual void CreateSounds( void );
+	virtual void StopLoopingSounds( void );
 	void ClientThink( void );
 	void FixTeleportationRoll( void );
 	
@@ -98,7 +102,11 @@ public:
 	virtual Vector			EyePosition();
 	Vector					EyeFootPosition( const QAngle &qEyeAngles );//interpolates between eyes and feet based on view angle roll
 	inline Vector			EyeFootPosition( void ) { return EyeFootPosition( EyeAngles() ); }; 
-	void					PlayerPortalled( C_Prop_Portal *pEnteredPortal );
+	void					PrePlayerPortalled( void ); // Save my angles for when I teleport
+	void					PlayerPortalled( C_Prop_Portal *pEnteredPortal, float fTime, bool bForcedDuck );
+	void					CheckPlayerAboutToTouchPortal( void );
+
+	void					FixEyeAnglesFromPortalling( void );
 
 	virtual void	CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, float &zFar, float &fov );
 	void			CalcPortalView( Vector &eyeOrigin, QAngle &eyeAngles );
@@ -106,6 +114,11 @@ public:
 	virtual void	ForceDropOfCarriedPhysObjects( CBaseEntity *pOnlyIfHoldindThis );
 
 	void			EnableSprint( bool bEnable );
+
+
+	
+	void UpdatePortalPlaneSounds( void );
+	void UpdateWooshSounds( void );
 	
 	bool UseFoundEntity( CBaseEntity *pUseEntity );
 	CBaseEntity*	FindUseEntity( void );
@@ -154,6 +167,9 @@ public:
 		VMatrix matUnroll; //sometimes the portals move/fizzle between an apply and an unroll. Store the undo matrix ahead of time
 	};
 	CUtlVector<PredictedPortalTeleportation_t> m_PredictedPortalTeleportations;
+	
+	float GetImplicitVerticalStepSpeed() const;
+	void SetImplicitVerticalStepSpeed( float speed );
 
 	void ForceDuckThisFrame( void );
 	void UnDuck ( void );
@@ -170,27 +186,67 @@ public:
 	void SetHeldObjectOnOppositeSideOfPortal( bool p_bHeldObjectOnOppositeSideOfPortal ) { m_bHeldObjectOnOppositeSideOfPortal = p_bHeldObjectOnOppositeSideOfPortal; }
 	bool IsHeldObjectOnOppositeSideOfPortal( void ) { return m_bHeldObjectOnOppositeSideOfPortal; }
 	CProp_Portal *GetHeldObjectPortal( void ) { return m_pHeldObjectPortal; }
-	void SetHeldObjectPortal( CProp_Portal *pPortal ) { m_pHeldObjectPortal = pPortal; }
+	void SetHeldObjectPortal( CProp_Portal *pPortal )
+	{
+		// What is calling this function?
+	//	Assert(!pPortal);
+		m_pHeldObjectPortal = pPortal; 
+	}
 	
 	IPhysicsObject *GetHeldPhysicsPortal(void) { return m_pHeldPhysicsPortal; }
 	void SetHeldPhysicsPortal( IPhysicsObject *pPhys ) { m_pHeldPhysicsPortal = pPhys; }
+	
+#if USEMOVEMENTFORPORTALLING
+
+	virtual void ApplyTransformToInterpolators( const VMatrix &matTransform, float fUpToTime, bool bIsRevertingPreviousTransform, bool bDuckForced );
+	
+	//single player doesn't predict portal teleportations. This is the call you'll receive when we determine the server portalled us.
+	virtual void ApplyUnpredictedPortalTeleportation( const C_Prop_Portal *pEnteredPortal, float flTeleportationTime, bool bForcedDuck );
+
+	//WARNING: predicted teleportations WILL need to be undone A LOT. Prediction rolls time forward and backward like mad. Optimally an apply then undo should revert to the starting state. But an easier and somewhat acceptable solution is to have an undo then (assumed) re-apply be a NOP.
+	virtual void ApplyPredictedPortalTeleportation( C_Prop_Portal *pEnteredPortal, CMoveData *pMove, bool bForcedDuck );
+	virtual void UndoPredictedPortalTeleportation( const C_Prop_Portal *pEnteredPortal, float fOriginallyAppliedTime, const VMatrix &matUndo, bool bDuckForced ); //fOriginallyAppliedTime is the value of gpGlobals->curtime when ApplyPredictedPortalTeleportation was called. Which will be in the future when this gets called
+
+	void UnrollPredictedTeleportations( int iCommandNumber ); //unroll all predicted teleportations at or after the target tick
+
+#endif
 
 	Activity TranslateActivity( Activity baseAct, bool *pRequired = NULL );
 	CWeaponPortalBase* GetActivePortalWeapon() const;
 
 	bool IsSuppressingCrosshair( void ) { return m_bSuppressingCrosshair; }
-
-	VMatrix GetPendingPortalMatrix() { return m_PendingPortalMatrix; }
-
-
+	
 	QAngle						m_qPrePortalledViewAngles;
 	bool						m_bFixEyeAnglesFromPortalling;
 	VMatrix						m_matLastPortalled;
 
 	int m_iCustomPortalColorSet;
 
+	CSoundPatch		*m_pWooshSound;
+	bool	m_bIntersectingPortalPlane;
+	
+	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
+	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
+
+	float GetLatestServerTeleport() { return m_fLatestServerTeleport; }
+	VMatrix GetLatestServerTeleportationInverseMatrix() { return m_matLatestServerTeleportationInverseMatrix; }
+
+protected:
+
+	virtual void	FireGameEvent( IGameEvent *event );
+
+	bool m_bShouldFixAngles;
+
+	QAngle m_qPrePortalledStoredAngles;
+	QAngle m_qPrePortalledStoredViewAngles;
+
 private:
 
+	bool m_bIsListenServerHost;
+
+	float m_fLatestServerTeleport;
+	VMatrix m_matLatestServerTeleportationInverseMatrix;
+	
 	C_Portal_Player( const C_Portal_Player & );
 
 	void UpdatePortalEyeInterpolation( void );
@@ -198,7 +254,13 @@ private:
 	CPortalPlayerAnimState *m_PlayerAnimState;
 
 	QAngle	m_angEyeAngles;
-	CInterpolatedVar< QAngle >	m_iv_angEyeAngles;
+	CDiscontinuousInterpolatedVar< QAngle >	m_iv_angEyeAngles;
+
+	CDiscontinuousInterpolatedVar< Vector > m_iv_vEyeOffset;
+	
+	float m_flImplicitVerticalStepSpeed;	// When moving with step code, the player has an implicit vertical
+											// velocity that keeps her on ramps, steps, etc. We need this to
+											// correctly transform her velocity when she teleports.
 
 	virtual IRagdoll		*GetRepresentativeRagdoll() const;
 	EHANDLE	m_hRagdoll;
@@ -269,6 +331,12 @@ private:
 
 	bool m_bToolMode_EyeHasPortalled_LastRecord; //when recording, keep track of whether we teleported the camera position last capture or not. Need to avoid interpolating when switching
 
+	Vector m_vEyeOffset;
+	
+	// stick camera
+	void RotateUpVector( Vector& vForward, Vector& vUp );
+	void SnapCamera( bool bLookingInBadDirection );
+	void PostTeleportationCameraFixup( const C_Prop_Portal *pEnteredPortal );
 
 public:
 

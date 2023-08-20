@@ -36,6 +36,7 @@
 #include "portal_gamerules.h"
 #include "doors.h"
 #include "trains.h"
+#include "point_ping_linker.h"
 
 extern CBaseEntity* g_pLastSpawn;
 
@@ -172,6 +173,13 @@ DEFINE_FIELD(m_vecRagdollVelocity, FIELD_VECTOR),
 
 END_DATADESC()
 
+enum
+{
+	MODEL_CHELL,
+	MODEL_MEL,
+	MODEL_ABBY,
+	MODEL_MALE_PORTAL_PLAYER
+};
 
 const char *g_ppszPortalMPModels[] =
 {
@@ -180,9 +188,6 @@ const char *g_ppszPortalMPModels[] =
 	"models/player/Abby.mdl",
 	"models/player/male_portal_player.mdl"
 };
-
-
-
 
 LINK_ENTITY_TO_CLASS(player, CPortal_Player);
 
@@ -210,8 +215,6 @@ SendPropAngle(SENDINFO_VECTORELEM(m_angEyeAngles, 0), 11, SPROP_CHANGES_OFTEN),
 SendPropAngle(SENDINFO_VECTORELEM(m_angEyeAngles, 1), 11, SPROP_CHANGES_OFTEN),
 SendPropEHandle(SENDINFO(m_hRagdoll)),
 SendPropInt(SENDINFO(m_iSpawnInterpCounter), 4),
-SendPropBool(SENDINFO(m_bHeldObjectOnOppositeSideOfPortal)),
-SendPropEHandle(SENDINFO(m_pHeldObjectPortal)),
 SendPropBool(SENDINFO(m_bPitchReorientation)),
 SendPropEHandle(SENDINFO(m_hPortalEnvironment)),
 SendPropEHandle(SENDINFO(m_hSurroundingLiquidPortal)),
@@ -219,6 +222,7 @@ SendPropBool(SENDINFO(m_bHasSprintDevice)),
 SendPropBool(SENDINFO(m_bSprintEnabled)),
 SendPropBool(SENDINFO(m_bSilentDropAndPickup)),
 SendPropBool(SENDINFO(m_bSuppressingCrosshair)),
+SendPropBool(SENDINFO(m_bIsListenServerHost)),
 SendPropInt(SENDINFO(m_iCustomPortalColorSet)),
 
 END_SEND_TABLE()
@@ -228,14 +232,16 @@ BEGIN_DATADESC(CPortal_Player)
 DEFINE_SOUNDPATCH(m_pWooshSound),
 
 	DEFINE_FIELD(m_bHeldObjectOnOppositeSideOfPortal, FIELD_BOOLEAN),
-	DEFINE_FIELD(m_pHeldObjectPortal, FIELD_EHANDLE),
 	DEFINE_FIELD(m_bIntersectingPortalPlane, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_bStuckOnPortalCollisionObject, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_fTimeLastHurt, FIELD_TIME),
+
+#if 0
 	DEFINE_FIELD(m_StatsThisLevel.iNumPortalsPlaced, FIELD_INTEGER),
 	DEFINE_FIELD(m_StatsThisLevel.iNumStepsTaken, FIELD_INTEGER),
 	DEFINE_FIELD(m_StatsThisLevel.fNumSecondsTaken, FIELD_FLOAT),
-	DEFINE_FIELD(m_fTimeLastNumSecondsUpdate, FIELD_TIME),
+#endif
+
 	DEFINE_FIELD(m_bPitchReorientation, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_bIsRegenerating, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_fNeuroToxinDamageTime, FIELD_TIME),
@@ -288,6 +294,7 @@ ConVar sv_portal_coop_ping_indicator_show_to_all_players( "sv_portal_coop_ping_i
 ConVar sv_portal_coop_allow_ping("sv_portal_coop_allow_ping", "1", FCVAR_REPLICATED, "Sets if players are allowed to ping");
 
 #define COOP_PING_SOUNDSCRIPT_NAME "Player.Coop_Ping"
+#define COOP_PING_HUD_SOUNDSCRIPT_NAME "npc/roller/mine/rmine_chirp_answer1.wav"
 //#define COOP_PING_PARTICLE_NAME "command_target_ping"
 #define COOP_PING_PARTICLE_NAME_ORANGE "command_target_ping_orange"
 #define COOP_PING_PARTICLE_NAME_RED "command_target_ping_red"
@@ -314,7 +321,7 @@ CPortal_Player::CPortal_Player()
 	m_iSpawnInterpCounter = 0;
 
 	m_bHeldObjectOnOppositeSideOfPortal = false;
-	m_pHeldObjectPortal = 0;
+	m_pHeldObjectPortal = NULL;
 
 	m_bIntersectingPortalPlane = false;
 
@@ -323,6 +330,8 @@ CPortal_Player::CPortal_Player()
 	m_bSilentDropAndPickup = false;
 
 	m_flLastPingTime = 0.0f;
+	
+	m_flImplicitVerticalStepSpeed = 0.0f;
 	
 	m_iszExpressionScene = NULL_STRING;
 	m_hExpressionSceneEnt = NULL;
@@ -392,6 +401,7 @@ void CPortal_Player::CreateSounds()
 		CSoundEnvelopeController& controller = CSoundEnvelopeController::GetController();
 
 		CPASAttenuationFilter filter(this);
+		filter.UsePredictionRules();
 
 		m_pWooshSound = controller.SoundCreate(filter, entindex(), "PortalPlayer.Woosh");
 		controller.Play(m_pWooshSound, 0, 100);
@@ -506,6 +516,8 @@ void CPortal_Player::Spawn(void)
 
 	SetPlayerUnderwater(false);
 
+	m_bIsListenServerHost = ( this == UTIL_GetListenServerHost() );
+
 //	HudHintThink();
 	
 #ifdef PORTAL_MP
@@ -518,7 +530,6 @@ void CPortal_Player::Activate(void)
 	BaseClass::Activate();
 	//SetContextThink(&CPortal_Player::HudHintThink, gpGlobals->curtime + 10, s_pHudHintContext);
 	//SetNextThink(gpGlobals->curtime + 10.0f);
-	m_fTimeLastNumSecondsUpdate = gpGlobals->curtime;
 }
 
 void CPortal_Player::NotifySystemEvent(CBaseEntity* pNotify, notify_system_event_t eventType, const notify_system_event_params_t& params)
@@ -612,6 +623,8 @@ void CPortal_Player::SetPlayerModel(void)
 	ResetAnimation();
 	m_PlayerAnimState = CreatePortalPlayerAnimState(this);
 	ResetAnimation();
+
+	UpdateExpression();
 }
 void CPortal_Player::ResetAnimation(void)
 {
@@ -642,45 +655,74 @@ bool CPortal_Player::Weapon_Switch(CBaseCombatWeapon* pWeapon, int viewmodelinde
 	return bRet;
 }
 
+int CPortal_Player::GetPlayerConcept( void )
+{
+	string_t iszPlayerModel = GetModelName();
+	
+	if (!strcmp(iszPlayerModel.ToCStr(), g_ppszPortalMPModels[MODEL_CHELL])) // Chell
+		return CONCEPT_CHELL_IDLE;
+	else if (!strcmp(iszPlayerModel.ToCStr(), g_ppszPortalMPModels[MODEL_MEL])) // Mel
+	{
+		if ( GlobalEntity_GetState("pcoop_escape_expressions") == GLOBAL_ON )
+		{
+			return CONCEPT_MEL_ESCAPE_IDLE; // We don't want Mel smiling when she's entering a fire pit or escaping
+		}
+		else
+		{
+			return CONCEPT_MEL_IDLE;
+		}
+	}
+	else if (!strcmp(iszPlayerModel.ToCStr(), g_ppszPortalMPModels[MODEL_ABBY])) // Abby
+		return CONCEPT_ABBY_IDLE;
+	else if (!strcmp(iszPlayerModel.ToCStr(), g_ppszPortalMPModels[MODEL_MALE_PORTAL_PLAYER])) // male_portal_player
+		return CONCEPT_MALE_PORTAL_PLAYER_IDLE;
+
+	return CONCEPT_CHELL_IDLE;
+
+}
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CPortal_Player::UpdateExpression( void )
 {
-    if ( !m_pExpresser )
-        return;
+	if ( !m_pExpresser )
+	{
+		if (this != UTIL_GetListenServerHost())
+			Warning("!m_pExpresser\n");
+		return;
+	}
 
-    int iConcept = CONCEPT_CHELL_IDLE;
-    if ( GetHealth() <= 0 )
-    {
-        iConcept = CONCEPT_CHELL_DEAD;
-    }
+	int iConcept = GetPlayerConcept();
+	if ( IsDead() )
+	{
+		iConcept = CONCEPT_PLAYER_DEAD;
+	}
 
-    GetExpresser()->SetOuter( this );
+	GetExpresser()->SetOuter( this );
 
-    ClearExpression();
-    AI_Response response;
-    bool result = SpeakFindResponse( response, g_pszChellConcepts[iConcept] );
-    if ( !result )
-    {
-        m_flExpressionLoopTime = gpGlobals->curtime + RandomFloat(30,40);
-        return;
-    }
+	ClearExpression();
+	AI_Response response;
+	bool result = SpeakFindResponse( response, g_pszPortalPlayerConcepts[iConcept] );
+	if ( !result )
+	{
+		m_flExpressionLoopTime = gpGlobals->curtime + RandomFloat(30,40);
+		return;
+	}
 
-    char const *szScene = response.GetResponsePtr();
+	char const *szScene = response.GetResponsePtr();
 
-    // Ignore updates that choose the same scene
-    if ( m_iszExpressionScene != NULL_STRING && stricmp( STRING(m_iszExpressionScene), szScene ) == 0 )
-        return;
+	// Ignore updates that choose the same scene
+	if ( m_iszExpressionScene != NULL_STRING && stricmp( STRING(m_iszExpressionScene), szScene ) == 0 )
+		return;
 
-    if ( m_hExpressionSceneEnt )
-    {
-        ClearExpression();
-    }
+	if ( m_hExpressionSceneEnt )
+	{
+		ClearExpression();
+	}
 
-    m_iszExpressionScene = AllocPooledString( szScene );
-    float flDuration = InstancedScriptedScene( this, szScene, &m_hExpressionSceneEnt, 0.0, true, NULL );
-    m_flExpressionLoopTime = gpGlobals->curtime + flDuration;
+	m_iszExpressionScene = AllocPooledString( szScene );
+	float flDuration = InstancedScriptedScene( this, szScene, &m_hExpressionSceneEnt, 0.0, true, NULL );
+	m_flExpressionLoopTime = gpGlobals->curtime + flDuration;
 }
 
 //-----------------------------------------------------------------------------
@@ -695,6 +737,8 @@ void CPortal_Player::ClearExpression(void)
 	m_flExpressionLoopTime = gpGlobals->curtime;
 }
 
+#define PINGTIME 3.0
+
 void CPortal_Player::PlayCoopPingEffect( void )
 {		
 	if (m_bPingHudHint)
@@ -708,17 +752,22 @@ void CPortal_Player::PlayCoopPingEffect( void )
 	AngleVectors( EyeAngles(), &vecForward );
 	// Hit anything they can 'see' thats directly down their crosshair
 	trace_t tr;
-	Ray_t ray;
-	ray.Init( EyePosition(), EyePosition() + vecForward*MAX_COORD_FLOAT );
-	bool bPortalBulletTrace = g_bBulletPortalTrace;
-	g_bBulletPortalTrace = true;
 
 	CTraceFilterSimpleClassnameList traceFilter( this, COLLISION_GROUP_NONE );
 	traceFilter.AddClassnameToIgnore( "player" );
 	traceFilter.AddClassnameToIgnore( "prop_energy_ball" );
 	traceFilter.AddClassnameToIgnore( "prop_combine_ball" );
+#if 0
+	bool bPortalBulletTrace = g_bBulletPortalTrace;
+	g_bBulletPortalTrace = true;
+	Ray_t ray;
+	ray.Init( EyePosition(), EyePosition() + vecForward*MAX_COORD_FLOAT );
 	UTIL_Portal_TraceRay( ray, MASK_OPAQUE_AND_NPCS, &traceFilter, &tr );
 	g_bBulletPortalTrace = bPortalBulletTrace;
+#else
+	UTIL_TraceLine( EyePosition(), EyePosition() + vecForward*MAX_COORD_FLOAT, MASK_OPAQUE_AND_NPCS, &traceFilter, &tr );
+#endif
+
 	if ( tr.DidHit() )
 	{
 		IGameEvent *event = gameeventmanager->CreateEvent( "portal_player_ping" );
@@ -754,40 +803,93 @@ void CPortal_Player::PlayCoopPingEffect( void )
 		{
 			iLinkageGroupID = pPortalgun->m_iPortalColorSet;
 
-			if (iLinkageGroupID == 1)
-			{
+			if ( iLinkageGroupID == 1 )
 				vColor = Vector(0.6, 0, 1.0); // 153 0 255
-			}
-			else if (iLinkageGroupID == 2)
-			{
+			else if ( iLinkageGroupID == 2 )
 				vColor = Vector(1.0, 0, 0); // 255 0 0
-			}
-			else if (iLinkageGroupID == 3)
-			{
+			else if ( iLinkageGroupID == 3 )
 				vColor = Vector(0.0, 255, 0); // 0 255 0
-			}
 		}
 
+		Ray_t ray;
+		ray.Init( tr.startpos, tr.endpos );
+
+		float flMustBeCloserThan = 2.0f;
+
+		CProp_Portal *pPortal = UTIL_Portal_FirstAlongRayAll( ray , flMustBeCloserThan );
+		
 		CBaseAnimating *pAnimating = dynamic_cast<CBaseAnimating*>(tr.m_pEnt);
+
+		const char* pszAnimatingName = NULL;
+		
+		if (pAnimating)
+			pszAnimatingName = pAnimating->GetClassname();
+
+		CPointPingLinker *pPingLinker = NULL;
+
+		//Find a ping linker to use
+		for (int i = 1; i <= 1024; i++)
+		{
+			//CBaseEntity *pTempEnt = UTIL_EntityByIndex(i);
+			
+			pPingLinker = dynamic_cast<CPointPingLinker*>(UTIL_EntityByIndex(i));
+
+			if (!pPingLinker)
+				continue;
+			
+			if (pPingLinker->HasThisEntity(pAnimating))
+				break;
+
+		}
 		
 		bool bShouldCreateCrosshair = true;
-
+		
 		if (pAnimating)
 		{
-			if (PingChildrenOfParentEntity(pAnimating, vColor))
+			if (PingChildrenOfChildParent(pAnimating, vColor))
 			{
 				EmitSound( COOP_PING_SOUNDSCRIPT_NAME );
 				return;
 			}
 
-			if (pAnimating->m_bGlowEnabled)
+			if (pPingLinker)
 			{
-				pAnimating->RemoveGlowEffect();
-				m_bGlowEnabled.Set(false);
+				pPingLinker->PingLinkedEntities( PINGTIME, vColor, this, COOP_PING_HUD_SOUNDSCRIPT_NAME );
 			}
-			pAnimating->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-			pAnimating->AddGlowTime(gpGlobals->curtime);
-			pAnimating->RemoveGlowTime(gpGlobals->curtime + 3);
+			else
+			{
+				if (pAnimating->m_bGlowEnabled)
+				{
+					pAnimating->RemoveGlowEffect();
+				}
+
+				pAnimating->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
+				pAnimating->AddGlowTime(gpGlobals->curtime);
+				pAnimating->RemoveGlowTime(PINGTIME);
+
+				
+				//if (bResult)
+				{
+					IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
+					if ( pEvent )
+					{
+						Vector location = pAnimating->GetAbsOrigin();
+
+						pEvent->SetString( "text", "Ping!" );
+					
+						pEvent->SetFloat( "worldPosX", location.x );
+						pEvent->SetFloat( "worldPosY", location.y );
+						pEvent->SetFloat( "worldPosZ", location.z );
+						pEvent->SetFloat( "lifetime", PINGTIME );
+						pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
+						pEvent->SetInt( "follow_entindex", pAnimating->entindex() );
+						pEvent->SetInt( "owner_entindex", entindex() );
+						pEvent->SetInt( "id", entindex() ); // 1 annotation per player
+
+						gameeventmanager->FireEvent( pEvent );
+					}
+				}
+			}
 
 			/*
 			CPhysicsShadowCloneLL *pClones = CPhysicsShadowClone::GetClonesOfEntity(pAnimating);
@@ -799,65 +901,44 @@ void CPortal_Player::PlayCoopPingEffect( void )
 				if (pClone->m_bGlowEnabled)
 				{
 					pClone->RemoveGlowEffect();
-					pClone->m_bGlowEnabled.Set(false);
 				}
 
 				pClone->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
 				pClone->AddGlowEffect();
-				pClone->RemoveGlowTime(gpGlobals->curtime + 3);
+				pClone->RemoveGlowTime(PINGTIME);
 
 				pClones = pClones->pNext;
 			}
 			*/
 			bShouldCreateCrosshair = false;
 		}
-		else if (!pAnimating)
+		else if ( !pAnimating && pPortal )
 		{
-			CBaseDoor *pDoor = dynamic_cast<CBaseDoor*>(tr.m_pEnt);
-			CFuncTrackTrain *pTrain = dynamic_cast<CFuncTrackTrain*>(tr.m_pEnt);
-
-			if (pDoor)
+			
+			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
+			if ( pEvent )
 			{
-				for (int i = 1; i <= 1024; ++i)
-				{
-					CBaseAnimating *pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
+				Vector location = pPortal->GetAbsOrigin();
 
-					if (pChild && pChild->GetParent() == pDoor)
-					{						
-						if (pChild->m_bGlowEnabled)
-						{
-							pChild->RemoveGlowEffect();
-							m_bGlowEnabled.Set(false);
-						}
-
-						pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-						pChild->AddGlowTime(gpGlobals->curtime);
-						pChild->RemoveGlowTime(gpGlobals->curtime + 3);
-						bShouldCreateCrosshair = false;
-					}
-				}
+				pEvent->SetString( "text", "Ping!" );
+					
+				pEvent->SetFloat( "worldPosX", location.x );
+				pEvent->SetFloat( "worldPosY", location.y );
+				pEvent->SetFloat( "worldPosZ", location.z );
+				pEvent->SetFloat( "lifetime", PINGTIME );
+				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
+				pEvent->SetInt( "follow_entindex", pPortal->entindex() );
+				pEvent->SetInt( "owner_entindex", entindex() );
+				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
+					
+				gameeventmanager->FireEvent( pEvent );
 			}
-			else if (pTrain)
-			{
-				for (int i = 1; i <= 1024; ++i)
-				{
-					CBaseAnimating *pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
-
-					if (pChild && pChild->GetParent() == pTrain)
-					{
-						if (pChild->m_bGlowEnabled)
-						{
-							pChild->RemoveGlowEffect();
-							m_bGlowEnabled.Set(false);
-						}
-
-						pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-						pChild->AddGlowTime(gpGlobals->curtime);
-						pChild->RemoveGlowTime(gpGlobals->curtime + 3);
-						bShouldCreateCrosshair = false;
-					}
-				}
-			}
+			
+			bShouldCreateCrosshair = false;
+		}
+		else if ( !pAnimating && !pPortal )
+		{
+			bShouldCreateCrosshair = PingChildrenOfEntity( tr, vColor, bShouldCreateCrosshair );
 		}
 
 		if (bShouldCreateCrosshair)
@@ -870,6 +951,26 @@ void CPortal_Player::PlayCoopPingEffect( void )
 				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_GREEN, tr.endpos, angNormal, this );
 			else
 				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_ORANGE, tr.endpos, angNormal, this );
+
+			
+			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
+			if ( pEvent )
+			{
+				Vector location = tr.endpos;
+
+				pEvent->SetString( "text", "Ping!" );
+			
+				pEvent->SetFloat( "worldPosX", location.x );
+				pEvent->SetFloat( "worldPosY", location.y );
+				pEvent->SetFloat( "worldPosZ", location.z );
+				pEvent->SetFloat( "lifetime", PINGTIME );
+				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
+				pEvent->SetInt( "owner_entindex", entindex() );
+				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
+				
+
+				gameeventmanager->FireEvent( pEvent );
+			}
 		}
 
 		EmitSound( COOP_PING_SOUNDSCRIPT_NAME );
@@ -887,11 +988,12 @@ void CPortal_Player::PlayCoopPingEffect( void )
 		MessageEnd();
 #endif
 	}
+#if 0 // This doesn't seem to be useful
 	else
 	{
 		Warning( "Attempted to ping for player, but trace failed to hit anything.\n" );
 	}
-
+#endif
 	// Note this in the player proxy
 	FirePlayerProxyOutput( "OnCoopPing", variant_t(), this, this );
 }
@@ -900,7 +1002,7 @@ void CPortal_Player::PlayCoopPingEffect( void )
 // Purpose: Ping all of my siblings
 // TODO: Does this need to be a member function?
 //-----------------------------------------------------------------------------
-bool CPortal_Player::PingChildrenOfParentEntity( CBaseAnimating *pAnimating, Vector vColor )
+bool CPortal_Player::PingChildrenOfChildParent( CBaseAnimating *pAnimating, Vector vColor )
 {
 	if (!pAnimating)
 		return false;
@@ -911,7 +1013,7 @@ bool CPortal_Player::PingChildrenOfParentEntity( CBaseAnimating *pAnimating, Vec
 
 	CBaseDoor *pDoor = dynamic_cast<CBaseDoor *>(pAnimating->GetParent());
 	CFuncTrackTrain *pTrain = dynamic_cast<CFuncTrackTrain*>(pAnimating->GetParent());
-
+	
 	if (pDoor)
 	{
 		for (int i = 1; i <= 1024; ++i)
@@ -928,8 +1030,31 @@ bool CPortal_Player::PingChildrenOfParentEntity( CBaseAnimating *pAnimating, Vec
 
 				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
 				pChild->AddGlowTime(gpGlobals->curtime);
-				pChild->RemoveGlowTime(gpGlobals->curtime + 3);
+				pChild->RemoveGlowTime(PINGTIME);
 				bResult = true;
+			}
+		}
+
+		if (bResult)
+		{
+			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
+			if ( pEvent )
+			{
+				Vector location = pDoor->GetAbsOrigin();
+
+				pEvent->SetString( "text", "Ping!" );
+			
+				pEvent->SetFloat( "worldPosX", location.x );
+				pEvent->SetFloat( "worldPosY", location.y );
+				pEvent->SetFloat( "worldPosZ", location.z );
+				pEvent->SetFloat( "lifetime", PINGTIME );
+				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
+				pEvent->SetInt( "owner_entindex", entindex() );
+				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
+				
+				pEvent->SetInt( "follow_entindex", pDoor->entindex() );
+
+				gameeventmanager->FireEvent( pEvent );
 			}
 		}
 	}
@@ -949,13 +1074,202 @@ bool CPortal_Player::PingChildrenOfParentEntity( CBaseAnimating *pAnimating, Vec
 
 				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
 				pChild->AddGlowTime(gpGlobals->curtime);
-				pChild->RemoveGlowTime(gpGlobals->curtime + 3);
+				pChild->RemoveGlowTime(PINGTIME);
 				bResult = true;
+			}
+		}
+		
+		if (bResult)
+		{
+			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
+			if ( pEvent )
+			{
+				Vector location = pTrain->GetAbsOrigin();
+
+				pEvent->SetString( "text", "Ping!" );
+			
+				pEvent->SetFloat( "worldPosX", location.x );
+				pEvent->SetFloat( "worldPosY", location.y );
+				pEvent->SetFloat( "worldPosZ", location.z );
+				pEvent->SetFloat( "lifetime", PINGTIME );
+				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
+				pEvent->SetInt( "owner_entindex", entindex() );
+				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
+				pEvent->SetInt( "follow_entindex", pTrain->entindex() );
+				
+
+				gameeventmanager->FireEvent( pEvent );
 			}
 		}
 	}
 
 	return bResult;
+}
+
+bool CPortal_Player::PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bShouldCreateCrosshair )
+{
+
+	bool bTempShouldCreateCrosshair = bShouldCreateCrosshair;
+
+	CBaseDoor *pDoor = dynamic_cast<CBaseDoor*>(tr.m_pEnt);
+	CFuncTrackTrain *pTrain = dynamic_cast<CFuncTrackTrain*>(tr.m_pEnt);
+
+		
+	if (pDoor)
+	{
+		CBaseAnimating *pChild = NULL;
+		CBaseAnimating *pChildForLinker = NULL;
+		CPointPingLinker *pPingLinker = NULL;
+
+		bool bShouldGetChild = true;
+
+		for (int i = 1; i <= 1024; ++i)
+		{
+			pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
+			
+			if (pChild && pChild->GetParent() == pDoor)
+			{						
+				if (pChild->m_bGlowEnabled)
+				{
+					pChild->RemoveGlowEffect();
+				}
+
+				if (bShouldGetChild)
+				{
+					pChildForLinker = pChild;
+					bShouldGetChild = false;
+				}
+
+				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
+				pChild->AddGlowTime(gpGlobals->curtime);
+				pChild->RemoveGlowTime(PINGTIME);
+				bTempShouldCreateCrosshair = false;
+			}
+		}
+
+		//Find a ping linker to use
+		for (int i = 1; i <= 1024; i++)
+		{
+			//CBaseEntity *pTempEnt = UTIL_EntityByIndex(i);
+
+			pPingLinker = dynamic_cast<CPointPingLinker*>(UTIL_EntityByIndex(i));
+
+			if (!pPingLinker)
+				continue;
+
+			if (pPingLinker->HasThisEntity(pChildForLinker))
+				break;
+
+		}
+
+		if (pPingLinker)
+		{
+			pPingLinker->PingLinkedEntities( PINGTIME, vColor, this, COOP_PING_HUD_SOUNDSCRIPT_NAME );
+		}
+
+		if (!pPingLinker) // Ping Linkers fire their own events
+		{
+			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
+			if ( pEvent )
+			{
+				Vector location;
+
+				location = pDoor->GetAbsOrigin();
+
+				pEvent->SetString( "text", "Ping!" );
+		
+				pEvent->SetFloat( "worldPosX", location.x );
+				pEvent->SetFloat( "worldPosY", location.y );
+				pEvent->SetFloat( "worldPosZ", location.z );
+				pEvent->SetFloat( "lifetime", PINGTIME );
+				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
+				pEvent->SetInt( "owner_entindex", entindex() );
+				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
+				pEvent->SetInt( "follow_entindex", pDoor->entindex() );
+
+				gameeventmanager->FireEvent( pEvent );
+			}
+		}
+	}
+	else if (pTrain)
+	{
+		CBaseAnimating *pChild = NULL;
+		CBaseAnimating *pChildForLinker = NULL;
+		CPointPingLinker *pPingLinker = NULL;
+
+		bool bShouldGetChild = true;
+
+		for (int i = 1; i <= 1024; ++i)
+		{
+			pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
+			
+			if (pChild && pChild->GetParent() == pTrain)
+			{						
+				if (pChild->m_bGlowEnabled)
+				{
+					pChild->RemoveGlowEffect();
+				}
+
+				if (bShouldGetChild)
+				{
+					pChildForLinker = pChild;
+					bShouldGetChild = false;
+				}
+
+				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
+				pChild->AddGlowTime(gpGlobals->curtime);
+				pChild->RemoveGlowTime(PINGTIME);
+				bTempShouldCreateCrosshair = false;
+			}
+		}
+
+		//Find a ping linker to use
+		for (int i = 1; i <= 1024; i++)
+		{
+			//CBaseEntity *pTempEnt = UTIL_EntityByIndex(i);
+
+			pPingLinker = dynamic_cast<CPointPingLinker*>(UTIL_EntityByIndex(i));
+
+			if (!pPingLinker)
+				continue;
+
+			if (pPingLinker->HasThisEntity(pChildForLinker))
+				break;
+
+		}
+
+		if (pPingLinker)
+		{
+			pPingLinker->PingLinkedEntities( PINGTIME, vColor, this, COOP_PING_HUD_SOUNDSCRIPT_NAME );
+		}
+
+		if (!pPingLinker) // Ping Linkers fire their own events
+		{
+			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
+			if ( pEvent )
+			{
+				Vector location;
+
+				location = pTrain->GetAbsOrigin();
+
+				pEvent->SetString( "text", "Ping!" );
+		
+				pEvent->SetFloat( "worldPosX", location.x );
+				pEvent->SetFloat( "worldPosY", location.y );
+				pEvent->SetFloat( "worldPosZ", location.z );
+				pEvent->SetFloat( "lifetime", PINGTIME );
+				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
+				pEvent->SetInt( "owner_entindex", entindex() );
+				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
+				pEvent->SetInt( "follow_entindex", pTrain->entindex() );
+
+				gameeventmanager->FireEvent( pEvent );
+			}
+		}
+	}
+
+	return bTempShouldCreateCrosshair;
+
 }
 
 void CPortal_Player::PreThink(void)
@@ -1182,9 +1496,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 	{
 		Vector vVelocity = GetAbsVelocity();
 		//GetVelocity(&vVelocity, NULL);
-#ifdef DEBUG
-		Msg("Velocity: %f, %f, %f\n", vVelocity[0], vVelocity[1], vVelocity[2]);
-#endif
+
 		if (!vVelocity.IsZero())
 		{
 			Vector vMin, vMax;
@@ -1202,6 +1514,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 					m_bIntersectingPortalPlane = true;
 
 					CPASAttenuationFilter filter(this);
+					//filter.UsePredictionRules();
 					CSoundParameters params;
 					if (GetParametersForSound("PortalPlayer.EnterPortal", params, NULL))
 					{
@@ -1222,6 +1535,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 					m_bIntersectingPortalPlane = false;
 
 					CPASAttenuationFilter filter(this);
+					//filter.UsePredictionRules();
 					CSoundParameters params;
 					if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
 					{
@@ -1240,6 +1554,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 		m_bIntersectingPortalPlane = false;
 
 		CPASAttenuationFilter filter(this);
+		//filter.UsePredictionRules();
 		CSoundParameters params;
 		if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
 		{
@@ -1784,9 +2099,7 @@ extern void CommentarySystem_PePlayerRunCommand( CBasePlayer *player, CUserCmd *
 
 void CPortal_Player::PlayerRunCommand(CUserCmd* ucmd, IMoveHelper* moveHelper)
 {
-
-	//CommentarySystem_PePlayerRunCommand( this, &m_LastCmd );
-	
+#if 1
 	if (m_bFixEyeAnglesFromPortalling)
 	{
 		//the idea here is to handle the notion that the player has portalled, but they sent us an angle update before receiving that message.
@@ -1804,7 +2117,8 @@ void CPortal_Player::PlayerRunCommand(CUserCmd* ucmd, IMoveHelper* moveHelper)
 
 		m_bFixEyeAnglesFromPortalling = false;
 	}
-	
+#endif
+
 	BaseClass::PlayerRunCommand(ucmd, moveHelper);
 }
 
@@ -2157,16 +2471,6 @@ void CPortal_Player::ForceDropOfCarriedPhysObjects(CBaseEntity* pOnlyIfHoldingTh
 	BaseClass::ForceDropOfCarriedPhysObjects(pOnlyIfHoldingThis);
 }
 
-void CPortal_Player::ResetThisLevelStats(void)
-{
-	m_StatsThisLevel.iNumPortalsPlaced = 0;
-	m_StatsThisLevel.iNumStepsTaken = 0;
-	m_StatsThisLevel.fNumSecondsTaken = 0.0f;
-
-	if (m_iBonusChallenge != PORTAL_CHALLENGE_NONE)
-		SetBonusProgress(0);
-}
-
 
 //-----------------------------------------------------------------------------
 // Purpose: Update the area bits variable which is networked down to the client to determine
@@ -2353,13 +2657,13 @@ CBaseEntity* CPortal_Player::EntSelectSpawnPoint(void)
 	{
 	pSpawnpointName = "info_player_rebel";
 	pLastSpawnPoint = g_pLastRebelSpawn;
-	}
-	if ( gEntList.FindEntityByClassname( NULL, pSpawnpointName ) == NULL )
-	{
-	pSpawnpointName = "info_player_deathmatch";
-	pLastSpawnPoint = g_pLastSpawn;
-	}
 	}*/
+		if ( gEntList.FindEntityByClassname( NULL, pSpawnpointName ) == NULL )
+		{
+			pSpawnpointName = "info_player_deathmatch";
+			pLastSpawnPoint = g_pLastSpawn;
+		}
+	//}
 
 	pSpot = pLastSpawnPoint;
 	// Randomize the start spot
@@ -2458,6 +2762,74 @@ void CPortal_Player::PickTeam(void)
 
 #endif
 
+void CPortal_Player::ApplyPortalTeleportation( const CProp_Portal *pEnteredPortal, CMoveData *pMove )
+{
+#if PLAYERPORTALDEBUGSPEW == 1
+	Warning( "SERVER CPortal_Player::ApplyPortalTeleportation( %f %i )\n", gpGlobals->curtime, m_pCurrentCommand->command_number );
+#endif
+
+	//catalog the pending transform
+	{
+		RecentPortalTransform_t temp;
+		temp.command_number = GetCurrentUserCommand()->command_number;
+		temp.Portal = pEnteredPortal;
+		temp.matTransform = pEnteredPortal->m_matrixThisToLinked.As3x4();
+
+		m_PendingPortalTransforms.AddToTail( temp );
+
+		//prune the pending transforms so it doesn't get ridiculously huge if the client stops responding while in an infinite fall or something
+		while( m_PendingPortalTransforms.Count() > 64 )
+		{
+			m_PendingPortalTransforms.Remove( 0 );
+		}
+	}
+
+	CBaseEntity *pHeldEntity = GetPlayerHeldEntity( this );
+	if ( pHeldEntity )
+	{
+		ToggleHeldObjectOnOppositeSideOfPortal();
+		SetHeldObjectPortal( IsHeldObjectOnOppositeSideOfPortal() ? pEnteredPortal->m_hLinkedPortal.Get() : NULL );
+	}
+
+	//transform m_PlayerAnimState yaws
+	m_PlayerAnimState->TransformYAWs( pEnteredPortal->m_matrixThisToLinked.As3x4() );
+
+	for ( int i = 0; i < MAX_VIEWMODELS; i++ )
+	{
+		CBaseViewModel *pViewModel = GetViewModel( i );
+		if ( !pViewModel )
+			continue;
+
+		pViewModel->m_vecLastFacing = pEnteredPortal->m_matrixThisToLinked.ApplyRotation( pViewModel->m_vecLastFacing );
+	}
+
+	//physics transform
+	{
+		SetVCollisionState( pMove->GetAbsOrigin(), pMove->m_vecVelocity, IsDucked() ? VPHYS_CROUCH : VPHYS_WALK );
+	}
+
+	//transform local velocity
+	{
+		//Vector vTransformedLocalVelocity;
+		//VectorRotate( GetAbsVelocity(), pEnteredPortal->m_matrixThisToLinked.As3x4(), vTransformedLocalVelocity );
+		//SetAbsVelocity( vTransformedLocalVelocity );
+		SetAbsVelocity( pMove->m_vecVelocity );
+	}
+
+	//transform base velocity
+	{
+		Vector vTransformedBaseVelocity;
+		VectorRotate( GetBaseVelocity(), pEnteredPortal->m_matrixThisToLinked.As3x4(), vTransformedBaseVelocity );
+		SetBaseVelocity( vTransformedBaseVelocity );
+	}
+
+	CollisionRulesChanged();
+	
+	PostTeleportationCameraFixup( pEnteredPortal );
+	m_bFixEyeAnglesFromPortalling = true;
+
+}
+
 CON_COMMAND(startadmiregloves, "Starts the admire gloves animation.")
 {
 	CPortal_Player* pPlayer = (CPortal_Player*)UTIL_GetCommandClient();
@@ -2470,16 +2842,11 @@ CON_COMMAND(startadmiregloves, "Starts the admire gloves animation.")
 
 CON_COMMAND(displayportalplayerstats, "Displays current level stats for portals placed, steps taken, and seconds taken.")
 {
-	CPortal_Player* pPlayer = (CPortal_Player*)UTIL_GetCommandClient();
-	if (pPlayer == NULL)
-		pPlayer = GetPortalPlayer(1); //last ditch effort
-
-	if (pPlayer)
 	{
-		int iMinutes = static_cast<int>(pPlayer->NumSecondsTaken() / 60.0f);
-		int iSeconds = static_cast<int>(pPlayer->NumSecondsTaken()) % 60;
+		int iMinutes = static_cast<int>(PortalGameRules()->NumSecondsTaken() / 60.0f);
+		int iSeconds = static_cast<int>(PortalGameRules()->NumSecondsTaken()) % 60;
 
 		CFmtStr msg;
-		NDebugOverlay::ScreenText(0.5f, 0.5f, msg.sprintf("Portals Placed: %d\nSteps Taken: %d\nTime: %d:%d", pPlayer->NumPortalsPlaced(), pPlayer->NumStepsTaken(), iMinutes, iSeconds), 255, 255, 255, 150, 5.0f);
+		NDebugOverlay::ScreenText(0.5f, 0.5f, msg.sprintf("Portals Placed: %d\nSteps Taken: %d\nTime: %d:%d", PortalGameRules()->NumPortalsPlaced(), PortalGameRules()->NumStepsTaken(), iMinutes, iSeconds), 255, 255, 255, 150, 5.0f);
 	}
 }

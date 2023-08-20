@@ -68,5 +68,8 @@ public:
 	
 	virtual QAngle	PreferredCarryAngles( void ) { return QAngle( 180, -90, 180 ); }
 	virtual bool	HasPreferredCarryAnglesForPlayer( CBasePlayer *pPlayer ) { return true; }
+
+	virtual PINGICON GetPingIcon() { return PING_ICON_GLADOS_CORE; }
+
 };
 #endif //C_PROP_GLADOS_CORE_H

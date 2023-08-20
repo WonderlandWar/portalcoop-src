@@ -24,8 +24,12 @@
 #include "positionwatcher.h"
 #include "vphysics/constraints.h"
 #include "c_props.h"
-#include "PortalSimulation.h"
+
+#ifdef PORTAL
 #include "portal_physics_collisionevent.h"
+#include "physicsshadowclone.h"
+#include "PortalSimulation.h"
+#endif
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -354,10 +358,15 @@ void CPhysicsSystem::PhysicsSimulate()
 	{
 		tmZone( TELEMETRY_LEVEL0, TMZF_NONE, "%s %d", __FUNCTION__, physenv->GetActiveObjectCount() );
 
-		g_Collisions.BufferTouchEvents( true );
+
 #ifdef _DEBUG
 		physenv->DebugCheckContacts();
 #endif
+
+#ifndef PORTAL //instead of wrapping 1 simulation with this, portal needs to wrap 3
+		g_Collisions.BufferTouchEvents( true );
+#endif
+
 		physenv->Simulate( frametime * cl_phys_timescale.GetFloat() );
 
 		int activeCount = physenv->GetActiveObjectCount();
@@ -389,12 +398,12 @@ void CPhysicsSystem::PhysicsSimulate()
 
 
 #ifdef PORTAL
-ConVar sv_fullsyncclones("sv_fullsyncclones", "1", FCVAR_CHEAT );
+ConVar cl_fullsyncclones("cl_fullsyncclones", "1", FCVAR_CHEAT );
 void PortalPhysicsSimulate() //small wrapper for PhysFrame that simulates all environments at once
 {
 	CPortalSimulator::PrePhysFrame();
 
-	if( sv_fullsyncclones.GetBool() )
+	if( cl_fullsyncclones.GetBool() )
 		CPhysicsShadowClone::FullSyncAllClones();
 
 	g_Collisions.BufferTouchEvents( true );
@@ -404,6 +413,7 @@ void PortalPhysicsSimulate() //small wrapper for PhysFrame that simulates all en
 	g_Collisions.PortalPostSimulationFrame();
 
 	g_Collisions.BufferTouchEvents( false );
+
 	g_Collisions.FrameUpdate();
 
 	CPortalSimulator::PostPhysFrame();
@@ -472,6 +482,7 @@ void CCollisionEvent::FrameUpdate( void )
 //-----------------------------------------------------------------------------
 void CCollisionEvent::UpdateTouchEvents( void )
 {
+#if 1
 	// Turn on buffering in case new touch events occur during processing
 	bool bOldTouchEvents = m_bBufferTouchEvents;
 	m_bBufferTouchEvents = true;
@@ -491,6 +502,45 @@ void CCollisionEvent::UpdateTouchEvents( void )
 
 	m_touchEvents.RemoveAll();
 	m_bBufferTouchEvents = bOldTouchEvents;
+#else
+	// Copied from server
+
+	int i;
+	// Turn on buffering in case new touch events occur during processing
+	bool bOldTouchEvents = m_bBufferTouchEvents;
+	m_bBufferTouchEvents = true;
+	for ( i = 0; i < m_touchEvents.Count(); i++ )
+	{
+		const touchevent_t &event = m_touchEvents[i];
+		if ( event.touchType == TOUCH_START )
+		{
+			DispatchStartTouch( event.pEntity0, event.pEntity1, event.endPoint, event.normal );
+		}
+		else
+		{
+			// TOUCH_END
+			DispatchEndTouch( event.pEntity0, event.pEntity1 );
+		}
+	}
+	m_touchEvents.RemoveAll();
+
+	for ( i = 0; i < m_triggerEvents.Count(); i++ )
+	{
+		m_currentTriggerEvent = m_triggerEvents[i];
+		if ( m_currentTriggerEvent.bStart )
+		{
+			m_currentTriggerEvent.pTriggerEntity->StartTouch( m_currentTriggerEvent.pEntity );
+		}
+		else
+		{
+			m_currentTriggerEvent.pTriggerEntity->EndTouch( m_currentTriggerEvent.pEntity );
+		}
+	}
+	m_triggerEvents.RemoveAll();
+	m_currentTriggerEvent.Clear();
+	m_bBufferTouchEvents = bOldTouchEvents;
+
+#endif
 }
 
 //-----------------------------------------------------------------------------

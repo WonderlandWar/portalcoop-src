@@ -24,13 +24,6 @@ class CPortal_Player;
 #include "func_liquidportal.h"
 #include "ai_speech.h"			// For expresser host
 
-struct PortalPlayerStatistics_t
-{
-	int iNumPortalsPlaced;
-	int iNumStepsTaken;
-	float fNumSecondsTaken;
-};
-
 //=============================================================================
 // >> Portal_Player
 //=============================================================================
@@ -139,8 +132,12 @@ public:
 
 	void SetPlayerModel( void );
 	
+	int	GetPlayerConcept( void );
 	void UpdateExpression ( void );
 	void ClearExpression ( void );
+	
+	float GetImplicitVerticalStepSpeed() const;
+	void SetImplicitVerticalStepSpeed( float speed );
 
 	void ForceDuckThisFrame( void );
 	void UnDuck ( void );
@@ -162,13 +159,10 @@ public:
 	void SetStuckOnPortalCollisionObject( void ) { m_bStuckOnPortalCollisionObject = true; }
 
 	CWeaponPortalBase* GetActivePortalWeapon() const;
-
-	void ResetThisLevelStats( void );
-	int NumPortalsPlaced( void ) const { return m_StatsThisLevel.iNumPortalsPlaced; }
-	int NumStepsTaken( void ) const { return m_StatsThisLevel.iNumStepsTaken; }
-	float NumSecondsTaken( void ) const { return m_StatsThisLevel.fNumSecondsTaken; }
-
+	
 	void SetNeuroToxinDamageTime( float fCountdownSeconds ) { m_fNeuroToxinDamageTime = gpGlobals->curtime + fCountdownSeconds; }
+	
+	virtual void ApplyPortalTeleportation( const CProp_Portal *pEnteredPortal, CMoveData *pMove ); 
 	
 	Vector m_vecTotalBulletForce;	//Accumulator for bullet force in a single frame
 
@@ -186,6 +180,9 @@ public:
 	CProp_Portal *m_pSecondaryPortal;
 
 	CNetworkVar(int, m_iCustomPortalColorSet);
+	
+	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
+	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
 			
 private:
 	
@@ -196,13 +193,19 @@ private:
 	CNetworkQAngle( m_angEyeAngles );
 
 	CPortalPlayerAnimState*   m_PlayerAnimState;
+	
+	float m_flImplicitVerticalStepSpeed;	// When moving with step code, the player has an implicit vertical
+											// velocity that keeps her on ramps, steps, etc. We need this to
+											// correctly transform her velocity when she teleports.
 
 	int m_iLastWeaponFireUsercmd;
 	CNetworkVar( int, m_iSpawnInterpCounter );
 	CNetworkVar( bool, m_bSuppressingCrosshair );
 
-	CNetworkVar( bool, m_bHeldObjectOnOppositeSideOfPortal );
-	CNetworkHandle( CProp_Portal, m_pHeldObjectPortal );	// networked entity handle
+	CNetworkVar( bool, m_bIsListenServerHost )
+
+	bool m_bHeldObjectOnOppositeSideOfPortal;
+	CProp_Portal *m_pHeldObjectPortal;	// networked entity handle
 
 	bool m_bIntersectingPortalPlane;
 	bool m_bStuckOnPortalCollisionObject;
@@ -213,10 +216,7 @@ private:
 	bool  m_bIsRegenerating;		// Is the player currently regaining health
 
 	float m_fNeuroToxinDamageTime;
-
-	PortalPlayerStatistics_t m_StatsThisLevel;
-	float m_fTimeLastNumSecondsUpdate;
-		
+			
 	QAngle						m_qPrePortalledViewAngles;
 	bool						m_bFixEyeAnglesFromPortalling;
 	VMatrix						m_matLastPortalled;
@@ -227,7 +227,22 @@ private:
 	
 	mutable Vector m_vWorldSpaceCenterHolder; //WorldSpaceCenter() returns a reference, need an actual value somewhere
 
+	Vector m_vEyeOffset;
 
+	
+	struct RecentPortalTransform_t
+	{
+		int command_number;
+		CHandle<CProp_Portal> Portal;
+		matrix3x4_t matTransform;
+	};
+
+	CUtlVector<RecentPortalTransform_t> m_PendingPortalTransforms; //portal transforms we've sent to the client but they have not yet acknowledged, needed for some input fixup
+	
+	// stick camera
+	void RotateUpVector( Vector& vForward, Vector& vUp );
+	void SnapCamera( bool bLookingInBadDirection );
+	void PostTeleportationCameraFixup( const CProp_Portal *pEnteredPortal );
 
 public:
 
@@ -239,7 +254,8 @@ public:
 	
 	// Coop ping effect
 	void	PlayCoopPingEffect( void );
-	bool	PingChildrenOfParentEntity( CBaseAnimating *pAnimating, Vector vColor );
+	bool	PingChildrenOfChildParent( CBaseAnimating *pAnimating, Vector vColor );
+	bool	PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bShouldCreateCrosshair );
 
 	friend class CProp_Portal;
 	

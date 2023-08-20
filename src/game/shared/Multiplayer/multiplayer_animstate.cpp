@@ -30,6 +30,10 @@ ConVar anim_showmainactivity( "anim_showmainactivity", "0", FCVAR_CHEAT, "Show t
 #define CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( o, r, n )
 #endif
 
+#if defined( PORTAL ) && defined( CLIENT_DLL )
+#include "portal_player_shared.h"
+#endif
+
 #define MOVING_MINIMUM_SPEED	0.5f
 
 ConVar anim_showstate( "anim_showstate", "-1", FCVAR_CHEAT | FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY, "Show the (client) animation state for the specified entity (-1 for none)." );
@@ -1153,7 +1157,7 @@ void CMultiPlayerAnimState::ResetGroundSpeed( void )
 {
 #ifdef CLIENT_DLL
 		m_flMaxGroundSpeed = GetCurrentMaxGroundSpeed();
-		m_iv_flMaxGroundSpeed.Reset();
+		m_iv_flMaxGroundSpeed.Reset( gpGlobals->curtime );
 		m_iv_flMaxGroundSpeed.NoteChanged( gpGlobals->curtime, 0, false );
 #endif
 }
@@ -1778,6 +1782,19 @@ void CMultiPlayerAnimState::ConvergeYawAngles( float flGoalYaw, float flYawRate,
 //-----------------------------------------------------------------------------
 const QAngle& CMultiPlayerAnimState::GetRenderAngles()
 {
+#if defined( PORTAL ) && defined( CLIENT_DLL )
+	C_Portal_Player *pPlayer = (C_Portal_Player *)GetBasePlayer();
+	
+	if( pPlayer )
+	{		
+		if( pPlayer->GetOriginInterpolator().GetInterpolatedTime( pPlayer->GetEffectiveInterpolationCurTime( gpGlobals->curtime ) ) < pPlayer->GetLatestServerTeleport() )
+		{
+			m_angRender_InterpHistory = TransformAnglesToWorldSpace( m_angRender, pPlayer->GetLatestServerTeleportationInverseMatrix().As3x4() );
+			return m_angRender_InterpHistory;
+		}
+	}
+#endif
+
 	return m_angRender;
 }
 

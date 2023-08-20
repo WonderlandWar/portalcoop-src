@@ -181,6 +181,10 @@ IMaterial *CreateTempMaterialForPlayerLogo( int iPlayerIndex, player_info_t *inf
 	{
 		char custname[ 512 ];
 		Q_snprintf( custname, sizeof( custname ), "download/user_custom/%c%c/%s.dat", logohex[0], logohex[1], logohex );
+		
+		const char* pszCustname = custname;
+
+		Msg("custname: %s\n", pszCustname);
 
 		// it may have been downloaded but not copied under materials folder
 		if ( !filesystem->FileExists( custname ) )
@@ -231,8 +235,6 @@ void TE_PlayerDecal( IRecipientFilter& filter, float delay,
 	IMaterial *logo = CreateTempMaterialForPlayerLogo( player, &info, texname, 512 );
 	if ( !logo )
 		return;
-	
-	Msg("JUST CREATE THE SPRAY!!!!\n");
 
 	ITexture *texture = materials->FindTexture( texname, TEXTURE_GROUP_DECAL );
 	if ( IsErrorTexture( texture ) ) 

@@ -24,7 +24,7 @@
 #include "player_resource.h"
 #include "engine/IEngineSound.h"
 #include "viewport_panel_names.h"
-
+#include "weapon_portalgun.h"
 #include "tier0/vprof.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -39,21 +39,7 @@ void FinishClientPutInServer( CPortal_Player *pPlayer )
 {
 	pPlayer->InitialSpawn();
 	pPlayer->Spawn();
-
-
-	char sName[128];
-	Q_strncpy( sName, pPlayer->GetPlayerName(), sizeof( sName ) );
 	
-	// First parse the name and remove any %'s
-	for ( char *pApersand = sName; pApersand != NULL && *pApersand != 0; pApersand++ )
-	{
-		// Replace it with a space
-		if ( *pApersand == '%' )
-				*pApersand = ' ';
-	}
-
-	// notify other clients of player joining the game
-	UTIL_ClientPrintAll( HUD_PRINTNOTIFY, "#Game_connected", sName[0] != 0 ? sName : "<unconnected>" );
 #if 0
 	const ConVar *hostname = cvar->FindVar( "hostname" );
 	const char *title = (hostname) ? hostname->GetString() : "MESSAGE OF THE DAY";
@@ -178,14 +164,35 @@ void respawn( CBaseEntity *pEdict, bool fCopyCorpse )
 	// respawn player
 	pEdict->Spawn();
 }
-CON_COMMAND(mp_respawnallplayers, "Respawns all players in the server unless mp_suspend_respawn is set to 0")
+
+void RespawnAllPlayers()
 {
+	
+	if (mp_suspend_respawn.GetBool())
+		return;
+
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
 		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-		if (pPlayer)
+		if (!pPlayer)
+			continue;
+		
 		respawn(pPlayer, false);
+
+		CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+
+		if (pPortalgun)
+		{
+			pPortalgun->FizzleOwnedPortals();
+			pPortalgun->SetLastFiredPortal(0);
+		}
 	}
+
+}
+
+CON_COMMAND(mp_respawnallplayers, "Respawns all players in the server unless mp_suspend_respawn is set to 0")
+{
+	RespawnAllPlayers();
 }
 
 void GameStartFrame( void )

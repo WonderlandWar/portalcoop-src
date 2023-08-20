@@ -19,6 +19,7 @@
 #ifdef CLIENT_DLL
 #include "c_portal_player.h"
 #include "c_basedoor.h"
+#include "prediction.h"
 #else
 #include "func_portal_orientation.h"
 #include "portal_player.h"
@@ -122,7 +123,60 @@ void CProp_Portal::PortalSimulator_ReleasedOwnershipOfEntity( CBaseEntity *pEnti
 	if( pEntity->IsPlayer() && (((CPortal_Player *)pEntity)->m_hPortalEnvironment.Get() == this) )
 		((CPortal_Player *)pEntity)->m_hPortalEnvironment = NULL;
 }
+void CProp_Portal::UpdateCollisionShape( void )
+{
+	if( m_pCollisionShape )
+	{
+		physcollision->DestroyCollide( m_pCollisionShape );
+		m_pCollisionShape = NULL;
+	}
 
+	Vector vLocalMins = GetLocalMins();
+	Vector vLocalMaxs = GetLocalMaxs();
+
+	if( (vLocalMaxs.x <= vLocalMins.x) || (vLocalMaxs.y <= vLocalMins.y) || (vLocalMaxs.z <= vLocalMins.z) )
+		return; //volume is 0 (or less)
+
+
+	//create the collision shape.... TODO: consider having one shared collideable between all portals
+	float fPlanes[6*4];
+	fPlanes[(0*4) + 0] = 1.0f;
+	fPlanes[(0*4) + 1] = 0.0f;
+	fPlanes[(0*4) + 2] = 0.0f;
+	fPlanes[(0*4) + 3] = vLocalMaxs.x;
+
+	fPlanes[(1*4) + 0] = -1.0f;
+	fPlanes[(1*4) + 1] = 0.0f;
+	fPlanes[(1*4) + 2] = 0.0f;
+	fPlanes[(1*4) + 3] = -vLocalMins.x;
+
+	fPlanes[(2*4) + 0] = 0.0f;
+	fPlanes[(2*4) + 1] = 1.0f;
+	fPlanes[(2*4) + 2] = 0.0f;
+	fPlanes[(2*4) + 3] = vLocalMaxs.y;
+
+	fPlanes[(3*4) + 0] = 0.0f;
+	fPlanes[(3*4) + 1] = -1.0f;
+	fPlanes[(3*4) + 2] = 0.0f;
+	fPlanes[(3*4) + 3] = -vLocalMins.y;
+
+	fPlanes[(4*4) + 0] = 0.0f;
+	fPlanes[(4*4) + 1] = 0.0f;
+	fPlanes[(4*4) + 2] = 1.0f;
+	fPlanes[(4*4) + 3] = vLocalMaxs.z;
+
+	fPlanes[(5*4) + 0] = 0.0f;
+	fPlanes[(5*4) + 1] = 0.0f;
+	fPlanes[(5*4) + 2] = -1.0f;
+	fPlanes[(5*4) + 3] = -vLocalMins.z;
+
+	CPolyhedron *pPolyhedron = GeneratePolyhedronFromPlanes( fPlanes, 6, 0.00001f, true );
+	Assert( pPolyhedron != NULL );
+	CPhysConvex *pConvex = physcollision->ConvexFromConvexPolyhedron( *pPolyhedron );
+	pPolyhedron->Release();
+	Assert( pConvex != NULL );
+	m_pCollisionShape = physcollision->ConvertConvexToCollide( &pConvex, 1 );
+}
 
 //unify how we determine the velocity of objects when portalling them
 Vector Portal_FindUsefulVelocity( CBaseEntity *pOther )
@@ -263,11 +317,8 @@ void CProp_Portal::PlacePortal( const Vector &vOrigin, const QAngle &qAngles, fl
 #endif
 		return;
 	}
-
-#ifdef CLIENT_DLL
-	if (sv_allow_customized_portal_colors.GetBool())
-	m_iPortalColorSet = m_iLinkageGroupID;
-#endif
+	
+	SetupPortalColorSet();
 	
 	m_vDelayedPosition = vNewOrigin;
 	m_qDelayedAngles = qNewAngles;
@@ -316,17 +367,14 @@ void CProp_Portal::DelayedPlacementThink( void )
 		if (pFiredBy && pFiredBy->IsLocalPlayer())
 #endif
 		{
-#ifdef DEBUG
-			Msg("Replace Portal");
-#endif
 			m_pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_CLEANSER );
 			m_pHitPortal->Fizzle();
-			m_pHitPortal->SetActive( false );	// HACK: For replacing the portal, we need this!+
+			//m_pHitPortal->SetActive( false );	// HACK: For replacing the portal, we need this!+
 
 #ifdef GAME_DLL
 			m_pHitPortal->PunchAllPenetratingPlayers();
 #endif
-			m_pHitPortal->m_pAttackingPortal = NULL;
+			m_pHitPortal->m_pPortalReplacingMe = NULL;
 			m_pHitPortal = NULL;
 		}
 	}
@@ -373,7 +421,7 @@ void CProp_Portal::DelayedPlacementThink( void )
 		CPortal_Player *pFiringPlayer = dynamic_cast<CPortal_Player *>( pPortalGun->GetOwner() );
 		if( pFiringPlayer )
 		{
-//			pFiringPlayer->IncrementPortalsPlaced();
+			PortalGameRules()->IncrementPortalsPlaced();
 
 			// Placement successful, fire the output
 			m_OnPlacedSuccessfully.FireOutput( pPortalGun, this );
@@ -398,6 +446,9 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 		GetPortalCallQueue()->QueueCall( this, &CProp_Portal::TeleportTouchingEntity, pOther );
 		return;
 	}
+#ifdef CLIENT_DLL
+	Msg("We teleported a touching entity");
+#endif
 
 	Assert( m_hLinkedPortal.Get() != NULL );
 
@@ -414,6 +465,10 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 		//NDebugOverlay::EntityBounds( pOther, 255, 0, 0, 128, 60.0f );
 		pOtherAsPlayer = (CPortal_Player *)pOther;
 		qPlayerEyeAngles = pOtherAsPlayer->pl.v_angle;
+#if USEMOVEMENTFORPORTALLING
+		if ( sv_portal_with_gamemovement.GetBool() )
+		Warning( "PORTALLING PLAYER SHOULD BE DONE IN GAMEMOVEMENT\n" );
+#endif
 	}
 	else
 	{
@@ -624,19 +679,69 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 
 		if( bPlayer )
 		{
+#ifdef GAME_DLL
+	//notify clients of the teleportation
+	{
+		CBroadcastRecipientFilter filter;
+		filter.MakeReliable();
+		UserMessageBegin( filter, "PrePlayerPortalled" );
+		WRITE_EHANDLE( this );
+		WRITE_EHANDLE( pOther );
+		MessageEnd();
+	}
+
+#endif
 			QAngle qTransformedEyeAngles = TransformAnglesToWorldSpace( qPlayerEyeAngles, m_matrixThisToLinked.As3x4() );
 			qTransformedEyeAngles.x = AngleNormalizePositive( qTransformedEyeAngles.x );
 			qTransformedEyeAngles.y = AngleNormalizePositive( qTransformedEyeAngles.y );
 			qTransformedEyeAngles.z = AngleNormalizePositive( qTransformedEyeAngles.z );
 			
+			pOtherAsPlayer->pl.v_angle = qTransformedEyeAngles;
+			
 #if defined( GAME_DLL )
 			pOtherAsPlayer->pl.fixangle = FIXANGLE_ABSOLUTE;
 			pOtherAsPlayer->UpdateVPhysicsPosition( ptNewOrigin, vNewVelocity, 0.0f );
 			pOtherAsPlayer->Teleport( &ptNewOrigin, &qNewAngles, &vNewVelocity );
+
 #else
+			
 			pOtherAsPlayer->SetAbsOrigin( ptNewOrigin );
 			pOtherAsPlayer->SetAbsAngles( qNewAngles );
 			pOtherAsPlayer->SetAbsVelocity( vNewVelocity );
+
+			if (pOtherAsPlayer->IsLocalPlayer())
+			{
+				
+				matrix3x4_t matAngleTransformIn, matAngleTransformOut; //temps for angle transformation
+				matrix3x4_t matTransform = MatrixThisToLinked().As3x4();
+
+				//VectorRotate(vNewVelocity, matTransform, vTransformedVelocity);
+
+				//engine view angles (for mouse input smoothness)
+				{
+					QAngle qEngineAngles;
+					engine->GetViewAngles( qEngineAngles );
+					AngleMatrix( qEngineAngles, matAngleTransformIn );
+					ConcatTransforms( matTransform, matAngleTransformIn, matAngleTransformOut );
+					MatrixAngles( matAngleTransformOut, qEngineAngles );
+					engine->SetViewAngles( qEngineAngles );
+				}
+
+				//predicted view angles
+				{
+					QAngle qPredViewAngles;
+					prediction->GetViewAngles( qPredViewAngles );
+				
+					AngleMatrix( qPredViewAngles, matAngleTransformIn );
+					ConcatTransforms( matTransform, matAngleTransformIn, matAngleTransformOut );
+					MatrixAngles( matAngleTransformOut, qPredViewAngles );
+
+					prediction->SetViewAngles( qPredViewAngles );
+				}
+					
+			}
+			
+			//pOtherAsPlayer->ApplyPredictedPortalTeleportation( this, NULL, false );
 #endif
 		}
 		else
@@ -648,7 +753,17 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 #else
 				pOther->SetAbsOrigin( ptNewOrigin );
 				pOther->SetAbsAngles( qNewAngles );
-				pOther->SetAbsVelocity( vNewVelocity );
+				pOther->SetAbsVelocity( vNewVelocity );		
+
+				IPhysicsObject *pHeldPhysics = pOther->VPhysicsGetObject();
+				if (pHeldPhysics)
+				{
+
+					const AngularImpulse angImpulse;
+
+					pHeldPhysics->SetPosition(ptNewOrigin, qNewAngles, true);
+					pHeldPhysics->SetVelocity(&vec3_origin, &angImpulse);
+				}
 #endif
 			}
 			else
@@ -660,6 +775,17 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 				pOther->SetAbsOrigin( ptNewOrigin );
 				pOther->SetAbsAngles( qNewAngles );
 				pOther->SetAbsVelocity( vec3_origin );
+				
+				IPhysicsObject *pHeldPhysics = pOther->VPhysicsGetObject();
+				if ( pHeldPhysics )
+				{
+
+					const AngularImpulse angImpulse;
+
+					pHeldPhysics->SetPosition( ptNewOrigin, qNewAngles, true );
+					pHeldPhysics->SetVelocity( &vec3_origin, &angImpulse );
+				}
+
 #endif
 				pOther->ApplyAbsVelocityImpulse( vNewVelocity );
 			}
@@ -682,7 +808,7 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 			pOtherAsPlayer->ToggleHeldObjectOnOppositeSideOfPortal();
 			if( pOtherAsPlayer->IsHeldObjectOnOppositeSideOfPortal() )
 			{
-				pOtherAsPlayer->SetHeldObjectPortal( m_hLinkedPortal );
+				pOtherAsPlayer->SetHeldObjectPortal( m_hLinkedPortal.Get() );
 			}
 			else
 			{
@@ -695,13 +821,22 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 #ifdef GAME_DLL
 				pHeldEntity->Teleport( &vTargetPosition, &qTargetOrientation, 0 );
 #else
-				SetAbsOrigin(vTargetPosition);
-				SetAbsAngles(qTargetOrientation);
+				pHeldEntity->SetAbsOrigin(vTargetPosition);
+				pHeldEntity->SetAbsAngles(qTargetOrientation);
+
+#ifdef CLIENT_DLL
+				IPhysicsObject *pHeldPhysics = pHeldEntity->VPhysicsGetObject();
+				if ( pHeldPhysics )
+				{
+					pHeldPhysics->SetPosition( vTargetPosition, qTargetOrientation, true );
+				}
+#endif
+
 #endif
 
 #ifdef CLIENT_DLL
-				pOtherAsPlayer->PlayerPortalled(this);
-				pOtherAsPlayer->DetectAndHandlePortalTeleportation( this );
+		//		pOtherAsPlayer->PlayerPortalled(this);
+		//		pOtherAsPlayer->DetectAndHandlePortalTeleportation( this );
 #endif
 				FindClosestPassableSpace( pHeldEntity, RemotePortalDataAccess.Placement.vForward );
 			}
@@ -774,6 +909,24 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 
 bool CProp_Portal::ShouldTeleportTouchingEntity( CBaseEntity *pOther )
 {
+	
+	if( m_hLinkedPortal.Get() == NULL )
+	{
+#ifdef GAME_DLL
+#if !defined ( DISABLE_DEBUG_HISTORY )
+		if ( !IsMarkedForDeletion() )
+		{
+			ADD_DEBUG_HISTORY( HISTORY_PLAYER_DAMAGE, UTIL_VarArgs( "Portal %i not teleporting %s because it has no linked partner portal.\n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName() ) );
+		}
+#endif
+#endif
+		if ( sv_portal_debug_touch.GetBool() )
+		{
+			Msg( "Portal %i not teleporting %s because it has no linked partner portal.\n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName() );
+		}
+		return false;
+	}
+
 	if( !m_PortalSimulator.OwnsEntity( pOther ) ) //can't teleport an entity we don't own
 	{
 #ifdef GAME_DLL
@@ -793,23 +946,6 @@ bool CProp_Portal::ShouldTeleportTouchingEntity( CBaseEntity *pOther )
 
 	if( !CProp_Portal_Shared::IsEntityTeleportable( pOther ) )
 		return false;
-	
-	if( m_hLinkedPortal.Get() == NULL )
-	{
-#ifdef GAME_DLL
-#if !defined ( DISABLE_DEBUG_HISTORY )
-		if ( !IsMarkedForDeletion() )
-		{
-			ADD_DEBUG_HISTORY( HISTORY_PLAYER_DAMAGE, UTIL_VarArgs( "Portal %i not teleporting %s because it has no linked partner portal.\n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName() ) );
-		}
-#endif
-#endif
-		if ( sv_portal_debug_touch.GetBool() )
-		{
-			Msg( "Portal %i not teleporting %s because it has no linked partner portal.\n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName() );
-		}
-		return false;
-	}
 
 	//Vector ptOtherOrigin = pOther->GetAbsOrigin();
 	//IPhysicsObject *pOtherPhysObject = pOther->VPhysicsGetObject();
@@ -902,4 +1038,69 @@ bool CProp_Portal::ShouldTeleportTouchingEntity( CBaseEntity *pOther )
 	}
 
 	return false;
+}
+
+void CProp_Portal::SetupPortalColorSet( void )
+{
+	if (m_iCustomPortalColorSet && sv_allow_customized_portal_colors.GetBool())
+		m_iPortalColorSet = m_iCustomPortalColorSet - 1;
+	else
+		m_iPortalColorSet = m_iLinkageGroupID;
+}
+
+
+float CProp_Portal::GetMinimumExitSpeed( bool bPlayer, bool bEntranceOnFloor, bool bExitOnFloor, const Vector &vEntityCenterAtExit, CBaseEntity *pEntity )
+{
+	const PS_InternalData_t &RemotePortalDataAccess = m_hLinkedPortal->m_PortalSimulator.GetInternalData();
+	
+	//velocity hacks
+	{
+		//minimum floor exit velocity if both portals are on the floor or the player is coming out of the floor
+		if (RemotePortalDataAccess.Placement.vForward.z > 0.7071f)
+		{
+			if (bPlayer)
+			{
+				return MINIMUM_FLOOR_PORTAL_EXIT_VELOCITY_PLAYER;
+			}
+			else
+			{
+				const PS_InternalData_t &LocalPortalDataAccess = m_PortalSimulator.GetInternalData();
+
+				if ( LocalPortalDataAccess.Placement.vForward.z > 0.7071f )
+				{
+					return MINIMUM_FLOOR_TO_FLOOR_PORTAL_EXIT_VELOCITY;
+				}
+				else
+				{
+					return MINIMUM_FLOOR_PORTAL_EXIT_VELOCITY;
+				}
+			}
+		}
+	}
+
+	return -FLT_MAX; //default behavior is to not mess with the speed
+}
+
+float CProp_Portal::GetMaximumExitSpeed( bool bPlayer, bool bEntranceOnFloor, bool bExitOnFloor, const Vector &vEntityCenterAtExit, CBaseEntity *pEntity )
+{
+	return MAXIMUM_PORTAL_EXIT_VELOCITY;
+}
+
+
+void CProp_Portal::GetExitSpeedRange( CProp_Portal *pEntrancePortal, bool bPlayer, float &fExitMinimum, float &fExitMaximum, const Vector &vEntityCenterAtExit, CBaseEntity *pEntity )
+{
+	CProp_Portal *pExitPortal = pEntrancePortal ? pEntrancePortal->m_hLinkedPortal.Get() : NULL;
+	if( !pExitPortal )
+	{
+		fExitMinimum = -FLT_MAX;
+		fExitMaximum = FLT_MAX;
+		return;
+	}
+		
+	const float COS_PI_OVER_SIX = 0.86602540378443864676372317075294f; // cos( 30 degrees ) in radians
+	bool bEntranceOnFloor = pEntrancePortal->m_plane_Origin.normal.z > COS_PI_OVER_SIX;
+	bool bExitOnFloor = pExitPortal->m_plane_Origin.normal.z > COS_PI_OVER_SIX;
+
+	fExitMinimum = pExitPortal->GetMinimumExitSpeed( bPlayer, bEntranceOnFloor, bExitOnFloor, vEntityCenterAtExit, pEntity );
+	fExitMaximum = pExitPortal->GetMaximumExitSpeed( bPlayer, bEntranceOnFloor, bExitOnFloor, vEntityCenterAtExit, pEntity );
 }

@@ -1133,10 +1133,17 @@ void IncNumCamerasDetatched()
 	++g_iNumCamerasDetatched;
 }
 
+void ResetNumCamerasDetatched()
+{
+	g_iNumCamerasDetatched = 0;
+}
+
 int GetNumCamerasDetatched()
 {
 	return g_iNumCamerasDetatched;
 }
+
+ConVar sv_destroyable_cameras_in_mapset("sv_destroyable_cameras_in_mapset", "0", FCVAR_REPLICATED, "How many destroyable cameras are in the map set?" );
 
 void PlayDismountSounds( void )
 {

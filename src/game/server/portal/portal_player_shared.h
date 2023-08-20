@@ -29,11 +29,24 @@ enum
 
 enum 
 {
+	CONCEPT_PLAYER_DEAD,
 	CONCEPT_CHELL_IDLE,
-	CONCEPT_CHELL_DEAD,
+	CONCEPT_ABBY_IDLE,
+	CONCEPT_MEL_IDLE,
+	CONCEPT_MALE_PORTAL_PLAYER_IDLE,
+	//Escape Idles
+	CONCEPT_MEL_ESCAPE_IDLE,
 };
 
-extern const char *g_pszChellConcepts[];
+enum StickCameraCorrectionMethod
+{
+	QUATERNION_CORRECT = 0,
+	ROTATE_UP,
+	SNAP_UP,
+	DO_NOTHING
+};
+
+extern const char *g_pszPortalPlayerConcepts[];
 int GetChellConceptIndexFromString( const char *pszConcept );
 
 #if defined( CLIENT_DLL )

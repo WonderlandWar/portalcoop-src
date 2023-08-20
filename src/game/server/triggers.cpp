@@ -1652,6 +1652,8 @@ void CChangeLevel::WarnAboutActiveLead( void )
 	}
 }
 
+extern ConVar sv_bonus_challenge;
+
 void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 {
 	if ( !AllPlayersAreTouching() && m_bAllPlayersMustBeTouching )
@@ -1662,8 +1664,17 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 
 	Assert(!FStrEq(m_szMapName, ""));
 
-	// Don't work in deathmatch
-	if ( g_pGameRules->IsDeathmatch() || g_pGameRules->IsMultiplayer() || gpGlobals->maxClients > 1)
+
+	// Restart the map if we're doing a bonus challenge
+	if ( g_pGameRules->GetBonusChallenge() )
+	{
+		sv_bonus_challenge.SetValue(g_pGameRules->GetBonusChallenge());
+		engine->ChangeLevel( gpGlobals->mapname.ToCStr(), NULL );
+		return;
+	}
+
+	// Doesn't work in multiplayer
+	if ( gpGlobals->maxClients > 1 )
 	{
 		engine->ChangeLevel( m_szMapName, NULL );
 		return;

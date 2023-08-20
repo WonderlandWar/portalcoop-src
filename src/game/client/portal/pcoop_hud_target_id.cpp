@@ -225,18 +225,21 @@ void CTargetID::Paint()
 		// Some entities we always want to check, cause the text may change
 		// even while we're looking at it
 		// Is it a player?
-		if ( IsPlayerIndex( iEntIndex ) || pPortal )
+		if ( ( IsPlayerIndex( iEntIndex ) && pPlayer && !pPlayer->IsLocalPlayer() ) || pPortal )
 		{
 			bShowPlayerName = true;
-			g_pVGuiLocalize->ConvertANSIToUnicode( pPlayer->GetPlayerName(),  wszPlayerName, sizeof(wszPlayerName) );
+			if ( IsPlayerIndex( iEntIndex ) && pPlayer && !pPlayer->IsLocalPlayer() )
+			{
+				g_pVGuiLocalize->ConvertANSIToUnicode( pPlayer->GetPlayerName(),  wszPlayerName, sizeof(wszPlayerName) );
 
-			pPortalgun = (C_WeaponPortalgun*)pPlayer->Weapon_OwnsThisType("weapon_portalgun");
-
-			int iLinkageGroupID = pPortalgun->m_iPortalLinkageGroupID;			
+				pPortalgun = dynamic_cast<C_WeaponPortalgun*>(pPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+			}
+		
 			int iLinkageGroupIDPortal = pPortal->m_iLinkageGroupID;
 						
 			if ( pPortalgun )
 			{
+				int iLinkageGroupID = pPortalgun->m_iPortalLinkageGroupID;
 				std::string s = std::to_string(iLinkageGroupID);
 				const char *sLinkageID = (s.c_str());
 

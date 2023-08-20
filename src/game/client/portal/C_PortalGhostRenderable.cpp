@@ -238,10 +238,11 @@ bool C_PortalGhostRenderable::GetAttachmentVelocity( int number, Vector &originV
 int C_PortalGhostRenderable::DrawModel( int flags )
 {
 	if( m_bSourceIsBaseAnimating )
-	{
-		if( m_bLocalPlayer )
+	{	
+		C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPlayer();
+
+		if( m_bLocalPlayer && pPlayer )
 		{
-			C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPlayer();
 
 			if ( !pPlayer->IsAlive() )
 			{

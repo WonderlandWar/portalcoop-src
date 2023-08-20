@@ -979,8 +979,15 @@ public:
 			ConVarRef mat_dxlevel( "mat_dxlevel" );
 			KeyValues *pUserData = m_pDXLevel->GetActiveItemUserData();
 			Assert( pUserData );
+
+			
+			if (mat_dxlevel.GetInt() >= 96)
+				mat_dxlevel.SetValue(95);
+
 			if ( pUserData && mat_dxlevel.GetInt() != pUserData->GetInt("dxlevel") )
 			{
+				Msg("mat_dxlevel: %i\n", mat_dxlevel.GetInt());
+				Msg("dxlevel: %i\n", pUserData->GetInt("dxlevel"));
 				return true;
 			}
 

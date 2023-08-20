@@ -39,7 +39,16 @@ enum
 	CONCEPT_CHELL_DEAD,
 };
 
-extern const char *g_pszChellConcepts[];
+
+enum StickCameraCorrectionMethod
+{
+	QUATERNION_CORRECT = 0,
+	ROTATE_UP,
+	SNAP_UP,
+	DO_NOTHING
+};
+
+extern const char *g_pszPortalPlayerConcepts[];
 int GetChellConceptIndexFromString( const char *pszConcept );
 
 #if defined( CLIENT_DLL )

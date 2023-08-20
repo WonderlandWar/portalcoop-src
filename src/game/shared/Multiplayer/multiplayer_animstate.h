@@ -293,6 +293,10 @@ protected:
 	CBasePlayer	*m_pPlayer;
 
 	QAngle				m_angRender;
+	
+#if defined( PORTAL ) && defined( CLIENT_DLL )
+	QAngle				m_angRender_InterpHistory; //discontinuous space handling
+#endif
 
 	// Pose parameters.
 	bool						m_bPoseParameterInit;

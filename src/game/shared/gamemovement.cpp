@@ -19,6 +19,17 @@
 	#include "hl_movedata.h"
 #endif
 
+#ifdef PORTAL
+
+#ifdef CLIENT_DLL
+#include "c_portal_player.h"
+#else
+#include "portal_player.h"
+#endif
+
+
+#endif
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -673,7 +684,6 @@ int CGameMovement::GetCheckInterval( IntervalType_t type )
 			else
 			{
 				tickInterval = CHECK_STUCK_TICK_INTERVAL;
-				//tickInterval = CHECK_STUCK_TICK_INTERVAL;
 			}
 		}
 		break;
@@ -1886,6 +1896,17 @@ void CGameMovement::StayOnGround( void )
 		trace.plane.normal[2] >= 0.7 )		// can't hit a steep slope that we can't stand on anyway
 	{
 		float flDelta = fabs(mv->GetAbsOrigin().z - trace.endpos.z);
+
+#ifdef PORTAL		
+		// Set the implicit vertical speed keeping the player on the surface
+		// Ignore this one if it's on an angled surface, the player is moving, and we get a zero.
+		// The values cycle back to zero occasionally while moving on sloped surfaces, which doesn't accurately reflect this implicit speed.
+		if( gpGlobals->frametime != 0.0f && ( flDelta != 0.0f || AlmostEqual( trace.plane.normal.z, 1.0f ) || ( mv->m_flSideMove == 0.0f && mv->m_flForwardMove == 0.0f ) ) )
+		{
+			CPortal_Player *pPortalPlayer = (CPortal_Player*)player;
+			pPortalPlayer->SetImplicitVerticalStepSpeed( flDelta / gpGlobals->frametime );
+		}
+#endif
 
 		//This is incredibly hacky. The real problem is that trace returning that strange value we can't network over.
 		if ( flDelta > 0.5f * COORD_RESOLUTION)

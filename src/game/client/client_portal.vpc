@@ -130,6 +130,7 @@ $Project "Client (Portal)"
 			$File	"portal\c_neurotoxin_countdown.cpp"
 			$File	"portal\c_neurotoxin_countdown.h"
 			$File	"portal\c_npc_portal_turret_floor.cpp"
+			$File	"portal\c_npc_portal_turret_floor.h"
 			$File	"portal\c_npc_portal_turret_ceiling.cpp"
 			$File	"portal\c_npc_rocket_turret.cpp"
 			$File	"portal\c_npc_security_camera.cpp"
@@ -184,6 +185,8 @@ $Project "Client (Portal)"
 			$File	"$SRCDIR\game\shared\portal\PortalSimulation.h"
 			$File	"$SRCDIR\game\shared\portal\StaticCollisionPolyhedronCache.cpp"
 			$File	"$SRCDIR\game\shared\portal\StaticCollisionPolyhedronCache.h"
+			$File	"$SRCDIR\game\shared\portal\point_ping_linker.cpp"
+			$File	"$SRCDIR\game\shared\portal\point_ping_linker.h"
 			$File	"portal\PortalRender.cpp"
 			$File	"portal\PortalRender.h"
 			$File	"portal\c_portal_radio.cpp"
@@ -201,6 +204,11 @@ $Project "Client (Portal)"
 			$File	"portal\c_prop_glados_core.cpp"
 			$File	"portal\c_prop_glados_core.h"
 			$File	"portal\pcoop_hud_target_id.cpp"
+			$File	"portal\tf_hud_annotationspanel.cpp"
+			$File	"portal\tf_hud_annotationspanel.h"
+			
+			$File	"econ\econ_controls.cpp"
+			$File	"econ\econ_controls.h"
 			
 			$File	"$SRCDIR\game\shared\portal\physicsshadowclone.cpp"
 			$File	"$SRCDIR\game\shared\portal\physicsshadowclone.h"
@@ -247,90 +255,6 @@ $Project "Client (Portal)"
 				$File	"hl2mp\ui\hl2mptextwindow.cpp"
 				$File	"hl2mp\ui\hl2mptextwindow.h"
 			}
-			
-			
-			/*			
-			$Folder	"GameUI"
-			{	
-				$Folder "Source Files"
-				{				
-					$File	"gameui/BasePanel.cpp"
-					$File	"$SRCDIR\public\vgui_controls\vgui_controls.cpp"
-					$File	"gameui/VGuiSystemModuleLoader.cpp"
-					$File	"gameui/ModInfo.cpp"
-					$File	"$SRCDIR\common\imageutils.cpp"
-					$File	"gameui/GameUI_Interface.cpp"
-					$File	"gameui/gameui_util.cpp"
-					$File	"gameui/gameui_util.h"
-					$File	"gameui/Sys_Utils.cpp"
-					$File	"gameui/PanelListPanel.cpp"
-				}
-				$Folder "Header Files"
-				{				
-					$File	"gameui/BasePanel.h"
-					$File	"gameui/VGuiSystemModuleLoader.h"
-					$File	"gameui/ModInfo.h"
-					$File	"gameui/Sys_Utils.h"
-					$File	"gameui/PanelListPanel.h"
-				}
-				$Folder "Public Header Files"
-				{
-					$File	"$SRCDIR\common\GameUI\IGameUI.h"
-					$File	"$SRCDIR\common\IVguiModule.h"
-					$File	"$SRCDIR\common\IVGuiModuleLoader.h"
-					$File	"$SRCDIR\common\imageutils.h"	
-					$File	"gameui/GameUI_Interface.h"	
-				}
-			
-				$Folder "Controls"
-				{
-					$File	"$SRCDIR\common\GameUI\cvarslider.cpp"
-					$File	"$SRCDIR\common\GameUI\cvarslider.h"
-					$File	"gameui/CvarToggleCheckButton.cpp"
-					$File	"gameui/CvarToggleCheckButton.h"
-					$File	"gameui/CvarNegateCheckButton.cpp"
-					$File	"gameui/CvarNegateCheckButton.h"
-					$File	"gameui/URLButton.cpp"
-					$File	"gameui/URLButton.h"
-					$File	"gameui/KeyToggleCheckButton.cpp"
-					$File	"gameui/KeyToggleCheckButton.h"
-					$File	"gameui/vcontrolslistpanel.cpp"
-					$File	"gameui/vcontrolslistpanel.h"
-				}
-				$Folder "Dialogs"
-				{
-					$File	"gameui/MultiplayerAdvancedDialog.cpp"
-					$File	"gameui/MultiplayerAdvancedDialog.h"
-				}
-				
-
-				$Folder	"Options Dialog"
-				{
-					$File	"gameui/OptionsDialog.cpp"
-					$File	"gameui/OptionsDialog.h"
-					$File	"gameui/OptionsSubAudio.cpp"
-					$File	"gameui/OptionsSubAudio.h"
-					$File	"gameui/OptionsSubDifficulty.cpp"
-					$File	"gameui/OptionsSubDifficulty.h"
-					$File	"gameui/OptionsSubGame.cpp"
-					$File	"gameui/OptionsSubGame.h"
-					$File	"gameui/OptionsSubHaptics.cpp"	[$WIN32]
-					$File	"gameui/OptionsSubHaptics.h"	[$WIN32]
-					$File	"gameui/OptionsSubKeyboard.cpp"
-					$File	"gameui/OptionsSubKeyboard.h"
-					$File	"gameui/OptionsSubMouse.cpp"
-					$File	"gameui/OptionsSubMouse.h"
-					$File	"gameui/OptionsSubMultiplayer.cpp"
-					$File	"gameui/OptionsSubMultiplayer.h"
-					$File	"gameui/OptionsSubPortal.cpp"
-					$File	"gameui/OptionsSubPortal.h"
-					$File	"gameui/OptionsSubVideo.cpp"
-					$File	"gameui/OptionsSubVideo.h"
-					$File	"gameui/OptionsSubVoice.cpp"
-					$File	"gameui/OptionsSubVoice.h"
-				}
-			}
-			*/
 		}
 	}
 }

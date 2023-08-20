@@ -2269,8 +2269,12 @@ void OnRenderStart()
 
 	// Simulate all the entities.
 	SimulateEntities();
-#ifdef PORTAL
+#if 1
+#ifdef PORTAL //slight detour if we're the portal mod
 	PortalPhysicsSimulate();
+#else
+	PhysicsSimulate();
+#endif //PORTAL
 #else
 	PhysicsSimulate();
 #endif

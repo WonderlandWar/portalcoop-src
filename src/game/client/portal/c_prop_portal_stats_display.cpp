@@ -14,6 +14,7 @@
 #include "iefx.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 #include "point_bonusmaps_accessor.h"
+#include "gameui/bonusmapsdatabase.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -95,7 +96,9 @@ void C_PropPortalStatsDisplay::OnDataChanged( DataUpdateType_t updateType )
 				else if ( m_iDisplayObjective == 2 )
 					iStat = m_fNumSecondsTaken;
 
+				BonusMapsDatabase()->m_bSavedDataChanged = true;
 				BonusMapChallengeUpdate( szChallengeFileName, szChallengeMapName, szChallengeName, iStat );
+
 			}
 		}
 	}

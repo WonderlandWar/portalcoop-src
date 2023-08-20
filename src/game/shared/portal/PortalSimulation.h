@@ -18,10 +18,6 @@
 #include "tier1/utlvector.h"
 #include "physicsshadowclone.h"
 
-#ifdef CLIENT_DLL
-#define CPSCollisionEntity C_PSCollisionEntity
-#endif
-
 #define PORTAL_SIMULATORS_EMBED_GUID //define this to embed a unique integer with each portal simulator for debugging purposes
 
 struct StaticPropPolyhedronGroups_t //each static prop is made up of a group of polyhedrons, these help us pull those groups from an array
@@ -110,6 +106,7 @@ struct PS_PlacementData_t //stuff useful for geometric operations
 	PortalTransformAsAngledPosition_t ptaap_ThisToLinked;
 	PortalTransformAsAngledPosition_t ptaap_LinkedToThis;
 	CPhysCollide *pHoleShapeCollideable; //used to test if a collideable is in the hole, should NOT be collided against in general
+	CPhysCollide *pAABBAngleTransformCollideable; //used for player traces so we can slide into the portal gracefully if there's an angular difference such that our transformed AABB is in solid until the center reaches the plane
 	PS_PlacementData_t( void )
 	{
 		memset( this, 0, sizeof( PS_PlacementData_t ) );
@@ -261,8 +258,12 @@ class CPortalSimulator;
 class CPSCollisionEntity : public CBaseEntity
 {
 	DECLARE_CLASS( CPSCollisionEntity, CBaseEntity );
-	DECLARE_NETWORKCLASS();
-//	DECLARE_PREDICTABLE();
+	
+#ifdef GAME_DLL
+	DECLARE_SERVERCLASS();
+#else
+	DECLARE_CLIENTCLASS();
+#endif
 
 private:
 	CPortalSimulator *m_pOwningSimulator;
@@ -282,11 +283,6 @@ public:
 
 #ifdef GAME_DLL
 	
-	virtual int UpdateTransmitState( void )	// set transmit filter to transmit always
-	{
-		return SetTransmitState( FL_EDICT_ALWAYS );
-	}
-
 	virtual void	VPhysicsCollision( int index, gamevcollisionevent_t *pEvent ) {}
 	virtual void	VPhysicsFriction( IPhysicsObject *pObject, float energy, int surfaceProps, int surfacePropsHit ) {}
 #else
@@ -379,7 +375,7 @@ public:
 	bool				IsSimulatingVPhysics( void ) const; //this portal is setup to handle any physically simulated object, false means the portal is handling player movement only
 	
 	bool				EntityIsInPortalHole( CBaseEntity *pEntity ) const; //true if the entity is within the portal cutout bounds and crossing the plane. Not just *near* the portal
-	bool				EntityHitBoxExtentIsInPortalHole( CBaseAnimating *pBaseAnimating ) const; //true if the entity is within the portal cutout bounds and crossing the plane. Not just *near* the portal
+	bool				EntityHitBoxExtentIsInPortalHole( CBaseAnimating *pBaseAnimating, bool bUseCollisionAABB ) const; //true if the entity is within the portal cutout bounds and crossing the plane. Not just *near* the portal
 	void				RemoveEntityFromPortalHole( CBaseEntity *pEntity ); //if the entity is in the portal hole, this forcibly moves it out by any means possible
 
 	bool				RayIsInPortalHole( const Ray_t &ray ) const; //traces a ray against the same detector for EntityIsInPortalHole(), bias is towards false positives

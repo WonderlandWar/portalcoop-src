@@ -1,6 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="GameUI">
+      <UniqueIdentifier>{E7FC7768-B26D-AB7D-AD75-783C66D7B629}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{1680C80B-FF1E-EA4D-9817-CC12254F2E40}</UniqueIdentifier>
     </Filter>
@@ -77,6 +80,9 @@
     </Library>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\game\shared\gameui\BonusMapsDatabase.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\public\mathlib\amd3dx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1757,6 +1763,9 @@
     <ClInclude Include="portal\cbaseanimatingprojectile.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
+    <ClInclude Include="portal\entity_training_annotations.h">
+      <Filter>Source Files\Portal</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\game\shared\portal\env_lightrail_endpoint_shared.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
@@ -1788,6 +1797,9 @@
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
     <ClInclude Include="..\..\game\shared\portal\point_neurotoxin.h">
+      <Filter>Source Files\Portal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\game\shared\portal\point_ping_linker.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
     <ClInclude Include="..\..\game\shared\portal\portal_collideable_enumerator.h">
@@ -1885,6 +1897,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\game\shared\gameui\BonusMapsDatabase.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
     <ClCompile Include="gamedll_replay.cpp">
       <Filter>Replay</Filter>
     </ClCompile>
@@ -3373,6 +3388,9 @@
     <ClCompile Include="portal\cbaseanimatingprojectile.cpp">
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
+    <ClCompile Include="portal\entity_training_annotations.cpp">
+      <Filter>Source Files\Portal</Filter>
+    </ClCompile>
     <ClCompile Include="portal\env_lightrail_endpoint.cpp">
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
@@ -3425,6 +3443,9 @@
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
     <ClCompile Include="..\..\game\shared\portal\point_neurotoxin.cpp">
+      <Filter>Source Files\Portal</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\game\shared\portal\point_ping_linker.cpp">
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
     <ClCompile Include="portal\portal_client.cpp">

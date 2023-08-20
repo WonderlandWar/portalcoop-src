@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+//========= Copyright 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: Clones a physics object by use of shadows
 //
@@ -14,17 +14,12 @@
 
 #include "vphysics_interface.h"
 #ifdef GAME_DLL
-#include "baseentity.h"
+#include "BaseEntity.h"
 #include "baseanimating.h"
 #else
-#include "c_baseentity.h"
+#include "c_BaseEntity.h"
 #include "c_baseanimating.h"
 #endif
-
-#ifdef CLIENT_DLL
-#define CPhysicsShadowClone C_PhysicsShadowClone
-#endif
-
 class CPhysicsShadowClone;
 
 struct PhysicsObjectCloneLink_t
@@ -45,11 +40,8 @@ struct CPhysicsShadowCloneLL
 class CPhysicsShadowClone : public CBaseAnimating
 {
 	DECLARE_CLASS( CPhysicsShadowClone, CBaseAnimating );
-	DECLARE_NETWORKCLASS()
-	DECLARE_PREDICTABLE();
 
 private:
-
 	EHANDLE			m_hClonedEntity; //the entity we're supposed to be cloning the physics of
 	VMatrix			m_matrixShadowTransform; //all cloned coordinates and angles will be run through this matrix before being applied
 	VMatrix			m_matrixShadowTransform_Inverse;
@@ -66,15 +58,6 @@ private:
 
 
 public:
-#ifdef GAME_DLL
-	virtual int UpdateTransmitState( void )	// set transmit filter to transmit always
-	{
-		return SetTransmitState( FL_EDICT_ALWAYS );
-	}
-#else
-#endif
-
-
 	CPhysicsShadowClone( void );
 	virtual ~CPhysicsShadowClone( void );
 	
@@ -123,9 +106,8 @@ public:
 
 #ifdef GAME_DLL
 	virtual void	VPhysicsCollision( int index, gamevcollisionevent_t *pEvent );
-#endif
+
 	//damage relays to source entity if anything ever hits the clone
-#ifdef GAME_DLL
 	virtual bool	PassesDamageFilter( const CTakeDamageInfo &info );
 	virtual bool	CanBeHitByMeleeAttack( CBaseEntity *pAttacker );
 	virtual int		OnTakeDamage( const CTakeDamageInfo &info );
@@ -144,7 +126,6 @@ public:
 
 	static CUtlVector<CPhysicsShadowClone *> const &g_ShadowCloneList;
 };
-
 
 
 class CTraceFilterTranslateClones : public CTraceFilter //give it another filter, and it'll translate shadow clones into their source entity for tests

@@ -1,4 +1,4 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
+//========= Copyright 1996-2005, Valve Corporation, All rights reserved. ============//
 //
 // Purpose: Clones a physics object (usually with a matrix transform applied)
 //
@@ -11,12 +11,15 @@
 #include "vphysics/object_hash.h"
 #include "model_types.h"
 #include "portal/weapon_physcannon.h" //grab controllers
-#ifdef GAME_DLL
+
+#ifdef CLIENT_DLL
+//#include "trains.h"
+#include "c_props.h"
+#else
 #include "trains.h"
 #include "props.h"
-#else
-#include "c_props.h"
 #endif
+
 #include "PortalSimulation.h"
 
 #define MAX_SHADOW_CLONE_COUNT 200
@@ -27,19 +30,11 @@ ConVar sv_use_shadow_clones( "sv_use_shadow_clones", "1", FCVAR_REPLICATED | FCV
 
 static void DrawDebugOverlayForShadowClone( CPhysicsShadowClone *pClone );
 
-IMPLEMENT_NETWORKCLASS_ALIASED( PhysicsShadowClone, DT_PhysicsShadowClone )
-BEGIN_NETWORK_TABLE( CPhysicsShadowClone, DT_PhysicsShadowClone )
-END_NETWORK_TABLE()
-
-#ifdef CLIENT_DLL
-BEGIN_PREDICTION_DATA(CPhysicsShadowClone)
-
-	DEFINE_PRED_FIELD( m_hClonedEntity, FIELD_EHANDLE, FTYPEDESC_PRIVATE ),
-
-END_PREDICTION_DATA()
+#ifdef GAME_DLL
+LINK_ENTITY_TO_CLASS( physicsshadowclone, CPhysicsShadowClone );
+#else
+LINK_ENTITY_TO_CLASS_CLIENTONLY( physicsshadowclone, CPhysicsShadowClone );
 #endif
-
-LINK_ENTITY_TO_CLASS_ALIASED( physicsshadowclone, PhysicsShadowClone );
 
 static CUtlVector<CPhysicsShadowClone *> s_ActiveShadowClones;
 CUtlVector<CPhysicsShadowClone *> const &CPhysicsShadowClone::g_ShadowCloneList = s_ActiveShadowClones;
@@ -76,10 +71,6 @@ static ShadowCloneLLEntryManager s_SCLLManager;
 
 CPhysicsShadowClone::CPhysicsShadowClone( void )
 {
-#ifdef GAME_DLL
-	SetTransmitState(FL_EDICT_ALWAYS);
-#else
-#endif
 	m_matrixShadowTransform.Identity();
 	m_matrixShadowTransform_Inverse.Identity();
 	m_bShadowTransformIsIdentity = true;
@@ -167,7 +158,7 @@ void CPhysicsShadowClone::FullSync( bool bAllowAssumedSync )
 
 	if( pClonedEntity == NULL )
 	{
-		//AssertMsg( VPhysicsGetObject() != NULL, "Been linkless for more than this update, something should have killed this clone." );
+		AssertMsg( VPhysicsGetObject() != NULL, "Been linkless for more than this update, something should have killed this clone." );
 		SetMoveType( MOVETYPE_NONE );
 		SetSolid( SOLID_NONE );
 		SetSolidFlags( 0 );
@@ -394,7 +385,7 @@ void CPhysicsShadowClone::SyncEntity( bool bPullChanges )
 	QAngle qAngles;
 
 	ptOrigin = pSource->GetAbsOrigin();
-	qAngles = pSource->IsPlayer() ? vec3_angle : pSource->GetAbsAngles();
+	qAngles = pSource->GetAbsAngles();
 	vVelocity = pSource->GetAbsVelocity();
 
 	if( !m_bShadowTransformIsIdentity )
@@ -413,19 +404,14 @@ void CPhysicsShadowClone::SyncEntity( bool bPullChanges )
 #ifdef GAME_DLL
 		pDest->Teleport( &ptOrigin, &qAngles, NULL );
 #else
-		pDest->SetAbsOrigin(ptOrigin);
-		pDest->SetAbsAngles(qAngles);
-		
-		VPhysicsGetObject();
-
-		if (VPhysicsGetObject())
-			VPhysicsGetObject()->SetPosition(ptOrigin, qAngles, false);
+		pDest->SetAbsOrigin( ptOrigin );
+		pDest->SetAbsAngles( qAngles );
 #endif
 	}
 	
 	if( vVelocity != pDest->GetAbsVelocity() )
 	{
-		//pDest->IncrementInterpolationFrame();
+		//pDest->AddEffects( EF_NOINTERP );
 		pDest->SetAbsVelocity( vec3_origin ); //the two step process helps, I don't know why, but it does
 		pDest->ApplyAbsVelocityImpulse( vVelocity );
 	}
@@ -894,8 +880,8 @@ EHANDLE CPhysicsShadowClone::GetClonedEntity( void )
 
 
 
-//damage relays to source entity
 #ifdef GAME_DLL
+//damage relays to source entity
 bool CPhysicsShadowClone::PassesDamageFilter( const CTakeDamageInfo &info )
 {
 	CBaseEntity *pClonedEntity = m_hClonedEntity.Get();
@@ -946,6 +932,7 @@ void CPhysicsShadowClone::Event_Killed( const CTakeDamageInfo &info )
 		BaseClass::Event_Killed( info );
 }
 #endif
+
 CPhysicsShadowClone *CPhysicsShadowClone::CreateShadowClone( IPhysicsEnvironment *pInPhysicsEnvironment, EHANDLE hEntToClone, const char *szDebugMarker, const matrix3x4_t *pTransformationMatrix /*= NULL*/ )
 {
 	AssertMsg( szDebugMarker != NULL, "All shadow clones must have a debug marker for where it came from in debug builds." );
@@ -1021,30 +1008,26 @@ CPhysicsShadowClone *CPhysicsShadowClone::CreateShadowClone( IPhysicsEnvironment
 			}
 		}
 	}
+
 #ifdef GAME_DLL
 	DispatchSpawn( pClone );
 #else
-	solid_t tmpSolid;
-	PhysModelParseSolid(tmpSolid, pClone, pClonedEntity->GetModelIndex());
-
-	pClone->VPhysicsInitNormal(pClonedEntity->GetSolid(), pClonedEntity->GetSolidFlags(), false, &tmpSolid);
 	pClone->Spawn();
-
-	if (pClonedEntity->IsPlayer())
-		pClone->SetPredictionEligible(true);
-
 #endif
+
 	return pClone;
 }
 
 void CPhysicsShadowClone::Free( void )
 {
 	VPhysicsDestroyObject();
+
 #ifdef GAME_DLL
 	UTIL_Remove( this );
 #else
 	Remove();
 #endif
+
 	//Too many shadow clones breaks the game (too many entities)
 	--g_iShadowCloneCount;
 }
@@ -1072,6 +1055,7 @@ IPhysicsObject *CPhysicsShadowClone::TranslatePhysicsToClonedEnt( const IPhysics
 
 	return NULL;
 }
+
 
 #ifdef GAME_DLL
 void CPhysicsShadowClone::VPhysicsCollision( int index, gamevcollisionevent_t *pEvent )
@@ -1128,6 +1112,5 @@ TraceType_t	CTraceFilterTranslateClones::GetTraceType() const
 {
 	return m_pActualFilter->GetTraceType();
 }
-
 
 

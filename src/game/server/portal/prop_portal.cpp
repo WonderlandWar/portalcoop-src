@@ -46,6 +46,7 @@ extern ConVar use_server_portal_particles;
 
 static CUtlVector<CProp_Portal *> s_PortalLinkageGroups[256];
 
+extern ConVar sv_allow_customized_portal_colors;
 
 BEGIN_DATADESC( CProp_Portal )
 	//saving
@@ -88,6 +89,10 @@ BEGIN_DATADESC( CProp_Portal )
 	DEFINE_INPUTFUNC( FIELD_STRING, "NewLocation", InputNewLocation ),
 
 	DEFINE_OUTPUT( m_OnPlacedSuccessfully, "OnPlacedSuccessfully" ),
+	DEFINE_OUTPUT( m_OnEntityTeleportFromMe, "OnEntityTeleportFromMe" ),
+	DEFINE_OUTPUT( m_OnPlayerTeleportFromMe, "OnPlayerTeleportFromMe" ),
+	DEFINE_OUTPUT( m_OnEntityTeleportToMe, "OnEntityTeleportToMe" ),
+	DEFINE_OUTPUT( m_OnPlayerTeleportToMe, "OnPlayerTeleportToMe" ),
 
 END_DATADESC()
 
@@ -347,6 +352,10 @@ void CProp_Portal::Spawn( void )
 {
 	Precache();
 
+	UpdateCollisionShape();
+
+	SetupPortalColorSet();
+
 	Assert( s_PortalLinkageGroups[m_iLinkageGroupID].Find( this ) == -1 );
 	s_PortalLinkageGroups[m_iLinkageGroupID].AddToTail( this );
 
@@ -387,17 +396,17 @@ void CProp_Portal::OnRestore()
 
 	if ( IsActive() && use_server_portal_particles.GetBool() )
 	{
-		if (m_iLinkageGroupID == 1)
+		if (m_iPortalColorSet == 1)
 		{
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_particles" ) : ( "portal_lightblue_particles" ) ), PATTACH_POINT_FOLLOW, this, "particles_2", true );
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_edge" ) : ( "portal_lightblue_edge" ) ), PATTACH_POINT_FOLLOW, this, "particlespin" );
 		}
-		else if (m_iLinkageGroupID == 2)
+		else if (m_iPortalColorSet == 2)
 		{			
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_particles" ) : ( "portal_yellow_particles" ) ), PATTACH_POINT_FOLLOW, this, "particles_2", true );
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_edge" ) : ( "portal_yellow_edge" ) ), PATTACH_POINT_FOLLOW, this, "particlespin" );
 		}
-		else if (m_iLinkageGroupID == 3)
+		else if (m_iPortalColorSet == 3)
 		{			
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_particles" ) : ( "portal_green_particles" ) ), PATTACH_POINT_FOLLOW, this, "particles_2", true );
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_edge" ) : ( "portal_green_edge" ) ), PATTACH_POINT_FOLLOW, this, "particlespin" );
@@ -415,6 +424,13 @@ void PortalSimulatorDumps_DumpCollideToGlView( CPhysCollide *pCollide, const Vec
 
 bool CProp_Portal::TestCollision( const Ray_t &ray, unsigned int fContentsMask, trace_t& tr )
 {
+	if ( !m_pCollisionShape )
+	{
+		//HACK: This is a last-gasp type fix for a crash caused by m_pCollisionShape not yet being set up
+		// during a restore.
+		UpdateCollisionShape();
+	}
+
 	physcollision->TraceBox( ray, MASK_ALL, NULL, m_pCollisionShape, GetAbsOrigin(), GetAbsAngles(), &tr );
 	return tr.DidHit();
 }
@@ -535,6 +551,9 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 			pPlayer->RumbleEffect( RUMBLE_PORTAL_PLACEMENT_FAILURE, 0, RUMBLE_FLAGS_NONE );
 		}
 	}
+
+	// Just a little hack to always prevent particle inconsistencies.
+	SetupPortalColorSet();
 		
 	// Pick a fizzle effect
 	switch ( iEffect )
@@ -543,11 +562,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 			//DispatchEffect( "PortalFizzleCantFit", fxData );
 			//ep.m_pSoundName = "Portal.fizzle_invalid_surface";
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
-			if (m_iLinkageGroupID == 1)
+			if (m_iPortalColorSet == 1)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_nofit" ) : ( "portal_lightblue_nofit" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 2)
+			else if (m_iPortalColorSet == 2)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_nofit" ) : ( "portal_yellow_nofit" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 3)
+			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_nofit" ) : ( "portal_green_nofit" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_nofit" ) : ( "portal_1_nofit" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
@@ -565,11 +584,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 
 			//DispatchEffect( "PortalFizzleOverlappedLinked", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
-			if (m_iLinkageGroupID == 1)
+			if (m_iPortalColorSet == 1)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_overlap" ) : ( "portal_lightblue_overlap" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 2)
+			else if (m_iPortalColorSet == 2)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_overlap" ) : ( "portal_yellow_overlap" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 3)
+			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_overlap" ) : ( "portal_green_overlap" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_overlap" ) : ( "portal_1_overlap" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
@@ -580,11 +599,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 		case PORTAL_FIZZLE_BAD_VOLUME:
 			//DispatchEffect( "PortalFizzleBadVolume", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
-			if (m_iLinkageGroupID == 1)
+			if (m_iPortalColorSet == 1)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_badvolume" ) : ( "portal_lightblue_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 2)
+			else if (m_iPortalColorSet == 2)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_badvolume" ) : ( "portal_yellow_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 3)
+			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_badvolume" ) : ( "portal_green_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_badvolume" ) : ( "portal_1_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles );
@@ -594,11 +613,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 		case PORTAL_FIZZLE_BAD_SURFACE:
 			//DispatchEffect( "PortalFizzleBadSurface", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
-			if (m_iLinkageGroupID == 1)
+			if (m_iPortalColorSet == 1)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_badsurface" ) : ( "portal_lightblue_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 2)
+			else if (m_iPortalColorSet == 2)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_badsurface" ) : ( "portal_yellow_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 3)
+			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_badsurface" ) : ( "portal_green_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_badsurface" ) : ( "portal_1_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles );
@@ -608,11 +627,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 		case PORTAL_FIZZLE_KILLED:
 			//DispatchEffect( "PortalFizzleKilled", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
-			if (m_iLinkageGroupID == 1)
+			if (m_iPortalColorSet == 1)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 2)
+			else if (m_iPortalColorSet == 2)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 3)
+			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_close" ) : ( "portal_1_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
@@ -622,11 +641,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 		case PORTAL_FIZZLE_CLEANSER:
 			//DispatchEffect( "PortalFizzleCleanser", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
-			if (m_iLinkageGroupID == 1)
+			if (m_iPortalColorSet == 1)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_cleanser" ) : ( "portal_lightblue_cleanser" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 2)
+			else if (m_iPortalColorSet == 2)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_cleanser" ) : ( "portal_yellow_cleanser" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 3)
+			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_cleanser" ) : ( "portal_green_cleanser" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_cleanser" ) : ( "portal_1_cleanser" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
@@ -636,11 +655,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 		case PORTAL_FIZZLE_CLOSE:
 			//DispatchEffect( "PortalFizzleKilled", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
-			if (m_iLinkageGroupID == 1)
+			if (m_iPortalColorSet == 1)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 2)
+			else if (m_iPortalColorSet == 2)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 3)
+			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_close" ) : ( "portal_1_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
@@ -696,11 +715,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 
 		case PORTAL_FIZZLE_SUCCESS:
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
-			if (m_iLinkageGroupID == 1)
+			if (m_iPortalColorSet == 1)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_success" ) : ( "portal_lightblue_success" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 2)
+			else if (m_iPortalColorSet == 2)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_success" ) : ( "portal_yellow_success" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
-			else if (m_iLinkageGroupID == 3)
+			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_success" ) : ( "portal_green_success" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_success" ) : ( "portal_1_success" ) ), fxData.m_vOrigin, fxData.m_vAngles );
@@ -867,6 +886,8 @@ void CProp_Portal::PunchAllPenetratingPlayers( void )
 
 void CProp_Portal::Activate( void )
 {
+	UpdateCollisionShape();
+
 	if( s_PortalLinkageGroups[m_iLinkageGroupID].Find( this ) == -1 )
 		s_PortalLinkageGroups[m_iLinkageGroupID].AddToTail( this );
 
@@ -1651,8 +1672,8 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	// Fast moving objects can pass through the hole this frame while it's in the old location.
 
 	// Don't fizzle me if I moved from a location another portalgun shot
-	if (m_pAttackingPortal)
-		m_pAttackingPortal->m_pHitPortal = NULL;
+	if (m_pPortalReplacingMe)
+		m_pPortalReplacingMe->m_pHitPortal = NULL;
 
 	m_PortalSimulator.ReleaseAllEntityOwnership();
 	Vector vOldForward;
@@ -1693,17 +1714,17 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	}
 	if (use_server_portal_particles.GetBool())
 	{
-		if (m_iLinkageGroupID == 1)
+		if (m_iPortalColorSet == 1)
 		{
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_particles" ) : ( "portal_lightblue_particles" ) ), PATTACH_POINT_FOLLOW, this, "particles_2", true );
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_edge" ) : ( "portal_lightblue_edge" ) ), PATTACH_POINT_FOLLOW, this, "particlespin" );
 		}
-		else if (m_iLinkageGroupID == 2)
+		else if (m_iPortalColorSet == 2)
 		{			
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_particles" ) : ( "portal_yellow_particles" ) ), PATTACH_POINT_FOLLOW, this, "particles_2", true );
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_edge" ) : ( "portal_yellow_edge" ) ), PATTACH_POINT_FOLLOW, this, "particlespin" );
 		}
-		else if (m_iLinkageGroupID == 3)
+		else if (m_iPortalColorSet == 3)
 		{			
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_particles" ) : ( "portal_green_particles" ) ), PATTACH_POINT_FOLLOW, this, "particles_2", true );
 			DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_edge" ) : ( "portal_green_edge" ) ), PATTACH_POINT_FOLLOW, this, "particlespin" );
@@ -1748,6 +1769,65 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	}
 }
 
+#define PORTALBROADCAST 0
+
+//-----------------------------------------------------------------------------
+// Purpose: Notify this the supplied entity has teleported to this portal
+//-----------------------------------------------------------------------------
+void CProp_Portal::OnEntityTeleportedToPortal( CBaseEntity *pEntity )
+{
+	m_OnEntityTeleportToMe.FireOutput( this, this );
+#if PORTALBROADCAST
+	BroadcastPortalEvent( PORTALEVENT_ENTITY_TELEPORTED_TO );
+#endif
+	if ( pEntity->IsPlayer() )
+	{
+		m_OnPlayerTeleportToMe.FireOutput( this, this );
+#if PORTALBROADCAST
+		BroadcastPortalEvent( PORTALEVENT_PLAYER_TELEPORTED_TO );
+#endif
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Notify this the supplied entity has teleported from this portal
+//-----------------------------------------------------------------------------
+void CProp_Portal::OnEntityTeleportedFromPortal( CBaseEntity *pEntity )
+{
+	m_OnEntityTeleportFromMe.FireOutput( this, this );
+#if PORTALBROADCAST
+	BroadcastPortalEvent( PORTALEVENT_ENTITY_TELEPORTED_FROM );
+#endif
+
+	if ( pEntity->IsPlayer() )
+	{
+		m_OnPlayerTeleportFromMe.FireOutput( this, this );
+#if PORTALBROADCAST
+		BroadcastPortalEvent( PORTALEVENT_PLAYER_TELEPORTED_FROM );
+#endif
+	}
+}
+
+void CProp_Portal::PreTeleportTouchingEntity( CBaseEntity *pOther )
+{
+	if( m_NotifyOnPortalled )
+		m_NotifyOnPortalled->OnPrePortalled( pOther, true );
+
+	CProp_Portal *pLinked = (CProp_Portal *)m_hLinkedPortal.Get();
+	if( pLinked->m_NotifyOnPortalled )
+		pLinked->m_NotifyOnPortalled->OnPrePortalled( pOther, false );
+}
+
+void CProp_Portal::PostTeleportTouchingEntity( CBaseEntity *pOther )
+{
+	if( m_NotifyOnPortalled )
+		m_NotifyOnPortalled->OnPostPortalled( pOther, true );
+
+	CProp_Portal *pLinked = (CProp_Portal *)m_hLinkedPortal.Get();
+	if( pLinked->m_NotifyOnPortalled )
+		pLinked->m_NotifyOnPortalled->OnPostPortalled( pOther, false );
+}
+
 void CProp_Portal::InputSetActivatedState( inputdata_t &inputdata )
 {
 	SetActive(inputdata.value.Bool());
@@ -1789,17 +1869,17 @@ void CProp_Portal::InputSetActivatedState( inputdata_t &inputdata )
 			}
 			if (use_server_portal_particles.GetBool())
 			{
-				if (m_iLinkageGroupID == 1)
+				if (m_iPortalColorSet == 1)
 				{
 					DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_particles" ) : ( "portal_lightblue_particles" ) ), PATTACH_POINT_FOLLOW, this, "particles_2", true );
 					DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_edge" ) : ( "portal_lightblue_edge" ) ), PATTACH_POINT_FOLLOW, this, "particlespin" );
 				}
-				else if (m_iLinkageGroupID == 2)
+				else if (m_iPortalColorSet == 2)
 				{			
 					DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_particles" ) : ( "portal_yellow_particles" ) ), PATTACH_POINT_FOLLOW, this, "particles_2", true );
 					DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_edge" ) : ( "portal_yellow_edge" ) ), PATTACH_POINT_FOLLOW, this, "particlespin" );
 				}
-				else if (m_iLinkageGroupID == 3)
+				else if (m_iPortalColorSet == 3)
 				{			
 					DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_particles" ) : ( "portal_green_particles" ) ), PATTACH_POINT_FOLLOW, this, "particles_2", true );
 					DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_edge" ) : ( "portal_green_edge" ) ), PATTACH_POINT_FOLLOW, this, "particlespin" );
@@ -1947,4 +2027,47 @@ CProp_Portal *CProp_Portal::FindPortal( unsigned char iLinkageGroupID, bool bPor
 const CUtlVector<CProp_Portal *> *CProp_Portal::GetPortalLinkageGroup( unsigned char iLinkageGroupID )
 {
 	return &s_PortalLinkageGroups[iLinkageGroupID];
+}
+
+//===================================================//
+// CFunc_Portalled Code
+//===================================================//
+
+LINK_ENTITY_TO_CLASS( func_portalled, CFunc_Portalled )
+
+BEGIN_DATADESC( CFunc_Portalled )
+
+DEFINE_FIELD( m_bFireOnDeparture, FIELD_BOOLEAN ),
+DEFINE_FIELD( m_bFireOnArrival, FIELD_BOOLEAN ),
+DEFINE_FIELD( m_bFireOnPlayer, FIELD_BOOLEAN ),
+
+DEFINE_OUTPUT( m_OnEntityPrePortalled, "OnEntityPrePortalled" ),
+DEFINE_OUTPUT( m_OnEntityPostPortalled, "OnEntityPrePortalled" ),
+
+END_DATADESC()
+
+void CFunc_Portalled::OnPrePortalled( CBaseEntity *pEntity, bool m_bFireType )
+{
+	char sFireType;
+
+	if (m_bFireType)
+		sFireType = m_bFireOnDeparture;
+	else
+		sFireType = m_bFireOnArrival;
+
+	if (sFireType != NULL && m_bFireOnPlayer)
+		m_OnEntityPrePortalled.FireOutput( pEntity, this );
+}
+
+void CFunc_Portalled::OnPostPortalled( CBaseEntity *pEntity, bool m_bFireType )
+{
+	char sFireType;
+
+	if (m_bFireType)
+		sFireType = m_bFireOnDeparture;
+	else
+		sFireType = m_bFireOnArrival;
+
+	if (sFireType != NULL && m_bFireOnPlayer)
+		m_OnEntityPostPortalled.FireOutput( pEntity, this );
 }

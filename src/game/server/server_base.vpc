@@ -998,6 +998,12 @@ $Project
 		//Haptics
 		$File	"$SRCDIR\public\haptics\haptic_utils.h"	[$WIN32]
 	}
+	
+	$Folder "GameUI"
+	{	
+		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.cpp"
+		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.h"
+	}
 
 	$Folder	"Tools Framework"
 	{

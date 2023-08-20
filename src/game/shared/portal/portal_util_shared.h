@@ -12,6 +12,8 @@
 
 #include "engine/IEngineTrace.h"
 
+extern ConVar sv_portal_with_gamemovement;
+
 extern bool g_bBulletPortalTrace;
 
 #ifdef CLIENT_DLL
@@ -25,6 +27,8 @@ extern bool g_bBulletPortalTrace;
 	class CProp_Portal;
 	class CBeam;
 #endif
+
+#define USEMOVEMENTFORPORTALLING 1
 
 Color UTIL_Portal_Color( int iPortal, int iLinkageGroupID );
 
@@ -95,7 +99,11 @@ bool UTIL_EntityIsIntersectingPortalWithLinkedAlsoBeingFloorOrCeiling( const CBa
 void UTIL_Portal_NDebugOverlay( const Vector &ptPortalCenter, const QAngle &qPortalAngles, int r, int g, int b, int a, bool noDepthTest, float duration );
 void UTIL_Portal_NDebugOverlay( const CProp_Portal *pPortal, int r, int g, int b, int a, bool noDepthTest, float duration );
 
+bool UTIL_FindClosestPassableSpace_InPortal( const CProp_Portal *pPortal, const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, ITraceFilter *pTraceFilter, unsigned int fMask, unsigned int iIterations, Vector &vCenterOut );
+bool UTIL_FindClosestPassableSpace_InPortal_CenterMustStayInFront( const CProp_Portal *pPortal, const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, ITraceFilter *pTraceFilter, unsigned int fMask, unsigned int iIterations, Vector &vCenterOut );
 bool FindClosestPassableSpace( CBaseEntity *pEntity, const Vector &vIndecisivePush, unsigned int fMask = MASK_SOLID ); //assumes the object is already in a mostly passable space
+bool UTIL_FindClosestPassableSpace_CenterMustStayInFrontOfPlane( const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, ITraceFilter *pTraceFilter, unsigned int fMask, unsigned int iIterations, Vector &vCenterOut, const VPlane &stayInFrontOfPlane );
+
 
 CProp_Portal *UTIL_PointIsOnPortalQuad( const Vector vPoint, float fOnPlaneEpsilon, CProp_Portal * const *pPortalsToCheck, int iArraySize );
 
