@@ -295,7 +295,8 @@ IMPLEMENT_CLIENTCLASS_DT(C_Portal_Player, DT_Portal_Player, CPortal_Player)
 	RecvPropBool( RECVINFO( m_bSprintEnabled ) ),
 	RecvPropBool( RECVINFO( m_bSilentDropAndPickup ) ),
 	RecvPropBool( RECVINFO( m_bIsListenServerHost ) ),
-	RecvPropInt( RECVINFO( m_iCustomPortalColorSet ) ),
+	RecvPropInt( RECVINFO( m_iCustomPortalColorSet ) ),	
+	
 END_RECV_TABLE()
 
 LINK_ENTITY_TO_CLASS( player, C_Portal_Player )
@@ -311,9 +312,7 @@ BEGIN_PREDICTION_DATA( C_Portal_Player )
 	DEFINE_PRED_ARRAY_TOL( m_flEncodedController, FIELD_FLOAT, MAXSTUDIOBONECTRLS, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE, 0.02f ),
 	DEFINE_PRED_FIELD( m_nNewSequenceParity, FIELD_INTEGER, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE | FTYPEDESC_NOERRORCHECK ),
 	DEFINE_PRED_FIELD( m_nResetEventsParity, FIELD_INTEGER, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE | FTYPEDESC_NOERRORCHECK ),
-
-	DEFINE_PRED_FIELD( m_bIntersectingPortalPlane, FIELD_BOOLEAN, FTYPEDESC_NOERRORCHECK ),
-	
+		
 	DEFINE_PRED_FIELD( m_hPortalEnvironment, FIELD_EHANDLE, FTYPEDESC_NOERRORCHECK ),
 	
 	//DEFINE_FIELD( m_matLastPortalled, FIELD_VMATRIX_WORLDSPACE ), //Garbage data :(
@@ -431,7 +430,7 @@ void C_Portal_Player::StopLoopingSounds( void )
 }
 void C_Portal_Player::UpdatePortalPlaneSounds(void)
 {
-#if 0
+#if 1
 	CProp_Portal* pPortal = m_hPortalEnvironment;
 	if (pPortal && pPortal->IsActive())
 	{
@@ -452,6 +451,7 @@ void C_Portal_Player::UpdatePortalPlaneSounds(void)
 
 				if (UTIL_IsBoxIntersectingPortal(vEarCenter, vDiagonal, pPortal))
 				{
+
 					m_bIntersectingPortalPlane = true;
 
 					CPASAttenuationFilter filter(this);
@@ -1052,9 +1052,13 @@ void C_Portal_Player::ClientThink( void )
 	UpdateIDTarget();
 	UpdatePortalIDTarget();
 	
-	if (prediction->InPrediction() && GetPredictable())
+	if (IsLocalPlayer())
 	{
 		UpdatePortalPlaneSounds();
+	}
+
+	if (prediction->InPrediction() && GetPredictable())
+	{
 		UpdateWooshSounds();
 	}
 }
@@ -1260,7 +1264,6 @@ void C_Portal_Player::UpdateClientSideAnimation( void )
 
 void C_Portal_Player::DoAnimationEvent( PlayerAnimEvent_t event, int nData )
 {
-	//if (prediction->InPrediction() && GetPredictable())
 	m_PlayerAnimState->DoAnimationEvent( event, nData );
 }
 
@@ -1785,6 +1788,8 @@ void C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 	//Msg( "Pforwardmove=%f, sidemove=%f\n", pCmd->forwardmove, pCmd->sidemove );
 }
 
+ConVar cl_use_portalling_angle_fix("cl_use_portalling_angle_fix", "0", FCVAR_CLIENTCMD_CAN_EXECUTE | FCVAR_ARCHIVE, "Attempts to make portal teleportations seem less laggy");
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : flInputSampleTime - 
@@ -1807,8 +1812,12 @@ bool C_Portal_Player::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 	if ( (m_bShouldFixAngles && !m_bIsListenServerHost ) || ( m_bShouldFixAngles && m_bIsListenServerHost && bFakeLag ) )
 	{
 		m_bShouldFixAngles = false;
-		FixEyeAnglesFromPortalling();
-		pCmd->viewangles = m_qPrePortalledStoredViewAngles;
+		// This is just causing way too many problems, it could've worked, but it doesn't very well. I'll make it optional though.
+		if (cl_use_portalling_angle_fix.GetBool())
+		{
+			pCmd->viewangles = m_qPrePortalledStoredViewAngles;
+			FixEyeAnglesFromPortalling(); 
+		}
 	}
 
 	AvoidPlayers( pCmd );
@@ -2160,6 +2169,8 @@ void C_Portal_Player::FixEyeAnglesFromPortalling( void )
 	
 	SetViewAngles( m_qPrePortalledStoredAngles );
 
+	// Unbeknownst to me, this was a terrible idea as it causes angles to improperly snap
+#if 0
 	//engine view angles (for mouse input smoothness)
 	{
 		engine->SetViewAngles( m_qPrePortalledStoredViewAngles );
@@ -2169,6 +2180,15 @@ void C_Portal_Player::FixEyeAnglesFromPortalling( void )
 	{
 		prediction->SetViewAngles( m_qPrePortalledStoredViewAngles );
 	}
+#endif
+
+	// Unnecessary
+#if 0
+	SetLocalAngles(m_qPrePortalledStoredAngles);
+	SetAbsAngles(m_qPrePortalledStoredAngles);
+	SetNetworkAngles(m_qPrePortalledStoredAngles);
+#endif
+
 }
 
 void C_Portal_Player::CheckPlayerAboutToTouchPortal( void )
@@ -2777,7 +2797,6 @@ void C_Portal_Player::CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNe
 		}
 		
 	// in multiplayer we want to make sure we get the screenshakes and stuff
-	//	This doesn't seem to do anything, so I'm commenting it out
 	//	if ( gpGlobals->maxClients >> 1 )
 	//		CalcPortalView( eyeOrigin, eyeAngles );
 

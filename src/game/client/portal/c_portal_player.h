@@ -221,16 +221,16 @@ public:
 	VMatrix						m_matLastPortalled;
 
 	int m_iCustomPortalColorSet;
+	
+	float GetLatestServerTeleport() { return m_fLatestServerTeleport; }
+	VMatrix GetLatestServerTeleportationInverseMatrix() { return m_matLatestServerTeleportationInverseMatrix; }
 
 	CSoundPatch		*m_pWooshSound;
 	bool	m_bIntersectingPortalPlane;
 	
 	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
 	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
-
-	float GetLatestServerTeleport() { return m_fLatestServerTeleport; }
-	VMatrix GetLatestServerTeleportationInverseMatrix() { return m_matLatestServerTeleportationInverseMatrix; }
-
+	
 protected:
 
 	virtual void	FireGameEvent( IGameEvent *event );

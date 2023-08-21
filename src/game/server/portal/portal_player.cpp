@@ -235,6 +235,7 @@ DEFINE_SOUNDPATCH(m_pWooshSound),
 	DEFINE_FIELD(m_bIntersectingPortalPlane, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_bStuckOnPortalCollisionObject, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_fTimeLastHurt, FIELD_TIME),
+	DEFINE_FIELD(m_fFlags, FIELD_FLOAT),
 
 #if 0
 	DEFINE_FIELD(m_StatsThisLevel.iNumPortalsPlaced, FIELD_INTEGER),
@@ -1514,7 +1515,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 					m_bIntersectingPortalPlane = true;
 
 					CPASAttenuationFilter filter(this);
-					//filter.UsePredictionRules();
+					filter.RemoveRecipient(this);
 					CSoundParameters params;
 					if (GetParametersForSound("PortalPlayer.EnterPortal", params, NULL))
 					{
@@ -1535,7 +1536,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 					m_bIntersectingPortalPlane = false;
 
 					CPASAttenuationFilter filter(this);
-					//filter.UsePredictionRules();
+					filter.RemoveRecipient(this);
 					CSoundParameters params;
 					if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
 					{
@@ -1554,7 +1555,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 		m_bIntersectingPortalPlane = false;
 
 		CPASAttenuationFilter filter(this);
-		//filter.UsePredictionRules();
+		filter.RemoveRecipient(this);
 		CSoundParameters params;
 		if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
 		{
@@ -1645,7 +1646,6 @@ bool CPortal_Player::WantsLagCompensationOnEntity(const CBasePlayer* pPlayer, co
 
 	return true;
 }
-
 
 void CPortal_Player::DoAnimationEvent(PlayerAnimEvent_t event, int nData)
 {

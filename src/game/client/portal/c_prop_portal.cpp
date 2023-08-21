@@ -220,6 +220,8 @@ void __MsgFunc_PrePlayerPortalled(bf_read &msg)
 	if( pPortal == NULL )
 		return;
 
+
+
 	//grab other entity's EHANDLE
 
 	iEncodedEHandle = msg.ReadLong();
@@ -1313,8 +1315,6 @@ void C_Prop_Portal::Touch(C_BaseEntity *pOther)
 {
 //	if( pOther->IsPlayer() )
 //		return;
-
-	Msg("Touch\n");
 	
 	// Don't do anything on touch if it's not active
 	if( !IsActive() || (m_hLinkedPortal.Get() == NULL) )

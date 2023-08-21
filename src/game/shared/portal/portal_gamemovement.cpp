@@ -338,6 +338,7 @@ bool CPortalGameMovement::CheckJumpButton()
 	{
 		GetPortalPlayer()->DoAnimationEvent( PLAYERANIMEVENT_JUMP, 0 );
 	//	MoveHelper()->PlayerSetAnimation(PLAYER_JUMP);
+
 		return true;
 	}
 
@@ -980,6 +981,8 @@ Vector CalculateExtentShift( const Vector &vLocalExtents, const Vector &vLocalNo
 }
 
 
+ConVar sv_portal_new_player_trace_vs_remote_ents( "sv_portal_new_player_trace_vs_remote_ents", "0", FCVAR_REPLICATED | FCVAR_CHEAT );
+
 void TracePortalPlayerAABB( CPortal_Player *pPortalPlayer, CProp_Portal *pPortal, const Ray_t &ray_local, const Ray_t &ray_remote, const Vector &vRemoteShift, unsigned int fMask, int collisionGroup, CTrace_PlayerAABB_vs_Portals &pm, bool bSkipRemoteTubeCheck = false )
 {
 #ifdef CLIENT_DLL
@@ -994,7 +997,7 @@ void TracePortalPlayerAABB( CPortal_Player *pPortalPlayer, CProp_Portal *pPortal
 
 	pm.m_bContactedPortalTransitionRamp = false;
 
-#if 0
+#if 1
 	if( sv_portal_new_player_trace.GetBool() )
 	{
 #if defined( TRACE_DEBUG_ENABLED )
@@ -1255,7 +1258,10 @@ void CPortalGameMovement::TracePlayerBBox( const Vector& start, const Vector& en
 	//memset( &pm, 0, sizeof( trace_t ) );
 	
 	CPortal_Player *pPortalPlayer = (CPortal_Player *)((CBaseEntity *)mv->m_nPlayerHandle.Get());
+
+	// Aha! So this is what causes laggy movement! Arbitrarily setting pPortal to NULL will completely get rid of laggy movement in multiplayer, but also removes your ability to walk through portals
 	CProp_Portal *pPortal = pPortalPlayer->m_hPortalEnvironment;
+	
 
 	Ray_t ray_local;
 	ray_local.Init( start, end, GetPlayerMins(), GetPlayerMaxs() );
@@ -1271,14 +1277,6 @@ void CPortalGameMovement::TracePlayerBBox( const Vector& start, const Vector& en
 
 		//Need to take AABB extent changes from possible ducking into account
 		//bool bForcedDuck = false;
-		bool bDuckToFit = false; //ShouldPortalTransitionCrouch( pPortal );
-		bool bDuckToFling = false; // ShouldMaintainFlingAssistCrouch(pLinkedPortal, pPortal->m_matrixThisToLinked.ApplyRotation(mv->m_vecVelocity));
-		if( bDuckToFit || bDuckToFling )
-		{
-			//significant change in up axis
-			//bForcedDuck = true;
-			vTeleportExtents = (GetPlayerMaxs(true) - GetPlayerMins(true)) * 0.5f;
-		}
 
 		Vector vRemoteShift = CalculateExtentShift( ray_local.m_Extents, portalSimulator.Placement.PortalPlane.m_Normal, vTeleportExtents, linkedPortalSimulator.Placement.PortalPlane.m_Normal );
 
@@ -1290,7 +1288,7 @@ void CPortalGameMovement::TracePlayerBBox( const Vector& start, const Vector& en
 		//ray_remote.m_StartOffset.z -= vTeleportExtents.z;
 		ray_remote.m_Extents = vTeleportExtents;		
 
-		TracePortalPlayerAABB( pPortalPlayer, pPortal, ray_local, ray_remote, vRemoteShift, fMask, collisionGroup, pm, bDuckToFling );
+		TracePortalPlayerAABB( pPortalPlayer, pPortal, ray_local, ray_remote, vRemoteShift, fMask, collisionGroup, pm );
 	}
 	else
 	{

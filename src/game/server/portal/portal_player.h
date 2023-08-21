@@ -183,7 +183,7 @@ public:
 	
 	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
 	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
-			
+					
 private:
 	
 	virtual CAI_Expresser* CreateExpresser( void );

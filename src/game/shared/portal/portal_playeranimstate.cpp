@@ -126,7 +126,6 @@ Activity CPortalPlayerAnimState::TranslateActivity( Activity actDesired )
 void CPortalPlayerAnimState::DoAnimationEvent( PlayerAnimEvent_t event, int nData )
 {
 	Activity iWeaponActivity = ACT_INVALID;
-
 	switch( event )
 	{
 	case PLAYERANIMEVENT_ATTACK_PRIMARY:
@@ -252,7 +251,7 @@ bool CPortalPlayerAnimState::HandleMoving( Activity &idealActivity )
 bool CPortalPlayerAnimState::HandleDucking( Activity &idealActivity )
 {
 #if 1
-	if ( GetBasePlayer()->m_Local.m_bDucking || GetBasePlayer()->m_Local.m_bDucked )
+	if ( GetBasePlayer()->m_Local.m_bDucking || GetBasePlayer()->m_Local.m_bDucked || GetBasePlayer()->GetFlags() & FL_DUCKING )
 	{
 		if ( GetOuterXYSpeed() < MOVING_MINIMUM_SPEED )
 		{
@@ -274,7 +273,7 @@ bool CPortalPlayerAnimState::HandleJumping( Activity &idealActivity )
 {
 	Vector vecVelocity;
 	GetOuterAbsVelocity( vecVelocity );
-
+	
 	if ( ( vecVelocity.z > 300.0f || m_bInAirWalk ) )
 	{
 		// Check to see if we were in an airwalk and now we are basically on the ground.
@@ -287,7 +286,7 @@ bool CPortalPlayerAnimState::HandleJumping( Activity &idealActivity )
 		else
 		{
 			// In an air walk.
-			idealActivity = ACT_MP_AIRWALK;
+			idealActivity = ACT_MP_JUMP_START; // Air walk doesn't have an anim, just use jump instead, also fixes multiplayer issues
 			m_bInAirWalk = true;
 		}
 	}

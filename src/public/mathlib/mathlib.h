@@ -2165,6 +2165,14 @@ inline bool CloseEnough( const Vector &a, const Vector &b, float epsilon = EQUAL
 		fabs( a.z - b.z ) <= epsilon;
 }
 
+inline bool CloseEnough( const QAngle &a, const QAngle &b, float epsilon = EQUAL_EPSILON )
+{
+	return fabs( a.x - b.x ) <= epsilon &&
+		fabs( a.y - b.y ) <= epsilon &&
+		fabs( a.z - b.z ) <= epsilon;
+}
+
+
 // Fast compare
 // maxUlps is the maximum error in terms of Units in the Last Place. This 
 // specifies how big an error we are willing to accept in terms of the value

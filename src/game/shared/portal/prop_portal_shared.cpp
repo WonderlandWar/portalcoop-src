@@ -951,58 +951,9 @@ bool CProp_Portal::ShouldTeleportTouchingEntity( CBaseEntity *pOther )
 	//IPhysicsObject *pOtherPhysObject = pOther->VPhysicsGetObject();
 
 	Vector ptOtherCenter = pOther->WorldSpaceCenter();
-#if 1
+
 	Vector vOtherVelocity = Portal_FindUsefulVelocity( pOther );
-#else
-	//grab current velocity
-	{
-		if( sv_portal_new_velocity_check.GetBool() )
-		{
-			//we're assuming that physics velocity is the most reliable of all if the convar is true
-			if( pOtherPhysObject )
-			{
-				//pOtherPhysObject->GetImplicitVelocity( &vOtherVelocity, NULL );
-				pOtherPhysObject->GetVelocity( &vOtherVelocity, NULL );
 
-				if( vOtherVelocity == vec3_origin )
-				{
-					pOther->GetVelocity( &vOtherVelocity );
-				}
-			}
-			else
-			{
-				pOther->GetVelocity( &vOtherVelocity );
-			}
-		}
-		else
-		{
-			//old style of velocity grabbing, which uses implicit velocity as a last resort
-			if( pOther->GetMoveType() == MOVETYPE_VPHYSICS )
-			{
-				if( pOtherPhysObject && (pOtherPhysObject->GetShadowController() == NULL) )
-					pOtherPhysObject->GetVelocity( &vOtherVelocity, NULL );
-				else
-					pOther->GetVelocity( &vOtherVelocity );
-			}
-			else
-			{
-				pOther->GetVelocity( &vOtherVelocity );
-			}
-
-			if( vOtherVelocity == vec3_origin )
-			{
-				// Recorded velocity is sometimes zero under pushed or teleported movement, or after position correction.
-				// In these circumstances, we want implicit velocity ((last pos - this pos) / timestep )
-				if ( pOtherPhysObject )
-				{
-					Vector vOtherImplicitVelocity;
-					pOtherPhysObject->GetImplicitVelocity( &vOtherImplicitVelocity, NULL );
-					vOtherVelocity += vOtherImplicitVelocity;
-				}
-			}
-		}
-	}
-#endif
 	// Test for entity's center being past portal plane
 	if(m_PortalSimulator.GetInternalData().Placement.PortalPlane.m_Normal.Dot( ptOtherCenter ) < m_PortalSimulator.GetInternalData().Placement.PortalPlane.m_Dist)
 	{
@@ -1018,6 +969,11 @@ bool CProp_Portal::ShouldTeleportTouchingEntity( CBaseEntity *pOther )
 				--iAntiRecurse;
 			}
 #endif
+
+#ifdef CLIENT_DLL
+			Msg("I can teleport a touching entity!!\n");
+#endif
+
 			return true;
 		}
 		else
