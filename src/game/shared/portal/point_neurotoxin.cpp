@@ -44,7 +44,6 @@ BEGIN_DATADESC(CPointNeurotoxin)
 	DEFINE_FIELD(m_bInProgress,					FIELD_BOOLEAN),
 	DEFINE_FIELD(m_bShouldBeTicking,			FIELD_BOOLEAN),
 	DEFINE_FIELD(m_bShouldDoDamage,				FIELD_BOOLEAN),
-	DEFINE_FIELD(m_bShouldUseMaxTimeLeft,		FIELD_BOOLEAN),
 
 	DEFINE_THINKFUNC(ThinkTimer),
 	DEFINE_THINKFUNC(DamagePlayersThink),
@@ -94,9 +93,11 @@ void CPointNeurotoxin::Start()
 }
 
 void CPointNeurotoxin::Stop()
-{
-	if (!m_bInProgress)
-		return;
+{	
+	// Bad check
+	//if (!m_bInProgress)
+	//	return;
+
 	m_bInProgress = false;
 	SetThink(NULL);
 	m_iNeurotoxinTimeLeft = m_iNeurotoxinTime;
@@ -210,20 +211,6 @@ void CPointNeurotoxin::DamagePlayersThink()
 		}
 	
 	}
-#if 1
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-
-		if (!pPlayer)
-			continue;
-
-		CTakeDamageInfo info;
-		info.SetDamage(gpGlobals->frametime * 50.0f);
-		info.SetDamageType(DMG_NERVEGAS);
-		pPlayer->TakeDamage(info);
-	} //FOR_ALL_PLAYERS(pPlayer)
-#endif
 
 #endif
 	SetNextThink(gpGlobals->curtime);

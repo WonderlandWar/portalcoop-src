@@ -43,6 +43,7 @@ class CUserCmd;
 // How many times to display altfire hud hints (per weapon)
 #define WEAPON_ALTFIRE_HUD_HINT_COUNT	1
 #define WEAPON_RELOAD_HUD_HINT_COUNT	1
+#define PREDICT_NEXTATTACK_TIME 1
 
 //Start with a constraint in place (don't drop to floor)
 #define	SF_WEAPON_START_CONSTRAINED	(1<<0)	
@@ -464,6 +465,8 @@ public:
 	virtual int				UpdateTransmitState( void );
 
 	void					InputHideWeapon( inputdata_t &inputdata );
+	void					InputEnablePlayerPickup( inputdata_t &inputdata ) { m_bAllowPlayerEquip = true; }
+	void					InputDisablePlayerPickup( inputdata_t &inputdata ) { m_bAllowPlayerEquip = false; }
 	void					Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 
 	virtual CDmgAccumulator	*GetDmgAccumulator( void ) { return NULL; }
@@ -562,14 +565,21 @@ protected:
 	int						m_nCritSeedRequests;
 #endif // TF
 
+#ifdef GAME_DLL
+	bool					m_bAllowPlayerEquip;
+#endif
+
 public:
 
 	// Networked fields
 	CNetworkVar( int, m_nViewModelIndex );
 
 	// Weapon firing
-	CNetworkVar( float, m_flNextPrimaryAttack );						// soonest time ItemPostFrame will call PrimaryAttack
+
+	CNetworkVar( float, m_flNextPrimaryAttack );					// soonest time ItemPostFrame will call PrimaryAttack
 	CNetworkVar( float, m_flNextSecondaryAttack );					// soonest time ItemPostFrame will call SecondaryAttack
+
+	
 	CNetworkVar( float, m_flTimeWeaponIdle );							// soonest time ItemPostFrame will call WeaponIdle
 	// Weapon state
 	bool					m_bInReload;			// Are we in the middle of a reload;
@@ -596,7 +606,7 @@ private:
 
 	int						m_iPrimaryAmmoCount;
 	int						m_iSecondaryAmmoCount;
-
+	
 public:
 
 	IMPLEMENT_NETWORK_VAR_FOR_DERIVED( m_nNextThinkTick );

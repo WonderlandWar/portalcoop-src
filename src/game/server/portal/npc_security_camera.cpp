@@ -1201,3 +1201,12 @@ void PlayDismountSounds( void )
 		}
 	}
 }
+
+
+CON_COMMAND_F(resetcamerasdetached, "Resets the cameras detached counter for the GLaDOS lines", FCVAR_REPLICATED)
+{
+	if (!UTIL_IsCommandIssuedByServerAdmin())
+		return;
+
+	ResetNumCamerasDetatched();
+}

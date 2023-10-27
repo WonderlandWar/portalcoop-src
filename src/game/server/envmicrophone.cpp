@@ -19,7 +19,9 @@
 #include "soundflags.h"
 #include "engine/IEngineSound.h"
 #include "filters.h"
-
+#ifdef PORTAL
+#include "weapon_portalgun.h"
+#endif
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -249,9 +251,20 @@ bool CEnvMicrophone::CanHearSound(CSound *pSound, float &flVolume)
 	{
 		return false;
 	}
-
+	
 	CBaseEntity *pSoundOwner = pSound->m_hOwner.Get();
-	if (pSoundOwner && (pSoundOwner->IsPortalgun() || pSoundOwner->IsPlayer()))
+	
+#ifdef PORTAL
+	bool bShouldListen = true;
+	CBaseCombatWeapon *pWeapon = dynamic_cast<CBaseCombatWeapon*>(pSoundOwner);
+
+	if (pWeapon && pWeapon->GetOwner() && pWeapon->GetOwner()->IsPlayer())
+	{
+		bShouldListen = false;
+	}
+#endif
+
+	if (pSoundOwner && (!bShouldListen || pSoundOwner->IsPlayer()))
 		return false;
 
 	// Cull out sounds except from specific entities
@@ -311,7 +324,17 @@ bool CEnvMicrophone::CanHearSound( int entindex, soundlevel_t soundlevel, float 
 		pEntity = CBaseEntity::Instance( engine->PEntityOfEntIndex(entindex) );
 	}
 
-	if (pEntity && (pEntity->IsPortalgun() || pEntity->IsPlayer()))
+#ifdef PORTAL
+	bool bShouldListen = true;
+	CBaseCombatWeapon *pWeapon = dynamic_cast<CBaseCombatWeapon*>(pEntity);
+
+	if (pWeapon && pWeapon->GetOwner() && pWeapon->GetOwner()->IsPlayer())
+	{
+		bShouldListen = false;
+	}
+#endif
+
+	if (pEntity && (!bShouldListen || pEntity->IsPlayer()))
 			return false;
 			    
 	// Cull out sounds except from specific entities

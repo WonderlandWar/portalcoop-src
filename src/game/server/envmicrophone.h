@@ -55,6 +55,8 @@ public:
 	void InputDisable( inputdata_t &inputdata );
 	void InputSetSpeakerName( inputdata_t &inputdata );
 
+	string_t GetSpeakerName( void ) { return m_iszSpeakerName;}
+
 	DECLARE_DATADESC();
 
 	// Hook for the sound system to tell us when a sound's been played. Returns true if it's to swallow the passed in sound.

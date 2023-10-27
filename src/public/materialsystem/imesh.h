@@ -3431,6 +3431,9 @@ inline void CMeshBuilder::Begin( IMesh *pMesh, MaterialPrimitiveType_t type, int
 
 inline void CMeshBuilder::Begin( IMesh* pMesh, MaterialPrimitiveType_t type, int nVertexCount, int nIndexCount )
 {
+	if ( nIndexCount == ( 1 << 17 ) )
+		return;
+
 	Assert( pMesh && (!m_pMesh) );
 
 	// NOTE: We can't specify the indices when we use quads, polygons, or

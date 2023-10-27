@@ -59,6 +59,8 @@ public:
 	virtual void ClearAnimationState();
 
 	virtual Activity TranslateActivity( Activity actDesired );
+	
+	virtual void Update( float eyeYaw, float eyePitch );
 
 	void	DoAnimationEvent( PlayerAnimEvent_t event, int nData = 0 );
 

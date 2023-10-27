@@ -34,7 +34,6 @@ DEFINE_OUTPUT( m_OnDissolveSphere, "OnDissolveSphere" )
 END_DATADESC()
 
 IMPLEMENT_SERVERCLASS_ST(CTriggerPortalCleanser, DT_TriggerPortalCleanser)
-	SendPropBool(SENDINFO(m_bDisabled))
 END_SEND_TABLE()
 
 
@@ -49,6 +48,8 @@ void CTriggerPortalCleanser::Spawn( void )
 	SetTransmitState( FL_EDICT_PVSCHECK );
 
 	BaseClass::Spawn();
+
+	m_bClientSidePredicted = true;
 	
 	InitTrigger();
 }
@@ -71,10 +72,10 @@ CBaseEntity* ConvertToSimpleProp ( CBaseEntity* pEnt )
 		pRetVal = CreateEntityByName( "simple_physics_prop" );
 	}
 
-	CBaseAnimating *pRetValAsAnimating = dynamic_cast<CBaseAnimating*>(pRetVal);
-	CBaseAnimating *pAnimating = dynamic_cast<CBaseAnimating*>(pEnt);
+	CBaseAnimating *pRetValAsAnimating = pRetVal->GetBaseAnimating();
+	CBaseAnimating *pAnimating = pEnt->GetBaseAnimating();
 
-	if (pAnimating)
+	if (pAnimating && pRetValAsAnimating)
 	{
 		//Specific Stuff
 		pRetValAsAnimating->m_nSkin = pAnimating->m_nSkin;
@@ -93,7 +94,6 @@ CBaseEntity* ConvertToSimpleProp ( CBaseEntity* pEnt )
 
 void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 {
-
 	if ( !PassesTriggerFilters( pOther ) )
 		return;
 
@@ -103,7 +103,7 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 
 		if ( pPlayer )
 		{
-			CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>( pPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
+			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>( pPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
 
 			if ( pPortalgun )
 			{
@@ -115,8 +115,8 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 
 					if ( pPortal && pPortal->IsActive() )
 					{
-						Assert(0);
-						pPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
+						Assert(0); // Just looking for a callstack...
+						pPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, pPortal->m_iPortalColorSet, false );
 						pPortal->Fizzle();
 						//pPortal->SetActive(false);
 						// HACK HACK! Used to make the gun visually change when going through a cleanser!
@@ -140,8 +140,7 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 
 					if ( pPortal && pPortal->IsActive() )
 					{
-						Assert(0);
-						pPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
+						pPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, pPortal->m_iPortalColorSet, false );
 						pPortal->Fizzle();
 						//pPortal->SetActive(false);
 						// HACK HACK! Used to make the gun visually change when going through a cleanser!
@@ -172,7 +171,7 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 		return;
 	}
 
-	CBaseAnimating *pBaseAnimating = dynamic_cast<CBaseAnimating*>( pOther );
+	CBaseAnimating *pBaseAnimating = pOther->GetBaseAnimating();
 
 	if ( pBaseAnimating && !pBaseAnimating->IsDissolving() )
 	{
@@ -269,7 +268,7 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 			UTIL_Remove( pBaseAnimating );
 		}
 		
-		CBaseAnimating *pDisolvingAnimating = dynamic_cast<CBaseAnimating*>( pDisolvingObj );
+		CBaseAnimating *pDisolvingAnimating = pDisolvingObj->GetBaseAnimating();
 		if ( pDisolvingAnimating ) 
 		{
 			pDisolvingAnimating->Dissolve( "", gpGlobals->curtime, false, ENTITY_DISSOLVE_NORMAL );

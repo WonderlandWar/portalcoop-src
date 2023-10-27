@@ -32,6 +32,7 @@
 #include "env_debughistory.h"
 #include "tier1/callqueue.h"
 #include "filters.h"
+#include <string>
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -93,6 +94,9 @@ BEGIN_DATADESC( CProp_Portal )
 	DEFINE_OUTPUT( m_OnPlayerTeleportFromMe, "OnPlayerTeleportFromMe" ),
 	DEFINE_OUTPUT( m_OnEntityTeleportToMe, "OnEntityTeleportToMe" ),
 	DEFINE_OUTPUT( m_OnPlayerTeleportToMe, "OnPlayerTeleportToMe" ),
+	
+	DEFINE_OUTPUT( m_OnFizzled, "OnFizzled" ),
+	DEFINE_OUTPUT( m_OnStolen, "OnStolen" ),
 
 END_DATADESC()
 
@@ -134,6 +138,7 @@ LINK_ENTITY_TO_CLASS( prop_portal, CProp_Portal );
 CProp_Portal::CProp_Portal( void )
 {
 	m_vPrevForward = Vector( 0.0f, 0.0f, 0.0f );
+	m_vAudioOrigin = Vector( 0.0f, 0.0f, 0.0f );
 	m_PortalSimulator.SetPortalSimulatorCallbacks( this );
 
 	// Init to something safe
@@ -232,26 +237,28 @@ void CProp_Portal::Precache( void )
 	PrecacheModel( "models/portals/portal1.mdl" );
 	PrecacheModel( "models/portals/portal2.mdl" );
 
-	PrecacheParticleSystem( "portal_1_particles" );
-	PrecacheParticleSystem( "portal_2_particles" );
-	PrecacheParticleSystem( "portal_1_edge" );
-	PrecacheParticleSystem( "portal_2_edge" );
-	PrecacheParticleSystem( "portal_1_nofit" );
-	PrecacheParticleSystem( "portal_2_nofit" );
-	PrecacheParticleSystem( "portal_1_overlap" );
-	PrecacheParticleSystem( "portal_2_overlap" );
-	PrecacheParticleSystem( "portal_1_badvolume" );
-	PrecacheParticleSystem( "portal_2_badvolume" );
-	PrecacheParticleSystem( "portal_1_badsurface" );
-	PrecacheParticleSystem( "portal_2_badsurface" );
-	PrecacheParticleSystem( "portal_1_close" );
-	PrecacheParticleSystem( "portal_2_close" );
-	PrecacheParticleSystem( "portal_1_cleanser" );
-	PrecacheParticleSystem( "portal_2_cleanser" );
-	PrecacheParticleSystem( "portal_1_near" );
-	PrecacheParticleSystem( "portal_2_near" );
-	PrecacheParticleSystem( "portal_1_success" );
-	PrecacheParticleSystem( "portal_2_success" );
+	PrecacheParticleSystem("portal_1_particles");
+	PrecacheParticleSystem("portal_2_particles");
+	PrecacheParticleSystem("portal_1_edge");
+	PrecacheParticleSystem("portal_2_edge");
+	PrecacheParticleSystem("portal_1_nofit");
+	PrecacheParticleSystem("portal_2_nofit");
+	PrecacheParticleSystem("portal_1_overlap");
+	PrecacheParticleSystem("portal_2_overlap");
+	PrecacheParticleSystem("portal_1_badvolume");
+	PrecacheParticleSystem("portal_2_badvolume");
+	PrecacheParticleSystem("portal_1_badsurface");
+	PrecacheParticleSystem("portal_2_badsurface");
+	PrecacheParticleSystem("portal_1_close");
+	PrecacheParticleSystem("portal_2_close");
+	PrecacheParticleSystem("portal_1_cleanser");
+	PrecacheParticleSystem("portal_2_cleanser");
+	PrecacheParticleSystem("portal_1_near");
+	PrecacheParticleSystem("portal_2_near");
+	PrecacheParticleSystem("portal_1_success");
+	PrecacheParticleSystem("portal_2_success");
+	PrecacheParticleSystem("portal_1_stolen");
+	PrecacheParticleSystem("portal_2_stolen");
 
 	PrecacheParticleSystem("portal_red_particles");
 	PrecacheParticleSystem("portal_red_edge");
@@ -263,7 +270,8 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_red_cleanser");
 	PrecacheParticleSystem("portal_red_near");
 	PrecacheParticleSystem("portal_red_success");
-	
+	PrecacheParticleSystem("portal_red_stolen");
+
 	PrecacheParticleSystem("portal_yellow_particles");
 	PrecacheParticleSystem("portal_yellow_edge");
 	PrecacheParticleSystem("portal_yellow_nofit");
@@ -274,6 +282,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_yellow_cleanser");
 	PrecacheParticleSystem("portal_yellow_near");
 	PrecacheParticleSystem("portal_yellow_success");
+	PrecacheParticleSystem("portal_yellow_stolen");
 
 	PrecacheParticleSystem("portal_lightblue_particles");
 	PrecacheParticleSystem("portal_lightblue_edge");
@@ -285,6 +294,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_lightblue_cleanser");
 	PrecacheParticleSystem("portal_lightblue_near");
 	PrecacheParticleSystem("portal_lightblue_success");
+	PrecacheParticleSystem("portal_lightblue_stolen");
 
 	PrecacheParticleSystem("portal_purple_particles");
 	PrecacheParticleSystem("portal_purple_edge");
@@ -296,6 +306,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_purple_cleanser");
 	PrecacheParticleSystem("portal_purple_near");
 	PrecacheParticleSystem("portal_purple_success");
+	PrecacheParticleSystem("portal_purple_stolen");
 
 	PrecacheParticleSystem("portal_green_particles");
 	PrecacheParticleSystem("portal_green_edge");
@@ -307,6 +318,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_green_cleanser");
 	PrecacheParticleSystem("portal_green_near");
 	PrecacheParticleSystem("portal_green_success");
+	PrecacheParticleSystem("portal_green_stolen");
 
 	PrecacheParticleSystem("portal_pink_particles");
 	PrecacheParticleSystem("portal_pink_edge");
@@ -318,6 +330,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_pink_cleanser");
 	PrecacheParticleSystem("portal_pink_near");
 	PrecacheParticleSystem("portal_pink_success");
+	PrecacheParticleSystem("portal_pink_stolen");
 
 	BaseClass::Precache();
 }
@@ -393,6 +406,8 @@ void CProp_Portal::OnRestore()
 	m_pAttachedCloningArea = CPhysicsCloneArea::CreatePhysicsCloneArea( this );
 
 	BaseClass::OnRestore();
+
+	SetupPortalColorSet();
 
 	if ( IsActive() && use_server_portal_particles.GetBool() )
 	{
@@ -559,6 +574,7 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 	switch ( iEffect )
 	{
 		case PORTAL_FIZZLE_CANT_FIT:
+		{
 			//DispatchEffect( "PortalFizzleCantFit", fxData );
 			//ep.m_pSoundName = "Portal.fizzle_invalid_surface";
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
@@ -571,7 +587,7 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_nofit" ) : ( "portal_1_nofit" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			break;
-
+		}
 		case PORTAL_FIZZLE_OVERLAPPED_LINKED:
 		{
 			/*CProp_Portal *pLinkedPortal = m_hLinkedPortal;
@@ -597,20 +613,22 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 		}
 
 		case PORTAL_FIZZLE_BAD_VOLUME:
+		{
 			//DispatchEffect( "PortalFizzleBadVolume", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_badvolume" ) : ( "portal_lightblue_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_badvolume" ) : ( "portal_lightblue_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 2)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_badvolume" ) : ( "portal_yellow_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_badvolume" ) : ( "portal_yellow_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 3)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_badvolume" ) : ( "portal_green_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_badvolume" ) : ( "portal_green_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_badvolume" ) : ( "portal_1_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
 			break;
-
+		}
 		case PORTAL_FIZZLE_BAD_SURFACE:
+		{
 			//DispatchEffect( "PortalFizzleBadSurface", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
@@ -620,25 +638,27 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_badsurface" ) : ( "portal_green_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_badsurface" ) : ( "portal_1_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_badsurface" ) : ( "portal_1_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
 			break;
-
+		}
 		case PORTAL_FIZZLE_KILLED:
+		{
 			//DispatchEffect( "PortalFizzleKilled", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 2)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 3)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_close" ) : ( "portal_1_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = "Portal.fizzle_moved";
 			break;
-
+		}
 		case PORTAL_FIZZLE_CLEANSER:
+		{
 			//DispatchEffect( "PortalFizzleCleanser", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
@@ -651,16 +671,16 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_cleanser" ) : ( "portal_1_cleanser" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
 			break;
-
+		}
 		case PORTAL_FIZZLE_CLOSE:
 			//DispatchEffect( "PortalFizzleKilled", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 2)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 3)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_close" ) : ( "portal_1_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = ( ( m_bIsPortal2 ) ? ( "Portal.close_red" ) : ( "Portal.close_blue" ) );
@@ -679,11 +699,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			
 			if (iLinkageGroupID == 1)
-				DispatchParticleEffect( ( ( "portal_lightblue_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_lightblue_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (iLinkageGroupID == 2)
-				DispatchParticleEffect( ( ( "portal_yellow_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_yellow_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (iLinkageGroupID == 3)
-				DispatchParticleEffect( ( ( "portal_green_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_green_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( "portal_1_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
@@ -702,11 +722,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 			AngleVectors( fxData.m_vAngles, &vForward, &vUp, NULL );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (iLinkageGroupID == 1)
-				DispatchParticleEffect( ( ( "portal_purple_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_purple_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (iLinkageGroupID == 2)
-				DispatchParticleEffect( ( ( "portal_red_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_red_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (iLinkageGroupID == 3)
-				DispatchParticleEffect( ( ( "portal_pink_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_pink_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( "portal_2_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
@@ -716,15 +736,29 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 		case PORTAL_FIZZLE_SUCCESS:
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_success" ) : ( "portal_lightblue_success" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_success" ) : ( "portal_lightblue_success" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 2)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_success" ) : ( "portal_yellow_success" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_success" ) : ( "portal_yellow_success" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 3)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_success" ) : ( "portal_green_success" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_success" ) : ( "portal_green_success" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_success" ) : ( "portal_1_success" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			// Don't make a sound!
 			return;
+			
+		case PORTAL_FIZZLE_STOLEN:
+			//DispatchEffect( "PortalFizzleBadSurface", fxData );
+			VectorAngles( vUp, vForward, fxData.m_vAngles );
+			if (m_iPortalColorSet == 1) // Purple / Light Blue
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_stolen" ) : ( "portal_lightblue_stolen" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+			else if (m_iPortalColorSet == 2) // Red / Yellow
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_stolen" ) : ( "portal_yellow_stolen" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+			else if (m_iPortalColorSet == 3) // Pink / Green
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_stolen" ) : ( "portal_green_stolen" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+			else // Default colors
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_stolen" ) : ( "portal_1_stolen" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
+			break;
 
 		case PORTAL_FIZZLE_NONE:
 			// Don't do anything!
@@ -947,6 +981,8 @@ void CProp_Portal::Activate( void )
 
 void CProp_Portal::Touch( CBaseEntity *pOther )
 {
+	if ( sv_portal_with_gamemovement.GetBool() && pOther->IsPlayer() )
+		return;
 	BaseClass::Touch( pOther );
 	pOther->Touch( this );
 
@@ -985,7 +1021,7 @@ void CProp_Portal::Touch( CBaseEntity *pOther )
 				{
 					DevMsg( "Moving brush intersected portal plane.\n" );
 
-					DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
+					DoFizzleEffect( PORTAL_FIZZLE_KILLED, m_iPortalColorSet, false );
 					Fizzle();
 				}
 				else
@@ -1001,14 +1037,14 @@ void CProp_Portal::Touch( CBaseEntity *pOther )
 					{
 						DevMsg( "Surface removed from behind portal.\n" );
 
-						DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
+						DoFizzleEffect( PORTAL_FIZZLE_KILLED, m_iPortalColorSet, false );
 						Fizzle();
 					}
 					else if ( tr.m_pEnt && tr.m_pEnt->IsMoving() )
 					{
 						DevMsg( "Surface behind portal is moving.\n" );
 
-						DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
+						DoFizzleEffect( PORTAL_FIZZLE_KILLED, m_iPortalColorSet, false );
 						Fizzle();
 					}
 				}
@@ -1067,6 +1103,8 @@ void CProp_Portal::Touch( CBaseEntity *pOther )
 
 void CProp_Portal::StartTouch( CBaseEntity *pOther )
 {
+	if ( sv_portal_with_gamemovement.GetBool() && pOther->IsPlayer() )
+		return;
 	BaseClass::StartTouch( pOther );
 
 	// Since prop_portal is a trigger it doesn't send back start touch, so I'm forcing it
@@ -1113,6 +1151,8 @@ void CProp_Portal::StartTouch( CBaseEntity *pOther )
 
 void CProp_Portal::EndTouch( CBaseEntity *pOther )
 {
+	if ( sv_portal_with_gamemovement.GetBool() && pOther->IsPlayer() )
+		return;
 	BaseClass::EndTouch( pOther );
 
 	// Since prop_portal is a trigger it doesn't send back end touch, so I'm forcing it
@@ -1537,30 +1577,27 @@ void CProp_Portal::UpdatePortalLinkage( void )
 			pLink->m_hLinkedPortal = hThis;
 			m_bIsPortal2 = !m_hLinkedPortal->m_bIsPortal2;
 #ifndef DONT_USE_MICROPHONESORSPEAKERS
-
-		
-		//Update, we don't have to do this stupid hack anymore!
-		//There's an even better, still stupid hack I created in envmicrophone.cpp!
-
-		/* Disabled because it will keep spawning more and more filter_activator_entities
-		Until I figure this out, this entity is going to be placed within the maps now
-		I wish I could figure out a better way to do this. But keeping microphones is ideal now because the rocket turret's soundcue is valuable.
-	
-		// HACK HACK: SPAWN A filter_activator_class
-		// DISALLOW THE MICS TO HEAR PORTALGUN SHOTS
-		// We don't want the mic hearing the portalgun because these sounds are predicted, creating a weird a effect where you can hear the portalgun shot sound twice.
-		CBaseFilter *pFilter = (CBaseFilter*)CreateEntityByName("filter_activator_class");
-		pFilter->KeyValue("targetname", "weapon_portalgun_filter_disallow_in_code");
-		pFilter->KeyValue("filterclass", "weapon_portalgun");
-		pFilter->KeyValue("Negated", "1");
-		if (bShouldSpawnFilter == true)
-		{
-			bShouldSpawnFilter = false;
-		//	DispatchSpawn(pFilter);
-		}
-			*/
+					
 			// Initialize mics/speakers
-			if( m_hMicrophone == 0 )
+
+			int iLinkageGroupID = m_iLinkageGroupID;
+			
+			char tspeakername1[64];
+			char tspeakername2[64];
+			char tmicname1[64];
+			char tmicname2[64];
+
+			Q_snprintf( tspeakername1, sizeof(tspeakername1), "PortalSpeaker%i_1", iLinkageGroupID );
+			Q_snprintf( tspeakername2, sizeof(tspeakername2), "PortalSpeaker%i_2", iLinkageGroupID );
+			Q_snprintf( tmicname1, sizeof(tmicname1), "PortalMic%i_1", iLinkageGroupID );
+			Q_snprintf( tmicname2, sizeof(tmicname2), "PortalMic%i_2", iLinkageGroupID );
+			
+			string_t iszSpeakerName1 = AllocPooledString( tspeakername1 );
+			string_t iszSpeakerName2 = AllocPooledString( tspeakername2 );
+			string_t iszMicName1 = AllocPooledString( tmicname1 );
+			string_t iszMicName2 = AllocPooledString( tmicname2 );			
+
+			if( m_hMicrophone == NULL )
 			{
 				inputdata_t inputdata;
 
@@ -1576,18 +1613,18 @@ void CProp_Portal::UpdatePortalLinkage( void )
 
 				if( !m_bIsPortal2 )
 				{
-					pSpeaker->SetName( MAKE_STRING( "PortalSpeaker1" ) );
-					pMicrophone->SetName( MAKE_STRING( "PortalMic1" ) );
+					pSpeaker->SetName( iszSpeakerName1 );
+					pMicrophone->SetName( iszMicName1 );
 					pMicrophone->Activate();
-					pMicrophone->SetSpeakerName( MAKE_STRING( "PortalSpeaker2" ) );
+					pMicrophone->SetSpeakerName( iszSpeakerName2 );
 					pMicrophone->SetSensitivity( 10.0f );
 				}
 				else
 				{
-					pSpeaker->SetName( MAKE_STRING( "PortalSpeaker2" ) );
-					pMicrophone->SetName( MAKE_STRING( "PortalMic2" ) );
+					pSpeaker->SetName( iszSpeakerName2 );
+					pMicrophone->SetName( iszMicName2 );
 					pMicrophone->Activate();
-					pMicrophone->SetSpeakerName( MAKE_STRING( "PortalSpeaker1" ) );
+					pMicrophone->SetSpeakerName( iszSpeakerName1 );
 					pMicrophone->SetSensitivity( 10.0f );
 				}
 			}
@@ -1608,18 +1645,18 @@ void CProp_Portal::UpdatePortalLinkage( void )
 
 				if ( !m_bIsPortal2 )
 				{
-					pLinkedSpeaker->SetName( MAKE_STRING( "PortalSpeaker2" ) );
-					pLinkedMicrophone->SetName( MAKE_STRING( "PortalMic2" ) );
+					pLinkedSpeaker->SetName( iszSpeakerName2 );
+					pLinkedMicrophone->SetName( iszMicName2 );
 					pLinkedMicrophone->Activate();
-					pLinkedMicrophone->SetSpeakerName( MAKE_STRING( "PortalSpeaker1" ) );
+					pLinkedMicrophone->SetSpeakerName( iszSpeakerName1 );
 					pLinkedMicrophone->SetSensitivity( 10.0f );
 				}
 				else
 				{
-					pLinkedSpeaker->SetName( MAKE_STRING( "PortalSpeaker1" ) );
-					pLinkedMicrophone->SetName( MAKE_STRING( "PortalMic1" ) );
+					pLinkedSpeaker->SetName( iszSpeakerName1 );
+					pLinkedMicrophone->SetName( iszMicName1 );
 					pLinkedMicrophone->Activate();
-					pLinkedMicrophone->SetSpeakerName( MAKE_STRING( "PortalSpeaker2" ) );
+					pLinkedMicrophone->SetSpeakerName( iszSpeakerName2 );
 					pLinkedMicrophone->SetSensitivity( 10.0f );
 				}
 			}
@@ -1672,8 +1709,8 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	// Fast moving objects can pass through the hole this frame while it's in the old location.
 
 	// Don't fizzle me if I moved from a location another portalgun shot
-	if (m_pPortalReplacingMe)
-		m_pPortalReplacingMe->m_pHitPortal = NULL;
+//	if (m_pPortalReplacingMe)
+//		m_pPortalReplacingMe->m_pHitPortal = NULL;
 
 	m_PortalSimulator.ReleaseAllEntityOwnership();
 	Vector vOldForward;
@@ -1808,6 +1845,11 @@ void CProp_Portal::OnEntityTeleportedFromPortal( CBaseEntity *pEntity )
 	}
 }
 
+void CProp_Portal::OnStolen( CBaseEntity *pActivator, CBaseEntity *pCaller )
+{
+	m_OnStolen.FireOutput( pActivator, pCaller );
+}
+
 void CProp_Portal::PreTeleportTouchingEntity( CBaseEntity *pOther )
 {
 	if( m_NotifyOnPortalled )
@@ -1835,8 +1877,7 @@ void CProp_Portal::InputSetActivatedState( inputdata_t &inputdata )
 
 	if ( IsActive() )
 	{
-		Vector vOrigin;
-		vOrigin = GetAbsOrigin();
+		Vector vOrigin = GetAbsOrigin();
 
 		Vector vForward, vUp;
 		GetVectors( &vForward, 0, &vUp );
@@ -1919,7 +1960,7 @@ void CProp_Portal::InputSetActivatedState( inputdata_t &inputdata )
 
 void CProp_Portal::InputFizzle( inputdata_t &inputdata )
 {
-	DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
+	DoFizzleEffect( PORTAL_FIZZLE_KILLED, m_iPortalColorSet, false );
 	Fizzle();
 }
 
@@ -2014,11 +2055,6 @@ CProp_Portal *CProp_Portal::FindPortal( unsigned char iLinkageGroupID, bool bPor
 		pPortal->m_bIsPortal2 = bPortal2;
 		DispatchSpawn( pPortal );
 		return pPortal;
-
-#ifdef CLIENT_DLL
-		Msg("Nothing found!\n");
-#endif
-
 	}
 
 	return NULL;

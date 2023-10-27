@@ -152,9 +152,10 @@ CWeaponAR2::CWeaponAR2( )
 void CWeaponAR2::Precache( void )
 {
 	BaseClass::Precache();
-
 	UTIL_PrecacheOther( "prop_combine_ball" );
+#ifdef GAME_DLL
 	UTIL_PrecacheOther( "env_entity_dissolver" );
+#endif
 }
 
 //-----------------------------------------------------------------------------

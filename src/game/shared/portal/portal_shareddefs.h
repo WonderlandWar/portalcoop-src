@@ -21,30 +21,12 @@
 #define PORTAL_ANALOG_SUCCESS_BUMPED 0.3f
 #define PORTAL_ANALOG_SUCCESS_CANT_FIT 0.1f
 #define PORTAL_ANALOG_SUCCESS_CLEANSER 0.028f
-#define PORTAL_ANALOG_SUCCESS_OVERLAP_PARTNER_PORTAL 0.0275f
 #define PORTAL_ANALOG_SUCCESS_OVERLAP_LINKED 0.027f
 #define PORTAL_ANALOG_SUCCESS_NEAR 0.0265f
 #define PORTAL_ANALOG_SUCCESS_INVALID_VOLUME 0.026f
 #define PORTAL_ANALOG_SUCCESS_INVALID_SURFACE 0.025f
 #define PORTAL_ANALOG_SUCCESS_PASSTHROUGH_SURFACE 0.0f
-/*
-enum PortalPlacementResult_t
-{
-	// Success cases
-	PORTAL_PLACEMENT_SUCCESS,				// Placed exactly where shot
-	PORTAL_PLACEMENT_USED_HELPER,			// A placement helper positioned this portal
-	PORTAL_PLACEMENT_BUMPED,				// Placed but needed to move to fit
 
-	// Fail cases
-	PORTAL_PLACEMENT_CANT_FIT,				// No space to fit
-	PORTAL_PLACEMENT_CLEANSER,				// Hit a cleanser
-	PORTAL_PLACEMENT_OVERLAP_LINKED,		// Hit a linked portal that cannot move
-	PORTAL_PLACEMENT_OVERLAP_PARTNER_PORTAL,// Hit a partner portal that cannot move
-	PORTAL_PLACEMENT_INVALID_VOLUME,		// Inside a "no portal" volume
-	PORTAL_PLACEMENT_INVALID_SURFACE,		// Hit a "no portal" surface
-	PORTAL_PLACEMENT_PASSTHROUGH_SURFACE,	// Error case (portal trace failed to hit anything)
-};
-*/
 #define MIN_FLING_SPEED 300
 
 #define PORTAL_HIDE_PLAYER_RAGDOLL 1
@@ -61,6 +43,7 @@ enum PortalFizzleType_t
 	PORTAL_FIZZLE_CLOSE,
 	PORTAL_FIZZLE_NEAR_BLUE,
 	PORTAL_FIZZLE_NEAR_RED,
+	PORTAL_FIZZLE_STOLEN,
 	PORTAL_FIZZLE_NONE,
 
 	NUM_PORTAL_FIZZLE_TYPES
@@ -92,6 +75,10 @@ enum PortalChallengeType
 
 	PORTAL_CHALLENGE_TOTAL
 };
+
+#define FIXANGLEMETHOD_CONVAR 1
+// This new version was supposed to be better :(
+#define FIXANGLEMETHOD_CONCOMMAND 0
 
 extern char *g_ppszPortalPassThroughMaterials[];
 

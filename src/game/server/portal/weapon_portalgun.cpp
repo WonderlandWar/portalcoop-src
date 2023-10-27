@@ -45,6 +45,7 @@ BEGIN_NETWORK_TABLE( CWeaponPortalgun, DT_WeaponPortalgun )
 	SendPropInt( SENDINFO( m_iPortalLinkageGroupID ) ),
 	SendPropInt( SENDINFO( m_iCustomPortalColorSet ) ),	
 	SendPropInt( SENDINFO( m_iPortalColorSet ) ),
+	SendPropInt( SENDINFO( m_iValidPlayer ) ),
 	SendPropBool( SENDINFO (m_bCanAttack) ),
 	SendPropEHandle( SENDINFO (m_hPrimaryPortal) ),
 	SendPropEHandle( SENDINFO (m_hSecondaryPortal) )
@@ -56,6 +57,7 @@ BEGIN_DATADESC( CWeaponPortalgun )
 	DEFINE_KEYFIELD( m_bCanFirePortal2, FIELD_BOOLEAN, "CanFirePortal2" ),
 	DEFINE_KEYFIELD( m_iPortalLinkageGroupID, FIELD_CHARACTER, "PortalLinkageGroupID" ),
 	DEFINE_KEYFIELD( m_bForceAlwaysUseSetID, FIELD_BOOLEAN, "ForceAlwaysUseSetID" ),
+	DEFINE_KEYFIELD( m_iValidPlayer, FIELD_INTEGER, "ValidPlayer" ),
 	DEFINE_FIELD( m_iLastFiredPortal, FIELD_INTEGER ),
 	DEFINE_FIELD( m_bOpenProngs, FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_fCanPlacePortal1OnThisSurface, FIELD_FLOAT ),
@@ -109,9 +111,12 @@ void CWeaponPortalgun::Spawn( void )
 				if (sv_playtesting.GetBool())
 					m_iPortalLinkageGroupID = m_iPortalLinkageGroupID - 1;
 			}
+
 			Assert( (m_iPortalLinkageGroupID >= 0) && (m_iPortalLinkageGroupID < 256) );
 		}	
 	}
+
+	m_iPortalColorSet = m_iPortalLinkageGroupID;
 
 	CPortal_Player *pPlayer = ToPortalPlayer(GetOwner());
 
@@ -428,6 +433,55 @@ void CWeaponPortalgun::FirePortalDirection2( inputdata_t &inputdata )
 	{
 		WeaponSound( DOUBLE_NPC );
 	}
+}
+
+bool CWeaponPortalgun::CanPlayerPickupMe( CBasePlayer *pPlayer )
+{
+	if (!m_bAllowPlayerEquip)
+		return false;
+
+	CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+
+	if ( pPortalgun )
+	{
+		if ( pPortalgun->m_iPortalLinkageGroupID != m_iPortalLinkageGroupID && m_bForceAlwaysUseSetID )
+			return false;
+	}
+	
+	if ( m_iValidPlayer && m_iValidPlayer != pPlayer->entindex() )
+		return false;
+
+	return true;
+}
+
+void CWeaponPortalgun::DefaultTouch( CBaseEntity *pOther )
+{
+	CBasePlayer *pPlayer = ToBasePlayer(pOther);
+
+	if (pPlayer && CanPlayerPickupMe( pPlayer ) )
+	{
+		BaseClass::DefaultTouch( pOther );
+	}
+	else if ( !pPlayer )
+		BaseClass::DefaultTouch( pOther );
+}
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CWeaponPortalgun::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	CBasePlayer *pPlayer = ToBasePlayer( pActivator );
+	
+	if ( pPlayer )
+	{
+		m_OnPlayerUse.FireOutput(pActivator, pCaller);
+
+		if ( !CanPlayerPickupMe( pPlayer ) )
+			return;
+
+	}
+
+	BaseClass::Use( pActivator, pCaller, useType, value );
 }
 
 ConCommand change_portalgun_linkage_id( "change_portalgun_linkage_id", change_portalgun_linkage_id_f, "Changes the portal linkage ID for the portal gun held by the commanding player.", FCVAR_CHEAT );

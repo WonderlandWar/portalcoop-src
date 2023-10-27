@@ -82,6 +82,10 @@
 #include "weapon_physcannon.h"
 #endif
 
+#ifdef PORTAL
+#include "portal_player.h"
+#endif
+
 ConVar autoaim_max_dist( "autoaim_max_dist", "2160" ); // 2160 = 180 feet
 ConVar autoaim_max_deflect( "autoaim_max_deflect", "0.99" );
 
@@ -4930,8 +4934,11 @@ void CBasePlayer::Spawn( void )
 	if ( !m_fGameHUDInitialized )
 		g_pGameRules->SetDefaultPlayerTeam( this );
 
+#ifndef PORTAL
 	g_pGameRules->GetPlayerSpawnSpot( this );
-
+#else
+	PortalGameRules()->GetPlayerSpawnSpot( this );
+#endif
 	m_Local.m_bDucked = false;// This will persist over round restart if you hold duck otherwise. 
 	m_Local.m_bDucking = false;
     SetViewOffset( VEC_VIEW_SCALED( this ) );
@@ -5157,6 +5164,15 @@ int CBasePlayer::Restore( IRestore &restore )
 		CBaseEntity *pSpawnSpot = EntSelectSpawnPoint();
 		SetLocalOrigin( pSpawnSpot->GetLocalOrigin() + Vector(0,0,1) );
 		SetLocalAngles( pSpawnSpot->GetLocalAngles() );
+
+#ifdef PORTAL
+		CInfoPlayerPortalCoop *pCoopSpawn = dynamic_cast<CInfoPlayerPortalCoop*>(pSpawnSpot);
+
+		if ( pCoopSpawn )
+		{
+			pCoopSpawn->PlayerSpawned(this);
+		}
+#endif
 	}
 
 	QAngle newViewAngles = pl.v_angle;

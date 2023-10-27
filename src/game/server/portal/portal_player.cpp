@@ -28,7 +28,6 @@
 #include "datacache/imdlcache.h"
 #include "bone_setup.h"
 #include "portal_gamestats.h"
-#include "physicsshadowclone.h"
 #include "physics_prop_ragdoll.h"
 #include "soundenvelope.h"
 #include "ai_speech.h"		// For expressors, vcd playing
@@ -37,11 +36,85 @@
 #include "doors.h"
 #include "trains.h"
 #include "point_ping_linker.h"
+#include "hierarchy.h"
 
 extern CBaseEntity* g_pLastSpawn;
 
 extern void respawn(CBaseEntity* pEdict, bool fCopyCorpse);
 
+BEGIN_DATADESC( CInfoPlayerPortalCoop )
+
+DEFINE_OUTPUT( m_OnPlayerSpawned, "OnPlayerSpawned" ),
+
+DEFINE_INPUTFUNC( FIELD_VOID, "EnablePortalgunSpawn", InputEnablePortalgunSpawn ),
+DEFINE_INPUTFUNC( FIELD_VOID, "DisablePortalgunSpawn", InputDisablePortalgunSpawn ),
+DEFINE_INPUTFUNC( FIELD_INTEGER, "SetPortalgunType", InputSetPortalgunType ),
+DEFINE_INPUTFUNC( FIELD_INTEGER, "SetPlayer", InputSetPlayer ),
+
+DEFINE_KEYFIELD( m_bSpawnWithPortalgun, FIELD_BOOLEAN, "SpawnWithPortalgun" ),
+DEFINE_KEYFIELD( m_iPortalgunType, FIELD_INTEGER, "PortalgunType" ),
+DEFINE_KEYFIELD( m_iValidPlayerIndex, FIELD_INTEGER, "ValidPlayerIndex" ),
+
+END_DATADESC()
+
+LINK_ENTITY_TO_CLASS( info_player_portalcoop, CInfoPlayerPortalCoop )
+
+void CInfoPlayerPortalCoop::PlayerSpawned( CBasePlayer *pPlayer )
+{
+	Assert( !m_iValidPlayerIndex || m_iValidPlayerIndex == pPlayer->entindex() );
+
+	if ( m_bSpawnWithPortalgun )
+	{			
+		CWeaponPortalgun *pPortalgun = (CWeaponPortalgun*)CreateEntityByName("weapon_portalgun");
+
+		if (pPortalgun)
+		{
+
+			if (m_iPortalgunType == 0)
+			{
+				pPortalgun->m_bCanFirePortal1 = false;
+				pPortalgun->m_bCanFirePortal2 = false;
+			}
+			else if (m_iPortalgunType == 1)
+			{
+				pPortalgun->m_bCanFirePortal1 = true;
+				pPortalgun->m_bCanFirePortal2 = false;
+			}
+			else if (m_iPortalgunType == 2)
+			{
+				pPortalgun->m_bCanFirePortal1 = false;
+				pPortalgun->m_bCanFirePortal2 = true;
+			}
+			else if (m_iPortalgunType == 3)
+			{
+				pPortalgun->m_bCanFirePortal1 = true;
+				pPortalgun->m_bCanFirePortal2 = true;
+			}
+
+			CPortal_Player *pPortalPlayer = ToPortalPlayer(pPlayer);
+			pPortalPlayer->m_pSpawnedPortalgun = pPortalgun;
+			
+			// We can't do this because the view model effects get messed up, see portal_gamerules.cpp
+			/*
+			DispatchSpawn(pPortalgun);
+			pPlayer->Weapon_Equip(pPortalgun);
+			*/
+		}
+
+	}
+
+	m_OnPlayerSpawned.FireOutput(pPlayer, pPlayer);
+}
+
+bool CInfoPlayerPortalCoop::CanSpawnOnMe( CBasePlayer *pPlayer )
+{
+	if ( !m_iValidPlayerIndex || m_iValidPlayerIndex == pPlayer->entindex() )
+	{
+		return true;
+	}
+
+	return false;
+}
 
 // -------------------------------------------------------------------------------- //
 // Player animation event. Sent to the client when a player fires, jumps, reloads, etc..
@@ -218,11 +291,13 @@ SendPropInt(SENDINFO(m_iSpawnInterpCounter), 4),
 SendPropBool(SENDINFO(m_bPitchReorientation)),
 SendPropEHandle(SENDINFO(m_hPortalEnvironment)),
 SendPropEHandle(SENDINFO(m_hSurroundingLiquidPortal)),
+SendPropEHandle(SENDINFO(m_hHeldObjectPortal)),
 SendPropBool(SENDINFO(m_bHasSprintDevice)),
 SendPropBool(SENDINFO(m_bSprintEnabled)),
 SendPropBool(SENDINFO(m_bSilentDropAndPickup)),
 SendPropBool(SENDINFO(m_bSuppressingCrosshair)),
 SendPropBool(SENDINFO(m_bIsListenServerHost)),
+SendPropBool(SENDINFO(m_bHeldObjectOnOppositeSideOfPortal)),
 SendPropInt(SENDINFO(m_iCustomPortalColorSet)),
 
 END_SEND_TABLE()
@@ -242,7 +317,10 @@ DEFINE_SOUNDPATCH(m_pWooshSound),
 	DEFINE_FIELD(m_StatsThisLevel.iNumStepsTaken, FIELD_INTEGER),
 	DEFINE_FIELD(m_StatsThisLevel.fNumSecondsTaken, FIELD_FLOAT),
 #endif
-
+		
+	
+	DEFINE_FIELD(m_bLookingForUseEntity, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flLookForUseEntityTime, FIELD_FLOAT),
 	DEFINE_FIELD(m_bPitchReorientation, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_bIsRegenerating, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_fNeuroToxinDamageTime, FIELD_TIME),
@@ -302,6 +380,26 @@ ConVar sv_portal_coop_allow_ping("sv_portal_coop_allow_ping", "1", FCVAR_REPLICA
 #define COOP_PING_PARTICLE_NAME_PURPLE "command_target_ping_purple"
 #define COOP_PING_PARTICLE_NAME_GREEN "command_target_ping_green"
 
+#if FIXANGLEMETHOD_CONCOMMAND
+CON_COMMAND_F( gotportalmessage, "Lets the client tell us if they received the portal message", FCVAR_HIDDEN | FCVAR_SERVER_CAN_EXECUTE )
+{
+	CPortal_Player *pPlayer = (CPortal_Player*)UTIL_GetCommandClient();
+
+	if (pPlayer)
+	{
+
+		if (pPlayer->m_bGotPortalMessage)
+		{
+			Warning("m_bGotPortalMessage is already true!\n");
+		}
+
+		pPlayer->m_bGotPortalMessage = true;
+	}
+
+	Msg("gotportalmessage: called\n");
+
+}
+#endif
 
 extern float IntervalDistance(float x, float x0, float x1);
 
@@ -322,7 +420,7 @@ CPortal_Player::CPortal_Player()
 	m_iSpawnInterpCounter = 0;
 
 	m_bHeldObjectOnOppositeSideOfPortal = false;
-	m_pHeldObjectPortal = NULL;
+	m_hHeldObjectPortal = NULL;
 
 	m_bIntersectingPortalPlane = false;
 
@@ -337,6 +435,9 @@ CPortal_Player::CPortal_Player()
 	m_iszExpressionScene = NULL_STRING;
 	m_hExpressionSceneEnt = NULL;
 	m_flExpressionLoopTime = 0.0f;
+
+	m_bGotPortalMessage = false;
+
 }
 
 CPortal_Player::~CPortal_Player(void)
@@ -352,12 +453,16 @@ CPortal_Player::~CPortal_Player(void)
 		UTIL_Remove(pRagdoll);
 	}
 	
+	// All of this should be handled by gamerules now.
+
 	//Hopefully solves the bug where disconnecting doesn't dissolve the player's portals
+	/*
 	CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(Weapon_OwnsThisType("weapon_portalgun"));
 	if (pPortalgun)
 	{
 		pPortalgun->FizzleOwnedPortals();
 	}
+	*/
 }
 
 void CPortal_Player::UpdateOnRemove(void)
@@ -627,6 +732,37 @@ void CPortal_Player::SetPlayerModel(void)
 
 	UpdateExpression();
 }
+
+void CPortal_Player::SetupSkin( void )
+{
+	int iPortalColorSet;
+	UTIL_Ping_Color( this, Color(), iPortalColorSet );
+
+	if (iPortalColorSet == 1)
+		m_nSkin = 1;
+	else if (iPortalColorSet == 3)
+		m_nSkin = 2;
+	else
+		m_nSkin = 0;
+
+}
+
+bool CPortal_Player::PortalColorSetWasDifferent( void )
+{
+	CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(Weapon_OwnsThisType("weapon_portalgun"));
+	if ( pPortalgun )
+	{
+		if (pPortalgun->m_iCustomPortalColorSet != m_iCustomPortalColorSet)
+		{
+			return true;
+		}
+	}
+
+
+
+	return false;
+}
+
 void CPortal_Player::ResetAnimation(void)
 {
 	if ( IsAlive() )
@@ -740,15 +876,10 @@ void CPortal_Player::ClearExpression(void)
 
 #define PINGTIME 3.0
 
-void CPortal_Player::PlayCoopPingEffect( void )
-{		
-	if (m_bPingHudHint)
-	{
-		m_bPingHudHint = false;
-		engine->ClientCommand(edict(), "cl_pinghudhint 0");
-		UTIL_HudHintText(this, "");
-	}
+extern ConVar sv_allow_customized_portal_colors;
 
+void CPortal_Player::PlayCoopPingEffect( void )
+{
 	Vector vecForward;
 	AngleVectors( EyeAngles(), &vecForward );
 	// Hit anything they can 'see' thats directly down their crosshair
@@ -788,29 +919,13 @@ void CPortal_Player::PlayCoopPingEffect( void )
 		
 		CDisablePredictionFiltering filter(true);
 		//DispatchParticleEffect( COOP_PING_PARTICLE_NAME, tr.endpos, vec3_angle );
-
-		Vector vColor = Vector(1.0, 0.6274509804, 0.1254901961); // 255 160 32
-
-		CBaseCombatWeapon *pWeapon = Weapon_OwnsThisType("weapon_portalgun");
-
-		CWeaponPortalgun *pPortalgun = NULL;
-
-		if (pWeapon)
-			pPortalgun = dynamic_cast<CWeaponPortalgun*>(pWeapon);
 		
-		unsigned char iLinkageGroupID = 0;
+		// Get our ping color information
+		Vector vColor;
+		int iPortalColorSet;
 
-		if (pPortalgun)
-		{
-			iLinkageGroupID = pPortalgun->m_iPortalColorSet;
+		UTIL_Ping_Color( this, vColor, iPortalColorSet );
 
-			if ( iLinkageGroupID == 1 )
-				vColor = Vector(0.6, 0, 1.0); // 153 0 255
-			else if ( iLinkageGroupID == 2 )
-				vColor = Vector(1.0, 0, 0); // 255 0 0
-			else if ( iLinkageGroupID == 3 )
-				vColor = Vector(0.0, 255, 0); // 0 255 0
-		}
 
 		Ray_t ray;
 		ray.Init( tr.startpos, tr.endpos );
@@ -819,7 +934,10 @@ void CPortal_Player::PlayCoopPingEffect( void )
 
 		CProp_Portal *pPortal = UTIL_Portal_FirstAlongRayAll( ray , flMustBeCloserThan );
 		
-		CBaseAnimating *pAnimating = dynamic_cast<CBaseAnimating*>(tr.m_pEnt);
+		CBaseAnimating *pAnimating = NULL;
+		
+		if ( tr.m_pEnt )
+			pAnimating = tr.m_pEnt->GetBaseAnimating();
 
 		const char* pszAnimatingName = NULL;
 		
@@ -892,25 +1010,6 @@ void CPortal_Player::PlayCoopPingEffect( void )
 				}
 			}
 
-			/*
-			CPhysicsShadowCloneLL *pClones = CPhysicsShadowClone::GetClonesOfEntity(pAnimating);
-			
-			while (pClones)
-			{
-				CPhysicsShadowClone *pClone = pClones->pClone;
-
-				if (pClone->m_bGlowEnabled)
-				{
-					pClone->RemoveGlowEffect();
-				}
-
-				pClone->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-				pClone->AddGlowEffect();
-				pClone->RemoveGlowTime(PINGTIME);
-
-				pClones = pClones->pNext;
-			}
-			*/
 			bShouldCreateCrosshair = false;
 		}
 		else if ( !pAnimating && pPortal )
@@ -944,11 +1043,11 @@ void CPortal_Player::PlayCoopPingEffect( void )
 
 		if (bShouldCreateCrosshair)
 		{
-			if (iLinkageGroupID == 1)
+			if (iPortalColorSet == 1)
 				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_PURPLE, tr.endpos, angNormal, this );
-			else if (iLinkageGroupID == 2)
+			else if (iPortalColorSet == 2)
 				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_RED, tr.endpos, angNormal, this );
-			else if (iLinkageGroupID == 3)
+			else if (iPortalColorSet == 3)
 				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_GREEN, tr.endpos, angNormal, this );
 			else
 				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_ORANGE, tr.endpos, angNormal, this );
@@ -976,25 +1075,9 @@ void CPortal_Player::PlayCoopPingEffect( void )
 
 		EmitSound( COOP_PING_SOUNDSCRIPT_NAME );
 	//	UTIL_DecalTrace( &tr, "Portal2.CoopPingDecal" );
-#if 0
-		CReliableBroadcastRecipientFilter allplayers;
-		if ( sv_portal_coop_ping_indicator_show_to_all_players.GetBool() == true )
-		{
-			allplayers.RemoveRecipient( this );
-		}
-		UserMessageBegin( allplayers, "HudPingIndicator" );
-			WRITE_FLOAT( tr.endpos.x );
-			WRITE_FLOAT( tr.endpos.y );
-			WRITE_FLOAT( tr.endpos.z );
-		MessageEnd();
-#endif
+
 	}
-#if 0 // This doesn't seem to be useful
-	else
-	{
-		Warning( "Attempted to ping for player, but trace failed to hit anything.\n" );
-	}
-#endif
+
 	// Note this in the player proxy
 	FirePlayerProxyOutput( "OnCoopPing", variant_t(), this, this );
 }
@@ -1017,11 +1100,18 @@ bool CPortal_Player::PingChildrenOfChildParent( CBaseAnimating *pAnimating, Vect
 	
 	if (pDoor)
 	{
-		for (int i = 1; i <= 1024; ++i)
+		CUtlVector<CBaseEntity *> children;
+		GetAllChildren( pDoor, children );
+		for (int i = 0; i < children.Count(); i++ )
 		{
-			CBaseAnimating *pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
+			CBaseEntity *pEnt = children.Element( i );
 
-			if (pChild && pChild->GetParent() == pDoor)
+			if (!pEnt)
+				continue;
+
+			CBaseAnimating *pChild = pEnt->GetBaseAnimating();
+			
+			if ( pChild )
 			{
 				if (pChild->m_bGlowEnabled)
 				{
@@ -1061,11 +1151,18 @@ bool CPortal_Player::PingChildrenOfChildParent( CBaseAnimating *pAnimating, Vect
 	}
 	else if (pTrain)
 	{
-		for (int i = 1; i <= 1024; ++i)
+		CUtlVector<CBaseEntity *> children;
+		GetAllChildren( pTrain, children );
+		for (int i = 0; i < children.Count(); i++ )
 		{
-			CBaseAnimating *pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
+			CBaseEntity *pEnt = children.Element( i );
 
-			if (pChild && pChild->GetParent() == pTrain)
+			if (!pEnt)
+				continue;
+
+			CBaseAnimating *pChild = pEnt->GetBaseAnimating();
+			
+			if ( pChild )
 			{
 				if (pChild->m_bGlowEnabled)
 				{
@@ -1123,10 +1220,46 @@ bool CPortal_Player::PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bSho
 		CPointPingLinker *pPingLinker = NULL;
 
 		bool bShouldGetChild = true;
+		
+		CUtlVector<CBaseEntity *> children;
+		GetAllChildren( pDoor, children );
+		for (int i = 0; i < children.Count(); i++ )
+		{
+			CBaseEntity *pEnt = children.Element( i );
 
+			if (!pEnt)
+				continue;
+
+			pChild = pEnt->GetBaseAnimating();
+			
+			if ( pChild )
+			{						
+				if (pChild->m_bGlowEnabled)
+				{
+					pChild->RemoveGlowEffect();
+				}
+
+				if (bShouldGetChild)
+				{
+					pChildForLinker = pChild;
+					bShouldGetChild = false;
+				}
+
+				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
+				pChild->AddGlowTime(gpGlobals->curtime);
+				pChild->RemoveGlowTime(PINGTIME);
+				bTempShouldCreateCrosshair = false;
+			}
+		}
+
+		/*
 		for (int i = 1; i <= 1024; ++i)
 		{
-			pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
+			CBaseEntity *pEnt = UTIL_EntityByIndex(i);
+			if (!pEnt)
+				continue;
+
+			pChild = pEnt->GetBaseAnimating();
 			
 			if (pChild && pChild->GetParent() == pDoor)
 			{						
@@ -1147,6 +1280,7 @@ bool CPortal_Player::PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bSho
 				bTempShouldCreateCrosshair = false;
 			}
 		}
+		*/
 
 		//Find a ping linker to use
 		for (int i = 1; i <= 1024; i++)
@@ -1199,10 +1333,45 @@ bool CPortal_Player::PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bSho
 		CPointPingLinker *pPingLinker = NULL;
 
 		bool bShouldGetChild = true;
+		
+		CUtlVector<CBaseEntity *> children;
+		GetAllChildren( pTrain, children );
+		for (int i = 0; i < children.Count(); i++ )
+		{
+			CBaseEntity *pEnt = children.Element( i );
 
+			if (!pEnt)
+				continue;
+
+			pChild = pEnt->GetBaseAnimating();
+			
+			if ( pChild )
+			{						
+				if (pChild->m_bGlowEnabled)
+				{
+					pChild->RemoveGlowEffect();
+				}
+
+				if (bShouldGetChild)
+				{
+					pChildForLinker = pChild;
+					bShouldGetChild = false;
+				}
+
+				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
+				pChild->AddGlowTime(gpGlobals->curtime);
+				pChild->RemoveGlowTime(PINGTIME);
+				bTempShouldCreateCrosshair = false;
+			}
+		}
+		/*
 		for (int i = 1; i <= 1024; ++i)
 		{
-			pChild = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
+			CBaseEntity *pEnt = UTIL_EntityByIndex(i);
+			if (!pEnt)
+				continue;
+
+			pChild = pEnt->GetBaseAnimating();
 			
 			if (pChild && pChild->GetParent() == pTrain)
 			{						
@@ -1223,6 +1392,7 @@ bool CPortal_Player::PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bSho
 				bTempShouldCreateCrosshair = false;
 			}
 		}
+		*/
 
 		//Find a ping linker to use
 		for (int i = 1; i <= 1024; i++)
@@ -1278,6 +1448,20 @@ void CPortal_Player::PreThink(void)
 	QAngle vOldAngles = GetLocalAngles();
 	QAngle vTempAngles = GetLocalAngles();
 
+	if (m_flLookForUseEntityTime >= gpGlobals->curtime && m_bLookForUseEntity)
+	{
+		SetLookingForUseEntity(true);
+
+		if (PlayerUse())
+		{
+			SetLookForUseEntity(false);
+			m_flLookForUseEntityTime = gpGlobals->curtime;
+		}
+
+		// This should allow us to play the sound again if we press use again while we're already searching
+		SetLookingForUseEntity(false);
+	}
+
 	vTempAngles = EyeAngles();
 
 	if (vTempAngles[PITCH] > 180.0f)
@@ -1306,6 +1490,18 @@ void CPortal_Player::PreThink(void)
 			}
 		}
 	}
+
+
+	
+	int iPortalColorSet;
+
+	Color color;
+
+	UTIL_Ping_Color( this, color, iPortalColorSet );
+
+	m_flGlowR = color.r() / 255;
+	m_flGlowG = color.g() / 255;
+	m_flGlowB = color.b() / 255;
 
 	//Reset bullet force accumulator, only lasts one frame
 	m_vecTotalBulletForce = vec3_origin;
@@ -1370,7 +1566,19 @@ void CPortal_Player::PostThink(void)
 		Teleport(&vNewPos, NULL, &vForward);
 		m_bStuckOnPortalCollisionObject = false;
 	}
-	
+
+	// Unfortunately packet losses happen, and it happened to one of our playtesters,
+	// so let's do this fix so that cl_got_portal_message is set to 0 after a certain amount of time.
+	if ( m_bPendingPortalMessage && gpGlobals->curtime >= m_flTimeToWaitForPortalMessage )
+	{
+		m_bPendingPortalMessage = false;
+		m_bFixEyeAnglesFromPortalling = false;
+		m_flTimeToWaitForPortalMessage = gpGlobals->curtime;
+		m_bGotPortalMessage = false;
+#if FIXANGLEMETHOD_CONVAR
+		engine->ClientCommand(edict(), "cl_got_portal_message 0");
+#endif
+	}	
 }
 
 ConVar sv_portalgun_fizzle_on_owner_death_always ("sv_portalgun_fizzle_on_owner_death_always", "1", FCVAR_REPLICATED, "Sets if the portalgun should always die if the player dies");
@@ -1401,7 +1609,7 @@ void CPortal_Player::PlayerDeathThink(void)
 	{
 		if (sv_portalgun_fizzle_on_owner_death_always.GetBool())
 		{
-			CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(Weapon_OwnsThisType("weapon_portalgun"));
+			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(Weapon_OwnsThisType("weapon_portalgun"));
 			if (pPortalgun)
 			{
 				pPortalgun->FizzleOwnedPortals();
@@ -1470,24 +1678,7 @@ void CPortal_Player::PlayerDeathThink(void)
 
 void CPortal_Player::InputDoPingHudHint( inputdata_t &inputdata )
 {
-	const char *sTrue = "1";
-	const char *sPingHudHint = NULL;
-
-	sPingHudHint = engine->GetClientConVarValue(engine->IndexOfEdict(edict()), "cl_pinghudhint");
-	if (!strcmp(sPingHudHint, sTrue))
-	{
-		m_bPingHudHint = true;
-	}
-	else
-	{
-		m_bPingHudHint = false;
-	}
-
-	if (m_bPingHudHint)
-	{
-		UTIL_HudHintText(this, "#portalcoop_Hint_Ping_Marker");
-		SetNextThink(gpGlobals->curtime + 10);
-	}
+	UTIL_HudHintText(this, "#portalcoop_Hint_Ping_Marker");
 }
 
 void CPortal_Player::UpdatePortalPlaneSounds(void)
@@ -1691,7 +1882,11 @@ void CPortal_Player::SetupBones(matrix3x4_t* pBoneToWorld, int boneMask)
 		GetSkeleton(pStudioHdr, pos, q, boneMask);
 	}
 
-	CBaseAnimating* pParent = dynamic_cast<CBaseAnimating*>(GetMoveParent());
+	CBaseAnimating* pParent = NULL;
+
+	if ( GetMoveParent() )
+		pParent = GetMoveParent()->GetBaseAnimating();
+
 	if (pParent)
 	{
 		// We're doing bone merging, so do special stuff here.
@@ -1850,10 +2045,8 @@ const Vector& CPortal_Player::WorldSpaceCenter() const
 	return m_vWorldSpaceCenterHolder;
 }
 
-void CPortal_Player::Teleport(const Vector* newPosition, const QAngle* newAngles, const Vector* newVelocity)
+void CPortal_Player::Teleport( const Vector* newPosition, const QAngle* newAngles, const Vector* newVelocity )
 {
-	Vector oldOrigin = GetLocalOrigin();
-	QAngle oldAngles = GetLocalAngles();
 	BaseClass::Teleport(newPosition, newAngles, newVelocity);
 	m_angEyeAngles = pl.v_angle;
 
@@ -2095,30 +2288,88 @@ void CPortal_Player::VPhysicsShadowUpdate(IPhysicsObject* pPhysics)
 //	MessageEnd();
 //}
 
-extern void CommentarySystem_PePlayerRunCommand( CBasePlayer *player, CUserCmd *ucmd );
-
 void CPortal_Player::PlayerRunCommand(CUserCmd* ucmd, IMoveHelper* moveHelper)
 {
 #if 1
-	if (m_bFixEyeAnglesFromPortalling)
+#if FIXANGLEMETHOD_CONVAR
+	const char *pszMessageValue = engine->GetClientConVarValue(engine->IndexOfEdict(edict()), "cl_got_portal_message");
+
+	bool m_bGotPortalMessage = !strcmp("1", pszMessageValue);
+#endif
+	// Convar ref can actually be used here because it's a check for the listen server host
+	bool bFakeLag = false;
+	ConVarRef net_fakelag("net_fakelag");
+	if (net_fakelag.IsValid())
+	{
+		bFakeLag = (net_fakelag.GetInt() != 0);
+	}
+	
+	// This is a good enough solution for now
+	if ( (!m_bGotPortalMessage && ( !m_bIsListenServerHost || bFakeLag ) ) && m_bFixEyeAnglesFromPortalling )
+	{
+#if FIXANGLEMETHOD_CONVAR
+		//Msg("cl_got_portal_message: %s\n", pszMessageValue);
+#endif
+
+		//if ( m_bFixEyeAnglesFromPortalling )
+		{
+			//the idea here is to handle the notion that the player has portalled, but they sent us an angle update before receiving that message.
+			//If we don't handle this here, we end up sending back their old angles which makes them hiccup their angles for a frame
+			float fOldAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, m_qPrePortalledViewAngles.x));
+			fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, m_qPrePortalledViewAngles.y));
+			fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, m_qPrePortalledViewAngles.z));
+
+			float fCurrentAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, pl.v_angle.x));
+			fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, pl.v_angle.y));
+			fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, pl.v_angle.z));
+
+			if (fCurrentAngleDiff > fOldAngleDiff)
+			{
+				//if (m_bFixEyeAnglesFromPortalling)
+				//{
+				//	m_qStoredCMDAngle = TransformAnglesToWorldSpace( ucmd->viewangles, m_matLastPortalled.As3x4() );
+				//	m_bFixEyeAnglesFromPortalling = false;
+				//}
+				
+				SetLocalAngles( TransformAnglesToWorldSpace( ucmd->viewangles, m_matLastPortalled.As3x4() ) );
+				ucmd->viewangles = TransformAnglesToWorldSpace( ucmd->viewangles, m_matLastPortalled.As3x4() );
+			}
+		}
+	}
+	else
+	{
+		if (m_bGotPortalMessage)
+		{
+#if FIXANGLEMETHOD_CONVAR
+			engine->ClientCommand(edict(), "cl_got_portal_message 0");
+#endif
+			m_bFixEyeAnglesFromPortalling = false;
+			m_bPendingPortalMessage = false;
+			m_bGotPortalMessage = false;
+		}
+	}
+#else
+
+	if( m_bFixEyeAnglesFromPortalling )
 	{
 		//the idea here is to handle the notion that the player has portalled, but they sent us an angle update before receiving that message.
 		//If we don't handle this here, we end up sending back their old angles which makes them hiccup their angles for a frame
-		float fOldAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, m_qPrePortalledViewAngles.x));
-		fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, m_qPrePortalledViewAngles.y));
-		fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, m_qPrePortalledViewAngles.z));
+		float fOldAngleDiff = fabs( AngleDistance( ucmd->viewangles.x, m_qPrePortalledViewAngles.x ) );
+		fOldAngleDiff += fabs( AngleDistance( ucmd->viewangles.y, m_qPrePortalledViewAngles.y ) );
+		fOldAngleDiff += fabs( AngleDistance( ucmd->viewangles.z, m_qPrePortalledViewAngles.z ) );
 
-		float fCurrentAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, pl.v_angle.x));
-		fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, pl.v_angle.y));
-		fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, pl.v_angle.z));
+		float fCurrentAngleDiff = fabs( AngleDistance( ucmd->viewangles.x, pl.v_angle.x ) );
+		fCurrentAngleDiff += fabs( AngleDistance( ucmd->viewangles.y, pl.v_angle.y ) );
+		fCurrentAngleDiff += fabs( AngleDistance( ucmd->viewangles.z, pl.v_angle.z ) );
 
-		if (fCurrentAngleDiff > fOldAngleDiff)
-			ucmd->viewangles = TransformAnglesToWorldSpace(ucmd->viewangles, m_matLastPortalled.As3x4());
+		if( fCurrentAngleDiff > fOldAngleDiff )
+			ucmd->viewangles = TransformAnglesToWorldSpace( ucmd->viewangles, m_matLastPortalled.As3x4() );
 
 		m_bFixEyeAnglesFromPortalling = false;
 	}
-#endif
 
+#endif
+	
 	BaseClass::PlayerRunCommand(ucmd, moveHelper);
 }
 
@@ -2334,7 +2585,13 @@ int CPortal_Player::OnTakeDamage(const CTakeDamageInfo& inputInfo)
 
 	CBaseEntity* pAttacker = inputInfoCopy.GetAttacker();
 	CBaseEntity* pInflictor = inputInfoCopy.GetInflictor();
+	/*
+	if (pAttacker && pAttacker->IsMarkedForDeletion())
+		pAttacker = NULL;
 
+	if ( pInflictor && pInflictor->IsMarkedForDeletion())
+		pInflictor = NULL;
+	*/
 	bool bIsTurret = false;
 
 	if (pAttacker && FClassnameIs(pAttacker, "npc_portal_turret_floor"))
@@ -2644,7 +2901,7 @@ CBaseEntity* CPortal_Player::EntSelectSpawnPoint(void)
 	CBaseEntity* pSpot = NULL;
 	CBaseEntity* pLastSpawnPoint = g_pLastSpawn;
 	edict_t* player = edict();
-	const char* pSpawnpointName = "info_player_start";
+	const char* pSpawnpointName = "info_player_portalcoop";
 
 	/*if ( HL2MPRules()->IsTeamplay() == true )
 	{
@@ -2660,6 +2917,12 @@ CBaseEntity* CPortal_Player::EntSelectSpawnPoint(void)
 	}*/
 		if ( gEntList.FindEntityByClassname( NULL, pSpawnpointName ) == NULL )
 		{
+			pSpawnpointName = "info_player_start"; //info_player_portalcoop is more important
+			pLastSpawnPoint = g_pLastSpawn;
+		}
+
+		if ( gEntList.FindEntityByClassname( NULL, pSpawnpointName ) == NULL )
+		{
 			pSpawnpointName = "info_player_deathmatch";
 			pLastSpawnPoint = g_pLastSpawn;
 		}
@@ -2667,10 +2930,39 @@ CBaseEntity* CPortal_Player::EntSelectSpawnPoint(void)
 
 	pSpot = pLastSpawnPoint;
 	// Randomize the start spot
+	
 	for (int i = random->RandomInt(1, 5); i > 0; i--)
+	{
 		pSpot = gEntList.FindEntityByClassname(pSpot, pSpawnpointName);
+		
+		CInfoPlayerPortalCoop *pCoopSpot = dynamic_cast<CInfoPlayerPortalCoop*>(pSpot);
+		if (pCoopSpot)
+		{
+			if ( pCoopSpot->CanSpawnOnMe( this ) )
+			{
+				pSpot = pCoopSpot;
+			}
+		}
+	}
+
+
 	if (!pSpot)  // skip over the null point
+	{
 		pSpot = gEntList.FindEntityByClassname(pSpot, pSpawnpointName);
+
+		CInfoPlayerPortalCoop *pCoopSpot = dynamic_cast<CInfoPlayerPortalCoop*>(pSpot);
+		if (pCoopSpot && strcmp(pSpawnpointName, "info_player_portalcoop"))
+		{
+			while ( !pCoopSpot || ( pCoopSpot && !pCoopSpot->CanSpawnOnMe(this) ) )
+			{
+				pCoopSpot = dynamic_cast<CInfoPlayerPortalCoop*>(gEntList.FindEntityByClassname(pCoopSpot, pSpawnpointName));
+			}
+		}
+
+		if (pCoopSpot)
+			pSpot = pCoopSpot;
+
+	}
 
 	CBaseEntity* pFirstSpot = pSpot;
 
@@ -2679,11 +2971,17 @@ CBaseEntity* CPortal_Player::EntSelectSpawnPoint(void)
 		if (pSpot)
 		{
 			// check if pSpot is valid
-			if (g_pGameRules->IsSpawnPointValid(pSpot, this))
+			if (PortalGameRules()->IsSpawnPointValid(pSpot, this))
 			{
 				if (pSpot->GetLocalOrigin() == vec3_origin)
 				{
 					pSpot = gEntList.FindEntityByClassname(pSpot, pSpawnpointName);
+					continue;
+				}
+
+				CInfoPlayerPortalCoop *pCoopSpot = dynamic_cast<CInfoPlayerPortalCoop*>(pSpot);
+				if ( pCoopSpot && !pCoopSpot->CanSpawnOnMe(this) )
+				{
 					continue;
 				}
 

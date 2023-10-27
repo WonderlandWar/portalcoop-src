@@ -903,7 +903,7 @@ void CBreakable::ResetOnGroundFlags(void)
 			CProp_Portal *pTempPortal = pPortals[i];
 			if( UTIL_IsBoxIntersectingPortal( vBoxCenter, vBoxExtents, pTempPortal ) )
 			{
-				pTempPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
+				pTempPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, pTempPortal->m_iPortalColorSet, false );
 				pTempPortal->Fizzle();
 			}
 		}

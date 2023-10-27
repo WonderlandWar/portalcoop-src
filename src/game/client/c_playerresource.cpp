@@ -177,43 +177,52 @@ extern ConVar sv_allow_customized_portal_colors;
 const Color C_PlayerResource::GetPortalgunColor(int iIndex)
 {
 	C_Portal_Player *pPlayer = ToPortalPlayer(ClientEntityList().GetEnt(iIndex));
+
+	int iPortalColorSet = 0;
+	Color color = Color(255, 160, 32, 255);
 	
-	if (pPlayer)
+	if (!pPlayer)
 	{
-		C_WeaponPortalgun *pPortalgun = dynamic_cast<C_WeaponPortalgun*>(pPlayer->Weapon_OwnsThisType("weapon_portalgun"));
-			
+		return color;
+	}
+	
+	CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>( pPlayer->Weapon_OwnsThisType("weapon_portalgun") );
+	
+	if ( sv_allow_customized_portal_colors.GetBool() )
+	{
 		if (pPortalgun)
 		{
-			//Stupid hacks since doing pPortalgun->m_iPortalColorSet always returns as 0 for some reason, unless the player is the local player
-			//Fix: It only was set for the predicted portalguns, now we network it.
-			int iPortalColorSet = pPortalgun->m_iPortalColorSet;
-			
-			/*
-			if (pPortalgun->m_iCustomPortalColorSet && sv_allow_customized_portal_colors.GetBool())
-			{
-				iPortalColorSet = pPortalgun->m_iCustomPortalColorSet - 1;
-			}
-			else
-				iPortalColorSet = pPortalgun->m_iPortalLinkageGroupID;
-			*/
-
-			if (iPortalColorSet == 1)
-			{
-				return Color(128, 0, 255, 255);
-			}
-			else if (iPortalColorSet == 2)
-			{
-				return Color(255, 0, 0, 255);
-			}
-			else if (iPortalColorSet == 3)
-			{
-				return Color(0, 255, 0, 255);
-			}
+			iPortalColorSet = pPortalgun->m_iPortalColorSet;
+		}
+		else if ( pPlayer->m_iCustomPortalColorSet != 0 ) // This means the player is not letting the Portal ID decide what the color set is
+		{
+			iPortalColorSet = pPlayer->m_iCustomPortalColorSet - 1; // Use this for consistency
+		}
+		else
+		{
+			iPortalColorSet = pPlayer->entindex();
 		}
 	}
+	else
+	{
+		if (pPortalgun)
+		{
+			iPortalColorSet = pPortalgun->m_iPortalColorSet;
+		}
+		else // We don't have a portalgun, but this should theoretically accurately get our colors
+		{
+			iPortalColorSet = pPlayer->entindex(); // The linkage group ID of the portalgun is equal to the player's ent index, so use that instead
+		}
+	}
+	
+	if (iPortalColorSet == 1)
+		color = Color(128, 0, 255, 255);
+	else if ( iPortalColorSet == 2 )
+		color = Color(255, 0, 0, 255);
+	else if ( iPortalColorSet == 3 )
+		color = Color(0, 255, 0, 255);
 
-	return Color(255, 160, 32, 255);
-
+	return color;
 }
 
 const Color C_PlayerResource::GetPortalColor(int iIndex)

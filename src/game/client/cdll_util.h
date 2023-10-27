@@ -30,6 +30,7 @@ class IClientEntity;
 class CHudTexture;
 class CGameTrace;
 class C_BaseEntity;
+class IPhysicsObject;
 
 struct Ray_t;
 struct client_textmessage_t;
@@ -124,6 +125,8 @@ C_BaseEntity* UTIL_EntityFromUserMessageEHandle( long nEncodedEHandle );
 int			UTIL_EntitiesInBox( C_BaseEntity **pList, int listMax, const Vector &mins, const Vector &maxs, int flagMask, int partitionMask = PARTITION_CLIENT_NON_STATIC_EDICTS );
 int			UTIL_EntitiesInSphere( C_BaseEntity **pList, int listMax, const Vector &center, float radius, int flagMask, int partitionMask = PARTITION_CLIENT_NON_STATIC_EDICTS );
 //int			UTIL_EntitiesAlongRay( C_BaseEntity **pList, int listMax, const Ray_t &ray, int flagMask, int partitionMask = PARTITION_CLIENT_NON_STATIC_EDICTS );
+
+int			UTIL_PhysicsObjectsInBox( IPhysicsObject **pList, int listMax, const Vector &mins, const Vector &maxs );
 
 // make this a fixed size so it just sits on the stack
 #define MAX_SPHERE_QUERY	256

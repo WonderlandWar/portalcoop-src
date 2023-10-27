@@ -334,4 +334,7 @@ inline bool IsEntityQAngleVelReasonable( const QAngle &q )
 
 extern bool CheckEmitReasonablePhysicsSpew();
 
+
+extern CUtlVector<IPhysicsObject*> g_AllPhysObjects;
+
 #endif // BASEENTITY_SHARED_H

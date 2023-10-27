@@ -78,6 +78,14 @@ bool UTIL_TestForOrientationVolumes( QAngle& vecCurAngles, const Vector& vecCurO
 	return false;
 }
 
+IMPLEMENT_SERVERCLASS_ST( CFuncPortalOrientation, DT_FuncPortalOrientation )
+
+SendPropBool(SENDINFO(m_bDisabled)),
+SendPropBool(SENDINFO(m_bMatchLinkedAngles)),
+SendPropQAngles(SENDINFO(m_vecAnglesToFace)),
+
+END_SEND_TABLE()
+
 LINK_ENTITY_TO_CLASS( func_portal_orientation, CFuncPortalOrientation ); 
 
 BEGIN_DATADESC( CFuncPortalOrientation )

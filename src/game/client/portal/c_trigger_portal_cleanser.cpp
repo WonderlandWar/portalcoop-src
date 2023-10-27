@@ -22,7 +22,6 @@
 #include "tier0/memdbgon.h"
 
 IMPLEMENT_CLIENTCLASS_DT(C_TriggerPortalCleanser, DT_TriggerPortalCleanser, CTriggerPortalCleanser)
-	RecvPropBool(RECVINFO(m_bDisabled))
 END_RECV_TABLE()
 
 LINK_ENTITY_TO_CLASS( trigger_portal_cleanser, C_TriggerPortalCleanser );
@@ -40,38 +39,41 @@ void C_TriggerPortalCleanser::Spawn( void )
 	BaseClass::Spawn();
 }
 
-// Creates a base entity with model/physics matching the parameter ent.
-// Used to avoid higher level functions on a disolving entity, which should be inert
-// and not react the way it used to (touches, etc).
-// Uses simple physics entities declared in physobj.cpp
-C_BaseEntity* ConvertToSimpleProp ( C_BaseEntity* pEnt )
+//-----------------------------------------------------------------------------
+// Purpose: Make this trigger touchable for the client
+//-----------------------------------------------------------------------------
+void C_TriggerPortalCleanser::UpdatePartitionListEntry()
 {
-	C_BaseEntity *pRetVal = NULL;
-	int modelindex = pEnt->GetModelIndex();
-	const model_t *model = modelinfo->GetModel( modelindex );
-	if ( model && modelinfo->GetModelType(model) == mod_brush )
+#if 1
+	if ( !m_bClientSidePredicted )
 	{
-		pRetVal = CreateEntityByName( "simple_physics_brush" );
-	}
-	else
-	{
-		pRetVal = CreateEntityByName( "simple_physics_prop" );
+		BaseClass::UpdatePartitionListEntry();
+		return;
 	}
 
-	pRetVal->KeyValue( "model", STRING(pEnt->GetModelName()) );
-	pRetVal->SetAbsOrigin( pEnt->GetAbsOrigin() );
-	pRetVal->SetAbsAngles( pEnt->GetAbsAngles() );
-	pRetVal->Spawn();
-	pRetVal->VPhysicsInitNormal( SOLID_VPHYSICS, 0, false );
-	
-	return pRetVal;
+	::partition->RemoveAndInsert(
+		PARTITION_CLIENT_STATIC_PROPS,  // remove
+		PARTITION_CLIENT_TRIGGER_ENTITIES | PARTITION_CLIENT_SOLID_EDICTS | PARTITION_CLIENT_RESPONSIVE_EDICTS | PARTITION_CLIENT_NON_STATIC_EDICTS,  // add
+		CollisionProp()->GetPartitionHandle() );
+#endif
+
+	BaseClass::UpdatePartitionListEntry();
+
 }
 
 
+// We only need to remove portals mid-flight because attempting to remove client sided portals just won't work and causes particles and sounds to play too much.
 void C_TriggerPortalCleanser::Touch( C_BaseEntity *pOther )
-{
-	if (m_bDisabled)
+{	
+	if (!PassesTriggerFilters(pOther))
+	{
 		return;
+	}
+
+	if (m_bDisabled )
+	{
+		return;
+	}
 
 	if ( pOther->IsPlayer() )
 	{
@@ -79,7 +81,7 @@ void C_TriggerPortalCleanser::Touch( C_BaseEntity *pOther )
 
 		if ( pPlayer )
 		{
-			CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>( pPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
+			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>( pPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
 
 			if ( pPortalgun )
 			{
@@ -89,13 +91,10 @@ void C_TriggerPortalCleanser::Touch( C_BaseEntity *pOther )
 				{
 					CProp_Portal *pPortal = pPortalgun->m_hPrimaryPortal;
 
-					if ( pPortal && pPortal->IsActive() )
+					// Cancel portals that are still mid flight
+					if ( pPortal && pPortal->GetNextThink( s_pDelayedPlacementContext ) > gpGlobals->curtime )
 					{
-						pPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
-						pPortal->Fizzle();
-						pPortal->SetActive(false);
-						// HACK HACK! Used to make the gun visually change when going through a cleanser!
-
+						pPortal->SetContextThink( NULL, gpGlobals->curtime, s_pDelayedPlacementContext ); 
 						bFizzledPortal = true;
 					}
 				}
@@ -104,74 +103,19 @@ void C_TriggerPortalCleanser::Touch( C_BaseEntity *pOther )
 				{
 					CProp_Portal *pPortal = pPortalgun->m_hSecondaryPortal;
 
-					if ( pPortal && pPortal->IsActive() )
+					// Cancel portals that are still mid flight
+					if (pPortal && pPortal->GetNextThink(s_pDelayedPlacementContext) > gpGlobals->curtime)
 					{
-						pPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
-						pPortal->Fizzle();
-						pPortal->SetActive(false);
-						// HACK HACK! Used to make the gun visually change when going through a cleanser!
-
+						pPortal->SetContextThink(NULL, gpGlobals->curtime, s_pDelayedPlacementContext);
 						bFizzledPortal = true;
 					}
 				}
-
+				
 				if ( bFizzledPortal )
 				{
 					pPortalgun->SendWeaponAnim( ACT_VM_FIZZLE );
 				}
 			}
-		}
-
-		return;
-	}
-
-	CBaseAnimating *pBaseAnimating = dynamic_cast<CBaseAnimating*>( pOther );
-
-	if ( pBaseAnimating && !pBaseAnimating->IsDissolving() )
-	{
-		int i = 0;
-
-		while ( g_pszPortalNonCleansable[ i ] )
-		{
-			if ( FClassnameIs( pBaseAnimating, g_pszPortalNonCleansable[ i ] ) )
-			{
-				// Don't dissolve non cleansable objects
-				return;
-			}
-
-			++i;
-		}
-
-		Vector vOldVel;
-		AngularImpulse vOldAng;
-		pBaseAnimating->GetVelocity( &vOldVel, &vOldAng );
-
-		// Swap object with an disolving physics model to avoid touch logic
-		C_BaseEntity *pDisolvingObj = ConvertToSimpleProp( pBaseAnimating );
-		if ( pDisolvingObj )
-		{
-			// Remove old prop, transfer name and children to the new simple prop
-			pDisolvingObj->SetCollisionGroup( COLLISION_GROUP_INTERACTIVE_DEBRIS );
-			pBaseAnimating->AddSolidFlags( FSOLID_NOT_SOLID );
-			pBaseAnimating->AddEffects( EF_NODRAW );
-
-			IPhysicsObject* pPhys = pDisolvingObj->VPhysicsGetObject();
-			if ( pPhys )
-			{
-				pPhys->EnableGravity( false );
-
-				Vector vVel = vOldVel;
-				AngularImpulse vAng = vOldAng;
-
-				// Disolving hurts, damp and blur the motion a little
-				vVel *= 0.5f;
-				vAng.z += 20.0f;
-
-				pPhys->SetVelocity( &vVel, &vAng );
-			}
-
-			pBaseAnimating->AddFlag( FL_DISSOLVING );
-			pBaseAnimating->Remove();
 		}
 	}
 }

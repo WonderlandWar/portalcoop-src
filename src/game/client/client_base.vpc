@@ -408,6 +408,8 @@ $Project
 		$File	"clientsideeffects_test.cpp"
 		$File	"clientsteamcontext.cpp"
 		$File	"clientsteamcontext.h"
+		$File	"clienttouch.cpp"
+		$File	"clienttouch.h"
 		$File	"colorcorrectionmgr.cpp"
 		$File	"commentary_modelviewer.cpp"
 		$File	"commentary_modelviewer.h"

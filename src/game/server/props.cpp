@@ -41,6 +41,9 @@
 #include "physics_collisionevent.h"
 #include "gamestats.h"
 #include "vehicle_base.h"
+#ifdef PORTAL
+#include "portal_player.h"
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -734,6 +737,10 @@ static ConCommand prop_debug("prop_debug", CC_Prop_Debug, "Toggle prop debug mod
 // BREAKABLE PROPS
 //=============================================================================================================
 IMPLEMENT_SERVERCLASS_ST(CBreakableProp, DT_BreakableProp)
+
+	SendPropBool( SENDINFO( m_bHasPreferredCarryAngles ) ),
+	SendPropQAngles( SENDINFO( m_preferredCarryAngles ) ),
+
 END_SEND_TABLE()
 
 BEGIN_DATADESC( CBreakableProp )
@@ -805,6 +812,8 @@ BEGIN_DATADESC( CBreakableProp )
 	// Damage
 	DEFINE_FIELD( m_hLastAttacker, FIELD_EHANDLE ),
 	DEFINE_FIELD( m_hFlareEnt,	FIELD_EHANDLE ),
+
+	DEFINE_FIELD( m_bHasPreferredCarryAngles, FIELD_BOOLEAN ),
 
 END_DATADESC()
 
@@ -2915,6 +2924,16 @@ void CPhysicsProp::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		}
 
 		pPlayer->PickupObject( this );
+
+#ifdef PORTAL
+		CPortal_Player *pPortalPlayer = (CPortal_Player*)pPlayer;
+		if (pPortalPlayer)
+		{
+			pPortalPlayer->SetLookingForUseEntity(false);
+			pPortalPlayer->SetLookForUseEntity(false);
+		}
+#endif
+
 	}
 }
 

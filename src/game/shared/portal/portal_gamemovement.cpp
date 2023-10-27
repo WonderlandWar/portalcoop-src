@@ -12,6 +12,7 @@
 #include "portal_collideable_enumerator.h"
 #include "prop_portal_shared.h"
 #include "rumble_shared.h"
+#include "portal_gamemovement.h"
 
 #if defined( CLIENT_DLL )
 	#include "c_portal_player.h"
@@ -51,18 +52,6 @@ ConVar sv_portal_new_player_trace( "sv_portal_new_player_trace", "0", FCVAR_REPL
 ConVar cl_vertical_elevator_fix( "cl_vertical_elevator_fix", "1" );
 #endif
 
-
-//trace that has special understanding of how to handle portals
-class CTrace_PlayerAABB_vs_Portals : public CGameTrace
-{
-public:
-	CTrace_PlayerAABB_vs_Portals( void );
-	bool HitPortalRamp( const Vector &vUp );
-
-	bool m_bContactedPortalTransitionRamp;
-};
-
-
 //trace that has special understanding of how to handle portals
 CTrace_PlayerAABB_vs_Portals::CTrace_PlayerAABB_vs_Portals( void )
 {
@@ -82,76 +71,8 @@ class CReservePlayerSpot;
 extern bool g_bAllowForcePortalTrace;
 extern bool g_bForcePortalTrace;
 
-static inline CBaseEntity *TranslateGroundEntity( CBaseEntity *pGroundEntity )
-{
-	CPhysicsShadowClone *pClone = dynamic_cast<CPhysicsShadowClone *>(pGroundEntity);
-
-	if( pClone && pClone->IsUntransformedClone() )
-	{
-		CBaseEntity *pSource = pClone->GetClonedEntity();
-
-		if( pSource )
-			return pSource;
-	}
-
-	return pGroundEntity;
-}
-
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Portal specific movement code
-//-----------------------------------------------------------------------------
-class CPortalGameMovement : public CHL2GameMovement
-{
-	typedef CGameMovement BaseClass;
-public:
-
-	CPortalGameMovement();
-
-	bool	m_bInPortalEnv;
-// Overrides
-	virtual void ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMove );
-	virtual bool CheckJumpButton( void );
-
-	void FunnelIntoPortal( CProp_Portal *pPortal, Vector &wishdir );
-
-	virtual void AirAccelerate( Vector& wishdir, float wishspeed, float accel );
-	virtual void AirMove( void );
-
-	virtual void PlayerRoughLandingEffects( float fvol );
-
-	virtual void CategorizePosition( void );
-
-	// Traces the player bbox as it is swept from start to end
-	virtual void TracePlayerBBox( const Vector& start, const Vector& end, unsigned int fMask, int collisionGroup, CTrace_PlayerAABB_vs_Portals& pm );
-	virtual void TracePlayerBBox( const Vector& start, const Vector& end, unsigned int fMask, int collisionGroup, trace_t& pm );
-
-	// Tests the player position
-	virtual CBaseHandle	TestPlayerPosition( const Vector& pos, int collisionGroup, trace_t& pm );
-
-	virtual void Duck( void );				// Check for a forced duck
-
-	virtual int CheckStuck( void );
-
-	virtual void SetGroundEntity( trace_t *pm );
-	
-#if defined( CLIENT_DLL )
-	void ClientVerticalElevatorFixes( CBasePlayer *pPlayer, CMoveData *pMove );
-#endif
-
-#if USEMOVEMENTFORPORTALLING
-	void HandlePortalling( void );
-
-	Vector m_vMoveStartPosition; //where the player started before the movement code ran
-
-#endif
-
-private:
-
-
-	CPortal_Player	*GetPortalPlayer();
-};
+void TracePortalPlayerAABB( CPortal_Player *pPortalPlayer, CProp_Portal *pPortal, const Ray_t &ray_local, const Ray_t &ray_remote, const Vector &vRemoteShift, unsigned int fMask, int collisionGroup, CTrace_PlayerAABB_vs_Portals &pm, bool bSkipRemoteTubeCheck = false );
+Vector CalculateExtentShift( const Vector &vLocalExtents, const Vector &vLocalNormal, const Vector &vRemoteExtents, const Vector &vRemoteNormal );
 
 #if defined( CLIENT_DLL )
 void CPortalGameMovement::ClientVerticalElevatorFixes( CBasePlayer *pPlayer, CMoveData *pMove )
@@ -294,10 +215,24 @@ void CPortalGameMovement::ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMov
 	player = pPlayer;
 	mv = pMove;
 	mv->m_flMaxSpeed = sv_maxspeed.GetFloat();
-
 	
+	/*
+#if defined( CLIENT_DLL ) && 1
+	CPortal_Player *pPortalPlayer = GetPortalPlayer();
+	if( 
+		pPortalPlayer->m_hPortalEnvironment &&
+		pPortalPlayer->m_hPortalMoveEnvironment &&
+		pPortalPlayer->m_hPortalEnvironment != pPortalPlayer->m_hPortalMoveEnvironment
+		)
+	{
+		mv->SetAbsOrigin( pPortalPlayer->m_vMoveOriginHack );
+		pPortalPlayer->m_bMoveUseOriginHack = false;
+	}
+#endif
+	*/
+	// Ironically this actually makes it worse.
 #if defined( CLIENT_DLL )
-	ClientVerticalElevatorFixes( pPlayer, pMove ); //fixup vertical elevator discrepancies between client and server as best we can
+	//ClientVerticalElevatorFixes( pPlayer, pMove ); //fixup vertical elevator discrepancies between client and server as best we can
 #endif
 
 #if USEMOVEMENTFORPORTALLING
@@ -568,18 +503,14 @@ void CPortalGameMovement::PlayerRoughLandingEffects( float fvol )
 {
 	BaseClass::PlayerRoughLandingEffects( fvol );
 
-#ifdef CLIENT_DLL
-	if (prediction->InPrediction())
-#endif
+	// Don't do this client sided
+#ifdef GAME_DLL
 	{
 		if ( fvol >= 1.0 )
 		{
 			// Play the future shoes sound
-#ifndef CLIENT_DLL
 			CRecipientFilter filter;
-#else
-			C_RecipientFilter filter;
-#endif
+
 			filter.AddRecipientsByPAS( player->GetAbsOrigin() );
 			filter.UsePredictionRules();
 
@@ -594,22 +525,67 @@ void CPortalGameMovement::PlayerRoughLandingEffects( float fvol )
 			}
 		}
 	}
+#endif
 }
 
 void TracePlayerBBoxForGround2( const Vector& start, const Vector& end, const Vector& minsSrc,
 							   const Vector& maxsSrc, IHandleEntity *player, unsigned int fMask,
-							   int collisionGroup, trace_t& pm )
+							   int collisionGroup, CTrace_PlayerAABB_vs_Portals& pm )
 {
 
 	VPROF( "TracePlayerBBoxForGround" );
 
 	CPortal_Player *pPortalPlayer = dynamic_cast<CPortal_Player *>(player->GetRefEHandle().Get());
-	CProp_Portal *pPlayerPortal = pPortalPlayer->m_hPortalEnvironment;
+#ifdef GAME_DLL
+	CProp_Portal *pPlayerPortal = pPortalPlayer->m_hPortalEnvironment.Get();
+#else
+	//CProp_Portal *pPlayerPortal = pPortalPlayer->m_hPortalMoveEnvironment.Get();
+	CProp_Portal *pPlayerPortal = pPortalPlayer->m_hPortalEnvironment.Get();
+#endif
 
+#ifndef CLIENT_DLL
 	if( pPlayerPortal && pPlayerPortal->m_PortalSimulator.IsReadyToSimulate() == false )
 		pPlayerPortal = NULL;
+#endif
 
-	Ray_t ray;
+	Vector vTransformedStart, vTransformedEnd;
+	Vector transformed_minsSrc, transformed_maxsSrc;
+	Vector vRemoteShift = vec3_origin;
+	bool bSkipRemoteTube = false;
+	if( pPlayerPortal && pPlayerPortal->IsActivedAndLinked() && sv_portal_new_player_trace.GetBool() )
+	{
+		const PS_InternalData_t &portalSimulator = pPlayerPortal->m_PortalSimulator.GetInternalData();
+
+		CProp_Portal *pLinkedPortal = pPlayerPortal->m_hLinkedPortal;
+		const PS_InternalData_t &linkedPortalSimulator = pLinkedPortal->m_PortalSimulator.GetInternalData();
+
+		Vector vOriginToCenter = (maxsSrc + minsSrc) * 0.5f;
+		vTransformedStart = pPlayerPortal->m_matrixThisToLinked * (start + vOriginToCenter);
+		vTransformedEnd = pPlayerPortal->m_matrixThisToLinked * (end + vOriginToCenter);
+		transformed_minsSrc = minsSrc;
+		transformed_maxsSrc = maxsSrc;
+
+		Vector vLocalExtents = (maxsSrc - minsSrc) * 0.5f;
+		Vector vTeleportExtents = (transformed_maxsSrc - transformed_minsSrc) * 0.5f;
+
+		vRemoteShift = CalculateExtentShift( vLocalExtents, portalSimulator.Placement.PortalPlane.m_Normal, vTeleportExtents, linkedPortalSimulator.Placement.PortalPlane.m_Normal );
+		
+		//just recompute origin offset for extent shifting again in case it changed
+		vOriginToCenter = (transformed_maxsSrc + transformed_minsSrc) * 0.5f;
+		//transformed_minsSrc -= vOriginToCenter;
+		//transformed_maxsSrc -= vOriginToCenter;
+		vTransformedStart -= vOriginToCenter;
+		vTransformedEnd -= vOriginToCenter;
+	}
+	else
+	{
+		vTransformedStart = start;
+		vTransformedEnd = end;
+		transformed_minsSrc = minsSrc;
+		transformed_maxsSrc = maxsSrc;
+	}
+
+	Ray_t ray_local, ray_remote;
 	Vector mins, maxs;
 
 	float fraction = pm.fraction;
@@ -618,12 +594,27 @@ void TracePlayerBBoxForGround2( const Vector& start, const Vector& end, const Ve
 	// Check the -x, -y quadrant
 	mins = minsSrc;
 	maxs.Init( MIN( 0, maxsSrc.x ), MIN( 0, maxsSrc.y ), maxsSrc.z );
-	ray.Init( start, end, mins, maxs );
-
+	ray_local.Init( start, end, mins, maxs );
+	
+	ray_remote.Init( vTransformedStart, vTransformedEnd, mins, maxs );
+	ray_remote.m_Start += vRemoteShift;
+	ray_remote.m_StartOffset += vRemoteShift;
+		
 	if( pPlayerPortal )
-		UTIL_Portal_TraceRay( pPlayerPortal, ray, fMask, player, collisionGroup, &pm );
+	{
+		if( sv_portal_new_player_trace.GetBool() )
+		{
+			TracePortalPlayerAABB( pPortalPlayer, pPlayerPortal, ray_local, ray_remote, vRemoteShift, fMask, collisionGroup, pm, bSkipRemoteTube );
+		}
+		else
+		{
+			UTIL_Portal_TraceRay( pPlayerPortal, ray_local, fMask, player, collisionGroup, &pm );
+		}
+	}
 	else
-		UTIL_TraceRay( ray, fMask, player, collisionGroup, &pm );
+	{
+		UTIL_TraceRay( ray_local, fMask, player, collisionGroup, &pm );
+	}
 
 	if ( pm.m_pEnt && pm.plane.normal[2] >= 0.7)
 	{
@@ -635,12 +626,23 @@ void TracePlayerBBoxForGround2( const Vector& start, const Vector& end, const Ve
 	// Check the +x, +y quadrant
 	mins.Init( MAX( 0, minsSrc.x ), MAX( 0, minsSrc.y ), minsSrc.z );
 	maxs = maxsSrc;
-	ray.Init( start, end, mins, maxs );
-
+	ray_local.Init( start, end, mins, maxs );
+	
 	if( pPlayerPortal )
-		UTIL_Portal_TraceRay( pPlayerPortal, ray, fMask, player, collisionGroup, &pm );
+	{
+		if( sv_portal_new_player_trace.GetBool() )
+		{
+			TracePortalPlayerAABB( pPortalPlayer, pPlayerPortal, ray_local, ray_remote, vRemoteShift, fMask, collisionGroup, pm, bSkipRemoteTube );
+		}
+		else
+		{
+			UTIL_Portal_TraceRay( pPlayerPortal, ray_local, fMask, player, collisionGroup, &pm );
+		}
+	}
 	else
-		UTIL_TraceRay( ray, fMask, player, collisionGroup, &pm );
+	{
+		UTIL_TraceRay( ray_local, fMask, player, collisionGroup, &pm );
+	}
 
 	if ( pm.m_pEnt && pm.plane.normal[2] >= 0.7)
 	{
@@ -652,12 +654,23 @@ void TracePlayerBBoxForGround2( const Vector& start, const Vector& end, const Ve
 	// Check the -x, +y quadrant
 	mins.Init( minsSrc.x, MAX( 0, minsSrc.y ), minsSrc.z );
 	maxs.Init( MIN( 0, maxsSrc.x ), maxsSrc.y, maxsSrc.z );
-	ray.Init( start, end, mins, maxs );
-
+	ray_local.Init( start, end, mins, maxs );
+	
 	if( pPlayerPortal )
-		UTIL_Portal_TraceRay( pPlayerPortal, ray, fMask, player, collisionGroup, &pm );
+	{
+		if( sv_portal_new_player_trace.GetBool() )
+		{
+			TracePortalPlayerAABB( pPortalPlayer, pPlayerPortal, ray_local, ray_remote, vRemoteShift, fMask, collisionGroup, pm, bSkipRemoteTube );
+		}
+		else
+		{
+			UTIL_Portal_TraceRay( pPlayerPortal, ray_local, fMask, player, collisionGroup, &pm );
+		}
+	}
 	else
-		UTIL_TraceRay( ray, fMask, player, collisionGroup, &pm );
+	{
+		UTIL_TraceRay( ray_local, fMask, player, collisionGroup, &pm );
+	}
 
 	if ( pm.m_pEnt && pm.plane.normal[2] >= 0.7)
 	{
@@ -669,12 +682,23 @@ void TracePlayerBBoxForGround2( const Vector& start, const Vector& end, const Ve
 	// Check the +x, -y quadrant
 	mins.Init( MAX( 0, minsSrc.x ), minsSrc.y, minsSrc.z );
 	maxs.Init( maxsSrc.x, MIN( 0, maxsSrc.y ), maxsSrc.z );
-	ray.Init( start, end, mins, maxs );
-
+	ray_local.Init( start, end, mins, maxs );
+	
 	if( pPlayerPortal )
-		UTIL_Portal_TraceRay( pPlayerPortal, ray, fMask, player, collisionGroup, &pm );
+	{
+		if( sv_portal_new_player_trace.GetBool() )
+		{
+			TracePortalPlayerAABB( pPortalPlayer, pPlayerPortal, ray_local, ray_remote, vRemoteShift, fMask, collisionGroup, pm, bSkipRemoteTube );
+		}
+		else
+		{
+			UTIL_Portal_TraceRay( pPlayerPortal, ray_local, fMask, player, collisionGroup, &pm );
+		}
+	}
 	else
-		UTIL_TraceRay( ray, fMask, player, collisionGroup, &pm );
+	{
+		UTIL_TraceRay( ray_local, fMask, player, collisionGroup, &pm );
+	}
 
 	if ( pm.m_pEnt && pm.plane.normal[2] >= 0.7)
 	{
@@ -694,7 +718,7 @@ void TracePlayerBBoxForGround2( const Vector& start, const Vector& end, const Ve
 void CPortalGameMovement::CategorizePosition( void )
 {
 	Vector point;
-	trace_t pm;
+	CTrace_PlayerAABB_vs_Portals pm;
 
 	// if the player hull point one unit down is solid, the player
 	// is on ground
@@ -732,11 +756,31 @@ void CPortalGameMovement::CategorizePosition( void )
 		// Try and move down.
 		TracePlayerBBox( bumpOrigin, point, MASK_PLAYERSOLID, COLLISION_GROUP_PLAYER_MOVEMENT, pm );
 
+		// LAGFIX: When you are in a portal environment, pm.plane.normal[2] must be equal to 1 on a flat surface.
+		// Strangely, depending on the portal's location, the value is set to 0 for the server but is always 1 for the client
+		// This is actually very bad for the server because it lowers
+#if 0
+#ifdef CLIENT_DLL
+			Msg("(server) pm.plane.normal[2]: %f\n", pm.plane.normal[2]);
+#else
+			Msg("(client) pm.plane.normal[2]: %f\n", pm.plane.normal[2]);
+#endif
+#endif
 		// If we hit a steep plane, we are not on ground
 		if ( pm.plane.normal[2] < 0.7)
 		{
 			// Test four sub-boxes, to see if any of them would have found shallower slope we could
 			// actually stand on
+
+			// LAGFIX: Only the server reports this
+#if 0
+#ifdef CLIENT_DLL
+			Msg("(server) pm.plane.normal[2] < 0.7\n");
+#else
+			Msg("(client) pm.plane.normal[2] < 0.7\n");
+#endif
+#endif
+			
 
 			TracePlayerBBoxForGround2( bumpOrigin, point, GetPlayerMins(), GetPlayerMaxs(), mv->m_nPlayerHandle.Get(), MASK_PLAYERSOLID, COLLISION_GROUP_PLAYER_MOVEMENT, pm );
 			if ( pm.plane.normal[2] < 0.7)
@@ -983,7 +1027,7 @@ Vector CalculateExtentShift( const Vector &vLocalExtents, const Vector &vLocalNo
 
 ConVar sv_portal_new_player_trace_vs_remote_ents( "sv_portal_new_player_trace_vs_remote_ents", "0", FCVAR_REPLICATED | FCVAR_CHEAT );
 
-void TracePortalPlayerAABB( CPortal_Player *pPortalPlayer, CProp_Portal *pPortal, const Ray_t &ray_local, const Ray_t &ray_remote, const Vector &vRemoteShift, unsigned int fMask, int collisionGroup, CTrace_PlayerAABB_vs_Portals &pm, bool bSkipRemoteTubeCheck = false )
+void TracePortalPlayerAABB( CPortal_Player *pPortalPlayer, CProp_Portal *pPortal, const Ray_t &ray_local, const Ray_t &ray_remote, const Vector &vRemoteShift, unsigned int fMask, int collisionGroup, CTrace_PlayerAABB_vs_Portals &pm, bool bSkipRemoteTubeCheck )
 {
 #ifdef CLIENT_DLL
 	CTraceFilterSimple traceFilter( pPortalPlayer, collisionGroup );
@@ -1227,12 +1271,24 @@ void TracePortalPlayerAABB( CPortal_Player *pPortalPlayer, CProp_Portal *pPortal
 
 		TRACE_DEBUG_ONLY( traceDebugEntry.finalTrace = *((trace_t *)&pm) );
 	}
-	else
+	else // if( sv_portal_new_player_trace.GetBool() )
 #endif
 	{
 		//old trace behavior
+
+		//Okay, so setting pPortal to NULL right here will "fix" laggy movement while in the portal environment, but also disallows you to enter the portal hole.
 		UTIL_Portal_TraceRay_With( pPortal, ray_local, fMask, &traceFilter, &pm );
 
+
+		// LAGFIX: The client barely reports this
+		/*
+		if(pPortal)
+#ifdef CLIENT_DLL
+		Msg("(server)Moving player in portal environment\n");
+#else
+		Msg("(client)Moving player in portal environment\n");
+#endif
+		*/
 		// If we're moving through a portal and failed to hit anything with the above ray trace
 		// Use UTIL_Portal_TraceEntity to test this movement through a portal and override the trace with the result
 		if ( pm.fraction == 1.0f && UTIL_DidTraceTouchPortals( ray_local, pm ) && sv_player_trace_through_portals.GetBool() )
@@ -1259,8 +1315,14 @@ void CPortalGameMovement::TracePlayerBBox( const Vector& start, const Vector& en
 	
 	CPortal_Player *pPortalPlayer = (CPortal_Player *)((CBaseEntity *)mv->m_nPlayerHandle.Get());
 
-	// Aha! So this is what causes laggy movement! Arbitrarily setting pPortal to NULL will completely get rid of laggy movement in multiplayer, but also removes your ability to walk through portals
+	// LAGFIX: Aha! So this is what causes laggy movement! Arbitrarily setting pPortal to NULL will completely get rid of laggy movement in multiplayer, but also removes your ability to walk through portals
+#ifdef GAME_DLL
 	CProp_Portal *pPortal = pPortalPlayer->m_hPortalEnvironment;
+#else
+	//CProp_Portal *pPortal = pPortalPlayer->m_hPortalMoveEnvironment;
+	CProp_Portal *pPortal = pPortalPlayer->m_hPortalEnvironment;
+#endif
+
 	
 
 	Ray_t ray_local;
@@ -1286,7 +1348,8 @@ void CPortalGameMovement::TracePlayerBBox( const Vector& start, const Vector& en
 		ray_remote.m_Delta = pPortal->m_matrixThisToLinked.ApplyRotation( ray_local.m_Delta );
 		ray_remote.m_StartOffset = vec3_origin;
 		//ray_remote.m_StartOffset.z -= vTeleportExtents.z;
-		ray_remote.m_Extents = vTeleportExtents;		
+		ray_remote.m_Extents = vTeleportExtents;
+		
 
 		TracePortalPlayerAABB( pPortalPlayer, pPortal, ray_local, ray_remote, vRemoteShift, fMask, collisionGroup, pm );
 	}
@@ -1511,7 +1574,7 @@ void CPortalGameMovement::HandlePortalling( void )
 	}
 	//CPortal_Base2D *pPortal = UTIL_IntersectEntityExtentsWithPortal( player );
 	CProp_Portal *pPlayerTouchingPortal = pPortal;
-
+	
 	if( pPortal != NULL )
 	{
 		CProp_Portal *pExitPortal = pPortal->m_hLinkedPortal;

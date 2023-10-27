@@ -965,7 +965,10 @@ void CPortal_Player::PickupObject(CBaseEntity* pObject, bool bLimitMassAndSize)
 	// Can't be picked up if NPCs are on me
 	if (pObject->HasNPCsOnIt())
 		return;
-
+#ifdef GAME_DLL
+	SetLookingForUseEntity(false);
+	SetLookForUseEntity(false);
+#endif
 	PlayerPickupObject(this, pObject);
 }
 
@@ -1014,8 +1017,7 @@ bool CPortal_Player::UseFoundEntity(CBaseEntity* pUseEntity)
 	bool usedSomething = false;
 
 #ifdef GAME_DLL
-	CPointCommentaryNode *pCommentaryNode = dynamic_cast<CPointCommentaryNode*>(pUseEntity);
-	
+	CPointCommentaryNode *pCommentaryNode = dynamic_cast<CPointCommentaryNode*>(pUseEntity);	
 #endif
 
 	//!!!UNDONE: traceline here to prevent +USEing buttons through walls			
@@ -1024,7 +1026,11 @@ bool CPortal_Player::UseFoundEntity(CBaseEntity* pUseEntity)
 	variant_t emptyVariant;
 #endif
 
+#ifdef GAME_DLL	
+	if (m_afButtonPressed & IN_USE || m_bLookingForUseEntity)
+#else
 	if (m_afButtonPressed & IN_USE)
+#endif
 	{
 #ifdef GAME_DLL	
 		if (pCommentaryNode)
@@ -1046,8 +1052,13 @@ bool CPortal_Player::UseFoundEntity(CBaseEntity* pUseEntity)
 		}
 	}
 
+#ifdef GAME_DLL
+	if (((m_nButtons & IN_USE) && (caps & FCAP_CONTINUOUS_USE)) ||
+		((m_afButtonPressed & IN_USE) && (caps & (FCAP_IMPULSE_USE | FCAP_ONOFF_USE))) || m_bLookingForUseEntity )
+#else
 	if (((m_nButtons & IN_USE) && (caps & FCAP_CONTINUOUS_USE)) ||
 		((m_afButtonPressed & IN_USE) && (caps & (FCAP_IMPULSE_USE | FCAP_ONOFF_USE))))
+#endif
 	{
 #ifdef GAME_DLL
 		if (caps & FCAP_CONTINUOUS_USE)
@@ -1094,18 +1105,28 @@ bool CPortal_Player::UseFoundEntity(CBaseEntity* pUseEntity)
 	return usedSomething;
 }
 
-void CPortal_Player::PlayerUse(void)
+bool CPortal_Player::PlayerUse( void )
 {
 	// Was use pressed or released?
-	if (!((m_nButtons | m_afButtonPressed | m_afButtonReleased) & IN_USE))
-		return;
-
+#ifdef GAME_DLL
+	if (!m_bLookingForUseEntity)
+#endif
+		if (!((m_nButtons | m_afButtonPressed | m_afButtonReleased) & IN_USE))
+			return false;
+#ifdef CLIENT_DLL
 	if (m_afButtonPressed & IN_USE)
+#else
+	if (m_afButtonPressed & IN_USE || m_bLookingForUseEntity)	
+#endif
 	{
 		// Currently using a latched entity?
+#ifdef CLIENT_DLL
 		if (ClearUseEntity())
+#else
+		if (ClearUseEntity() && !m_bLookingForUseEntity)		
+#endif
 		{
-			return;
+			return true;
 		}
 		else
 		{
@@ -1114,7 +1135,7 @@ void CPortal_Player::PlayerUse(void)
 			{
 				m_afPhysicsFlags &= ~PFLAG_DIROVERRIDE;
 				m_iTrain = TRAIN_NEW | TRAIN_OFF;
-				return;
+				return false;
 			}
 			else
 			{	// Start controlling the train!
@@ -1125,7 +1146,7 @@ void CPortal_Player::PlayerUse(void)
 					m_iTrain = TrainSpeed(pTrain->m_flSpeed, ((CFuncTrackTrain*)pTrain)->GetMaxSpeed());
 					m_iTrain |= TRAIN_NEW;
 					EmitSound("HL2Player.TrainUse");
-					return;
+					return true;
 				}
 			}
 #endif
@@ -1134,7 +1155,7 @@ void CPortal_Player::PlayerUse(void)
 		// Tracker 3926:  We can't +USE something if we're climbing a ladder
 		if (GetMoveType() == MOVETYPE_LADDER)
 		{
-			return;
+			return false;
 		}
 	}
 
@@ -1190,7 +1211,7 @@ void CPortal_Player::PlayerUse(void)
 		}
 
 #ifdef GAME_DLL
-		if (!pUseEntity)
+		if (!pUseEntity && !m_bLookingForUseEntity) // Don't search for commentary nodes
 		{
 			pUseEntity = dynamic_cast<CBaseEntity*>(GetNodeUnderCrosshair());
 		}
@@ -1202,13 +1223,31 @@ void CPortal_Player::PlayerUse(void)
 
 			usedSomething = UseFoundEntity(pUseEntity);
 		}
+#ifdef GAME_DLL
+		else if (m_afButtonPressed & IN_USE && !m_bLookingForUseEntity)
+		{
+			// Signal that we want to play the deny sound, unless the user is +USEing on a ladder!
+			// The sound is emitted in ItemPostFrame, since that occurs after GameMovement::ProcessMove which
+			// lets the ladder code unset this flag.
+
+			m_bPlayUseDenySound = true;
+
+			SetLookForUseEntity(true);
+
+			m_flLookForUseEntityTime = gpGlobals->curtime + 0.25;
+			return false;
+		}
+#else
 		else if (m_afButtonPressed & IN_USE)
 		{
 			// Signal that we want to play the deny sound, unless the user is +USEing on a ladder!
 			// The sound is emitted in ItemPostFrame, since that occurs after GameMovement::ProcessMove which
 			// lets the ladder code unset this flag.
+
 			m_bPlayUseDenySound = true;
+			return false;
 		}
+#endif
 	}
 
 	// Debounce the use key
@@ -1217,6 +1256,8 @@ void CPortal_Player::PlayerUse(void)
 		m_Local.m_nOldButtons |= IN_USE;
 		m_afButtonPressed &= ~IN_USE;
 	}
+
+	return usedSomething || pUseEntity != NULL;
 }
 
 #if USEMOVEMENTFORPORTALLING

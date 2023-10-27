@@ -133,7 +133,7 @@ public:
 	virtual bool	CreateMove( float flInputSampleTime, CUserCmd *pCmd );
 	virtual void	AvoidPhysicsProps( CUserCmd *pCmd );
 	
-	virtual void	PlayerUse( void );
+	virtual bool	PlayerUse( void );
 	virtual void	PlayUseDenySound() {}
 	CBaseEntity		*FindUseEntity( void );
 	virtual bool	IsUseableEntity( CBaseEntity *pEntity, unsigned int requiredCaps );

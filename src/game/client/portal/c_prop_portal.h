@@ -19,6 +19,7 @@
 #include "PortalSimulation.h"
 #include "C_PortalGhostRenderable.h" 
 #include "PhysicsCloneArea.h"
+#include "clienttouch.h"
 
 // FIX ME
 #include "portal_shareddefs.h"
@@ -29,15 +30,15 @@ static const char *s_pFizzleThink = "FizzleThink";
 
 struct dlight_t;
 class C_DynamicLight;
-class C_PhysicsCloneArea;
+class CPhysicsCloneArea;
 
-class C_Prop_Portal : public CPortalRenderable_FlatBasic
+class C_Prop_Portal : public CPortalRenderable_FlatBasic, public CPortalSimulatorEventCallbacks, public CClientTouchable
 {
 public:
 	DECLARE_CLASS( C_Prop_Portal, CPortalRenderable_FlatBasic );
 	DECLARE_CLIENTCLASS();
 	DECLARE_PREDICTABLE();
-
+	DECLARE_TOUCHABLE();
 							C_Prop_Portal( void );
 	virtual					~C_Prop_Portal( void );
 
@@ -46,6 +47,8 @@ public:
 	
 	virtual bool ShouldPredict( void );
 	virtual C_BasePlayer *GetPredictionOwner( void );
+	
+	C_BasePlayer *m_pPredictionOwner;
 
 	CHandle<C_Prop_Portal>	m_hLinkedPortal; //the portal this portal is linked to
 	CHandle<C_Prop_Portal>	GetLinkedPortal() { return m_hLinkedPortal; } //the portal this portal is linked to
@@ -108,6 +111,8 @@ public:
 
 	void					SetupPortalColorSet(void);
 
+
+
 	struct Portal_PreDataChanged
 	{
 		bool					m_bActivated;
@@ -135,14 +140,12 @@ public:
 	EHANDLE		m_hPlacedBy;
 
 	virtual void			OnPreDataChanged( DataUpdateType_t updateType );
-	void					HandleNetworkChanges( void );
+	void					HandleNetworkChanges( bool bForceChanges = false );
 	virtual void			OnDataChanged( DataUpdateType_t updateType );
 	virtual int				DrawModel( int flags );
 	void					UpdateOriginPlane( void );
 	void					UpdateGhostRenderables( void );
 	
-	C_PhysicsCloneArea		*m_pAttachedCloningArea;
-
 	void					SetIsPortal2( bool bValue );
 
 	bool					IsActivedAndLinked( void ) const;
@@ -168,9 +171,11 @@ public:
 	
 	// return value indicates that something was done, and render lists should be rebuilt afterwards
 	//bool DrawPortalsUsingStencils( CViewRender *pViewRender, int iLinkageGroupID ); 
+	
+	void	StealPortal( CProp_Portal *pHitPortal );
 
-	C_Prop_Portal			*m_pHitPortal;
-	C_Prop_Portal			*m_pPortalReplacingMe;
+	//C_Prop_Portal			*m_pHitPortal;
+	//C_Prop_Portal			*m_pPortalReplacingMe;
 
 	int	m_iCustomPortalColorSet;
 	int	m_iOldPortalColorSet;
@@ -190,9 +195,25 @@ public:
 	float					m_fGhostRenderablesClipForPlayer[4];
 
 	virtual PINGICON GetPingIcon() { return PING_ICON_PORTAL; }
+	
+	//find a portal with the designated attributes, or creates one with them, favors active portals over inactive
+	static CProp_Portal		*FindPortal( unsigned char iLinkageGroupID, bool bPortal2, bool bCreateIfNothingFound = false );
+
+	bool m_bEyePositionIsInPortalEnvironment;
+	bool m_bPlayerOriginIsInPortalEnvironment;
+
+	bool m_bPlayerIsInPortalEnvironment;
+
+	virtual C_Prop_Portal *GetPropPortal() { return this; };
+
+	CPhysicsCloneArea		*m_pAttachedCloningArea;
 
 private:
-	
+
+	void HandleClientSidedTouching();
+
+	bool m_bDoRenderThink;
+
 	friend class CPortalRenderable;
 
 

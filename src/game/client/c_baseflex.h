@@ -172,6 +172,23 @@ public:
 	// Look up flex controller index by global name
 	LocalFlexController_t				FindFlexController( const char *szName );
 
+	//Accessors for portal ghosts
+	
+	LocalFlexController_t GetEyeUpDown( void ) { return m_iEyeUpdown; }
+	LocalFlexController_t GetEyeRightLeft( void ) { return m_iEyeRightleft; }
+	
+	float GetFlexDelayTime( void )		{ return m_flFlexDelayTime; }
+	float *GetFlexDelayedWeight( void ) { return m_flFlexDelayedWeight; }
+	int GetcFlexDelayedWeight( void )	{ return m_cFlexDelayedWeight; }
+	
+	float GetBlinkTime( void )			{ return m_blinktime; }
+	float GetPrevBlinkToggle( void )	{ return m_prevblinktoggle; }
+	float GetBlink( void )				{ return m_iBlink; }
+	
+	static int GetGlobalNumFlexControllers( void )	{ return g_numflexcontrollers; }
+	static char *GetGlobalFlexController( int i )	{ return g_flexcontroller[i]; }
+	static float GetGlobalFlexWeight( int i )		{ return g_flexweight[i]; }
+
 public:
 	Vector			m_viewtarget;
 	CInterpolatedVar< Vector >	m_iv_viewtarget;
@@ -242,36 +259,35 @@ private:
 	void AddFlexSetting( const char *expr, float scale, 
 		const flexsettinghdr_t *pSettinghdr, bool newexpression );
 
-	// Array of active SceneEvents, in order oldest to newest
-	CUtlVector < CSceneEventInfo >		m_SceneEvents;
-	CUtlVector < CChoreoScene * >		m_ActiveChoreoScenes;
-
 	bool				HasSceneEvents() const;
 
 private:
 	CUtlRBTree< FS_LocalToGlobal_t, unsigned short > m_LocalToGlobal;
 
-	float			m_blinktime;
-	int				m_prevblinktoggle;
-
-	int				m_iBlink;
-	LocalFlexController_t				m_iEyeUpdown;
-	LocalFlexController_t				m_iEyeRightleft;
 	bool			m_bSearchedForEyeFlexes;
 	int				m_iMouthAttachment;
 
-	float			m_flFlexDelayTime;
-	float			*m_flFlexDelayedWeight;
-	int				m_cFlexDelayedWeight;
-
-	// shared flex controllers
-	static int		g_numflexcontrollers;
-	static char		*g_flexcontroller[MAXSTUDIOFLEXCTRL*4]; // room for global set of flexcontrollers
-	static float	g_flexweight[MAXSTUDIOFLEXDESC];
 
 protected:
 
 	Emphasized_Phoneme m_PhonemeClasses[ NUM_PHONEME_CLASSES ];
+	
+protected: // Moved from private to protected for portal ghosts
+	
+	LocalFlexController_t				m_iEyeUpdown;
+	LocalFlexController_t				m_iEyeRightleft;
+	
+	float			m_flFlexDelayTime;
+	float			*m_flFlexDelayedWeight;
+	int				m_cFlexDelayedWeight;
+	
+	float			m_blinktime;
+	int				m_prevblinktoggle;
+	int				m_iBlink;
+	
+	// Array of active SceneEvents, in order oldest to newest
+	CUtlVector < CSceneEventInfo >		m_SceneEvents;
+	CUtlVector < CChoreoScene * >		m_ActiveChoreoScenes;
 
 private:
 
@@ -284,6 +300,12 @@ private:
 	void			AddViseme( Emphasized_Phoneme *classes, float emphasis_intensity, int phoneme, float scale, bool newexpression );
 	bool			SetupEmphasisBlend( Emphasized_Phoneme *classes, int phoneme );
 	void			ComputeBlendedSetting( Emphasized_Phoneme *classes, float emphasis_intensity );
+	
+	
+	// shared flex controllers
+	static int		g_numflexcontrollers;
+	static char		*g_flexcontroller[MAXSTUDIOFLEXCTRL*4]; // room for global set of flexcontrollers
+	static float	g_flexweight[MAXSTUDIOFLEXDESC];
 
 #ifdef HL2_CLIENT_DLL
 public:

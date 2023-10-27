@@ -1784,6 +1784,9 @@
     <ClInclude Include="portal\func_portal_detector.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
+    <ClInclude Include="portal\func_portal_orientation.h">
+      <Filter>Source Files\Portal</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\game\shared\Multiplayer\multiplayer_animstate.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
@@ -1803,6 +1806,9 @@
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
     <ClInclude Include="..\..\game\shared\portal\portal_collideable_enumerator.h">
+      <Filter>Source Files\Portal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\game\shared\portal\portal_gamemovement.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
     <ClInclude Include="..\..\game\shared\portal\portal_gamerules.h">

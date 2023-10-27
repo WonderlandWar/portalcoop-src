@@ -7,6 +7,8 @@
 #include "cbase.h"
 #include "c_triggers.h"
 #include "in_buttons.h"
+#include "c_prop_vehicle.h"
+#include "c_ai_basenpc.h"
 //#include "c_func_brush.h"
 #include "collisionutils.h"
 
@@ -15,8 +17,124 @@
 
 IMPLEMENT_CLIENTCLASS_DT( C_BaseTrigger, DT_BaseTrigger, CBaseTrigger )
 	RecvPropBool( RECVINFO( m_bClientSidePredicted ) ),
+	RecvPropBool( RECVINFO( m_bDisabled ) ),	
 	RecvPropInt( RECVINFO( m_spawnflags ) ),
 END_RECV_TABLE()
+
+C_BaseTrigger::C_BaseTrigger( void )
+{
+
+}
+
+void C_BaseTrigger::Spawn(void)
+{
+	BaseClass::Spawn();
+	SetNextClientThink(CLIENT_THINK_ALWAYS);
+}
+
+void C_BaseTrigger::ClientThink(void)
+{	
+	//Hacks to get client sided triggers working
+	if ( !m_bDisabled )
+		HandleFakeTouch();
+}
+
+bool C_BaseTrigger::TouchCondition( C_BaseEntity *pOther )
+{	
+	if ( !PassesTriggerFilters( pOther ) )
+		return false;
+
+	if ( ( pOther->GetSolidFlags() & FSOLID_TRIGGER ) != 0 )
+		return false;
+
+	return true;
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose: Returns true if this entity passes the filter criteria, false if not.
+// Input  : pOther - The entity to be filtered.
+//-----------------------------------------------------------------------------
+bool C_BaseTrigger::PassesTriggerFilters(C_BaseEntity *pOther)
+{
+	// First test spawn flag filters
+	if ( HasSpawnFlags(SF_TRIGGER_ALLOW_ALL) ||
+		(HasSpawnFlags(SF_TRIGGER_ALLOW_CLIENTS) && (pOther->GetFlags() & FL_CLIENT)) ||
+		(HasSpawnFlags(SF_TRIGGER_ALLOW_NPCS) && (pOther->GetFlags() & FL_NPC)) ||
+		(HasSpawnFlags(SF_TRIGGER_ALLOW_PUSHABLES) && FClassnameIs(pOther, "func_pushable")) ||
+		(HasSpawnFlags(SF_TRIGGER_ALLOW_PHYSICS) && pOther->GetMoveType() == MOVETYPE_VPHYSICS) 
+#if defined( HL2_EPISODIC ) || defined( TF_DLL )		
+		||
+		(	HasSpawnFlags(SF_TRIG_TOUCH_DEBRIS) && 
+			(pOther->GetCollisionGroup() == COLLISION_GROUP_DEBRIS ||
+			pOther->GetCollisionGroup() == COLLISION_GROUP_DEBRIS_TRIGGER || 
+			pOther->GetCollisionGroup() == COLLISION_GROUP_INTERACTIVE_DEBRIS)
+		)
+#endif
+		)
+	{
+		// No NPC Checks necessary for client triggers.
+		/*
+		if ( pOther->GetFlags() & FL_NPC )
+		{
+			C_AI_BaseNPC *pNPC = pOther->MyNPCPointer();
+
+			if ( HasSpawnFlags( SF_TRIGGER_ONLY_PLAYER_ALLY_NPCS ) )
+			{
+				if ( !pNPC || !pNPC->IsPlayerAlly() )
+				{
+					return false;
+				}
+			}
+
+			if ( HasSpawnFlags( SF_TRIGGER_ONLY_NPCS_IN_VEHICLES ) )
+			{
+				if ( !pNPC || !pNPC->IsInAVehicle() )
+					return false;
+			}
+		}
+		*/
+		bool bOtherIsPlayer = pOther->IsPlayer();
+
+		if ( bOtherIsPlayer )
+		{
+			CBasePlayer *pPlayer = (CBasePlayer*)pOther;
+			if ( !pPlayer->IsAlive() )
+				return false;
+
+			if ( HasSpawnFlags(SF_TRIGGER_ONLY_CLIENTS_IN_VEHICLES) )
+			{
+				if ( !pPlayer->IsInAVehicle() )
+					return false;
+
+				// Make sure we're also not exiting the vehicle at the moment
+				IClientVehicle *pVehicleClient = pPlayer->GetVehicle();
+				if ( pVehicleClient == NULL )
+					return false;
+
+				C_PropVehicleDriveable *pDriveable = dynamic_cast<C_PropVehicleDriveable*>(pVehicleClient);
+				if (!pDriveable)
+					return false;
+
+				if ( pDriveable->IsRunningExitAnim() )
+					return false;
+			}
+
+			if ( HasSpawnFlags(SF_TRIGGER_ONLY_CLIENTS_OUT_OF_VEHICLES) )
+			{
+				if ( pPlayer->IsInAVehicle() )
+					return false;
+			}
+		}
+
+		/*
+		C_BaseFilter *pFilter = m_hFilter.Get();
+		return (!pFilter) ? true : pFilter->PassesFilter( this, pOther );
+		*/
+	}
+
+	return true; // Let's make it true for now until we have filters.
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: Disables auto movement on players that touch it

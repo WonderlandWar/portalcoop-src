@@ -25,25 +25,10 @@ inline CBasePlayer *AI_GetSinglePlayer()
 {
 	if ( gpGlobals->maxClients > 1 )
 	{
-		return NULL;
+		return UTIL_PlayerByIndex(1);
 	}
 	
 	return UTIL_GetLocalPlayer();
-}
-
-
-inline CBasePlayer *AI_GetMultiPlayer()
-{
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CBasePlayer *pPlayer = (CBasePlayer *)UTIL_PlayerByIndex(i);
-		if (pPlayer)
-		{
-			return pPlayer;
-		}
-	}
-	
-	return NULL;
 }
 
 inline bool AI_IsSinglePlayer()

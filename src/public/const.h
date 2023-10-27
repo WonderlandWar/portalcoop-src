@@ -311,9 +311,18 @@ enum
 #define SF_TRAIN_PASSABLE		8		// Train is not solid -- used to make water trains
 
 // view angle update types for CPlayerState::fixangle
+/*
 #define FIXANGLE_NONE			0
 #define FIXANGLE_ABSOLUTE		1
 #define FIXANGLE_RELATIVE		2
+*/
+
+enum FixAngleType_t
+{
+	FIXANGLE_NONE,
+	FIXANGLE_ABSOLUTE,
+	FIXANGLE_RELATIVE,
+};
 
 // Break Model Defines
 

@@ -14,8 +14,16 @@
 
 //#include "iclientrenderable.h"
 #include "c_baseanimating.h"
+#include "c_baseflex.h"
+#include "c_sprite.h"
 
+//#define GHOSTBASEFLEX
+
+#ifdef GHOSTBASEFLEX
+class C_PortalGhostRenderable : public C_BaseFlex
+#else
 class C_PortalGhostRenderable : public C_BaseAnimating//IClientRenderable, public IClientUnknown
+#endif
 {
 public:
 	C_BaseEntity *m_pGhostedRenderable; //the renderable we're transforming and re-rendering
@@ -24,6 +32,9 @@ public:
 	float *m_pSharedRenderClipPlane; //shared by all portal ghost renderables within the same portal
 	bool m_bLocalPlayer; //special draw rules for the local player
 	bool m_bSourceIsBaseAnimating;
+#ifdef GHOSTBASEFLEX
+	bool m_bSourceIsBaseFlex;
+#endif
 	C_Prop_Portal *m_pOwningPortal;
 
 	struct
@@ -123,6 +134,13 @@ public:
 	virtual IClientEntity*			GetIClientEntity() { return NULL; };
 	virtual C_BaseEntity*			GetBaseEntity() { return NULL; };
 	virtual IClientThinkable*		GetClientThinkable() { return NULL; };
+
+private:
+
+#ifdef GHOSTBASEFLEX
+	void SyncFlexValues( void );
+#endif
+
 };
 
 #endif //#ifndef C_PORTALGHOSTRENDERABLE_H

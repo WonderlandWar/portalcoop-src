@@ -543,6 +543,71 @@ void CTFAnnotationsPanelCallout::PerformLayout( void )
 	if ( pLocalPortalPlayer == NULL )
 		return;
 
+	C_Prop_Portal *pPortal = dynamic_cast<C_Prop_Portal*>(m_FollowEntity.Get());
+
+
+	if ( pPortal && !pPortal->IsActive() ) // This means that our Portal exists, but is inactive
+	{
+		// This code works well, but I don't like the idea of having a loop that could possibly run 32768 times on a function that constantly gets called and it's probably better for gameplay anyway to make it disappear.
+#if 0
+		for (int i = 1; i <= gpGlobals->maxClients; ++i)
+		{
+			bool bWantsBreak = false;
+
+			int iLinkageID = 0;
+			int bCanFirePortal1 = 0;
+			int bCanFirePortal2 = 0;
+		
+			C_BasePlayer *pPlayer = dynamic_cast<C_BasePlayer*>( UTIL_PlayerByIndex(i) );		
+			if (!pPlayer)
+				continue;
+
+			C_WeaponPortalgun  *pPortalgun = dynamic_cast<C_WeaponPortalgun*>(pPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+			if (pPortalgun)
+			{
+				iLinkageID = pPortalgun->m_iPortalLinkageGroupID;
+				bCanFirePortal1 = pPortalgun->CanFirePortal1();
+				bCanFirePortal2 = pPortalgun->CanFirePortal2();
+			}
+			
+			
+			// Don't run the loop if the portal is controlled by someone.
+			if ( pPortal->m_iLinkageGroupID != iLinkageID && ( ( pPortal->m_bIsPortal2 && !bCanFirePortal2 ) || ( !pPortal->m_bIsPortal2 && !bCanFirePortal1 ) ) )
+			{
+				for (int iPortal = 1; iPortal <= 1024; ++iPortal)
+				{
+					C_Prop_Portal *pNewPortal = dynamic_cast<C_Prop_Portal*>(ClientEntityList().GetEnt(iPortal));
+
+					// Don't continue this loop if our Portal is active.
+					if ( pNewPortal && pNewPortal->IsActive() )
+					{
+						if ( pNewPortal == pPortal )
+						{
+							bWantsBreak = true;
+							break;
+						}
+
+						if ( pPortal->GetLinkageGroup() == pNewPortal->GetLinkageGroup() && pPortal->m_bIsPortal2 == pNewPortal->m_bIsPortal2 )
+						{
+							m_FollowEntity = pNewPortal;
+							bWantsBreak = true;
+							break;
+						}
+
+					}
+				}
+			}
+
+		if ( bWantsBreak )
+			break;
+		}
+
+#else
+	m_DeathTime = gpGlobals->curtime;
+	return;
+#endif
+	}
+
 	SetupPingImage();
 		
 	Color color = Color( 255, 255, 255, 255 );

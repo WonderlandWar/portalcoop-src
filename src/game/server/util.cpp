@@ -2011,6 +2011,9 @@ int DispatchSpawn( CBaseEntity *pEntity )
 		}
 
 		gEntList.NotifySpawn( pEntity );
+
+		pEntity->m_iHackEntIndex = pEntity->entindex();
+
 	}
 
 	return 0;

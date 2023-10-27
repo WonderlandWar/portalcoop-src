@@ -120,7 +120,9 @@ void CWeaponFrag::Precache( void )
 {
 	BaseClass::Precache();
 
+#ifdef GAME_DLL
 	UTIL_PrecacheOther( "npc_grenade_frag" );
+#endif
 
 	PrecacheScriptSound( "WeaponFrag.Throw" );
 	PrecacheScriptSound( "WeaponFrag.Roll" );

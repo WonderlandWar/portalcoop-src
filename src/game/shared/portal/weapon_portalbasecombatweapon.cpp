@@ -42,8 +42,13 @@ END_DATADESC()
 
 #endif
 
+#ifdef CLIENT_DLL
 BEGIN_PREDICTION_DATA( CBasePortalCombatWeapon )
+
+	//DEFINE_PRED_FIELD( m_flNextPrimaryAttack, FIELD_FLOAT, FTYPEDESC_OVERRIDE | FTYPEDESC_NOERRORCHECK | FTYPEDESC_PRIVATE ),	
+
 END_PREDICTION_DATA()
+#endif
 
 extern ConVar sk_auto_reload_time;
 

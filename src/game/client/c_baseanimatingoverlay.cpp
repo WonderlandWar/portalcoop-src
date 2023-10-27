@@ -165,7 +165,6 @@ void C_BaseAnimatingOverlay::SetNumAnimOverlays( int num )
 	}
 }
 
-
 int C_BaseAnimatingOverlay::GetNumAnimOverlays() const
 {
 	return m_AnimOverlay.Count();

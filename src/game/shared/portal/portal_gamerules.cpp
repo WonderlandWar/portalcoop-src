@@ -39,9 +39,13 @@
 #include "tier0/memdbgon.h"
 	
 extern ConVar physcannon_mega_enabled;
-ConVar sv_spawn_with_suit("sv_spawn_with_suit", "0", FCVAR_REPLICATED, "Sets whether or not players should spawn with the suit");
-ConVar sv_portalgun_spawn("sv_portalgun_spawn", "1", FCVAR_REPLICATED, "Sets if the player should spawn with the portalgun");
-ConVar sv_portalgun_color("sv_portalgun_color", "2", FCVAR_REPLICATED, "Sets what portalgun colors players spawn with. 0 = Blue, 1 = Orange, 2 = Both");
+ConVar sv_spawn_with_suit( "sv_spawn_with_suit", "0", FCVAR_REPLICATED, "Sets whether or not players should spawn with the suit" );
+ConVar sv_portalgun_spawn( "sv_portalgun_spawn", "0", FCVAR_REPLICATED, "Sets if the player should spawn with the portalgun" );
+ConVar sv_portalgun_color( "sv_portalgun_color", "2", FCVAR_REPLICATED, "Sets what portalgun colors players spawn with. 0 = Blue, 1 = Orange, 2 = Both" );
+
+ConVar sv_restart_server( "sv_restart_server", "0", FCVAR_REPLICATED, "When all players disconnect, it will change the map back to the first map in the map set" );
+ConVar sv_restart_server_map( "sv_restart_server_map", "", FCVAR_REPLICATED, "Map to change when all players disconnect (requires sv_restart_server to be 1)" );
+ConVar sv_restart_server_include_bots( "sv_restart_server_include_bots", "0", FCVAR_REPLICATED, "Sets if bots should be considered when checking for the amount of clients in the server" );
 
 ConVar sv_allow_customized_portal_colors("sv_allow_customized_portal_colors", "0", FCVAR_REPLICATED, "Sets if clients can choose their own portal color.");
 
@@ -74,34 +78,17 @@ LINK_ENTITY_TO_CLASS_ALIASED( portal_gamerules, PortalGameRulesProxy );
 
 #ifdef GAME_DLL
 
-CON_COMMAND(portal_bot, "Creates a fake portal player")
+CON_COMMAND_F(portal_bot, "Creates a fake portal player", FCVAR_REPLICATED)
 {
-	bool bShouldMakeBot = false;
+	if (!UTIL_IsCommandIssuedByServerAdmin())
+		return;
 
-	CBasePlayer *pPlayer = UTIL_GetCommandClient();
-	CBasePlayer *pHost = UTIL_GetListenServerHost();
-
-	//This should mean that the dedicated server console ran this command
-	if (!pPlayer)
-		bShouldMakeBot = true;
-
-	// We should undoubtedly make a bot if the server console ran this command, so skip these checks
-	if (!bShouldMakeBot)
-	{
-		//Not a dedicated server? Only return true if the user is the listen server host
-		if (pPlayer == pHost)
-			bShouldMakeBot = true;
-	}
-
-	if (bShouldMakeBot)
-	{
-		CPluginBotManager *pBotManager = new CPluginBotManager;
-
-		pBotManager->CreateBot("pcoop bot");
-
-		delete pBotManager;
-	}
+	extern void ClientPutInServer(edict_t *pEdict, const char *playername);
+	
+	edict_t *pEdict = engine->CreateFakeClient( "PortalBot" );
+	ClientPutInServer( pEdict, "PortalBot" );
 }
+
 #endif
 
 #ifdef CLIENT_DLL
@@ -251,7 +238,7 @@ void CC_Create_PortalMetalSphere( void )
 		entity->SetModel( PORTAL_METAL_SPHERE_MODEL_NAME );
 		entity->SetName( MAKE_STRING("sphere") );
 		entity->AddSpawnFlags( SF_PHYSPROP_ENABLE_PICKUP_OUTPUT );
-		entity->m_iPingIcon = PING_ICON_BOX;
+		entity->m_iPingIcon = PING_ICON_SPHERE;
 		entity->Precache();
 		DispatchSpawn(entity);
 
@@ -331,10 +318,10 @@ bool CPortalGameRules::IsMultiplayer(void)
 	return true;
 }
 
-void CPortalGameRules::ClientSettingsChanged(CBasePlayer *pPlayer)
+void CPortalGameRules::ClientSettingsChanged( CBasePlayer *pPlayer )
 {
 #ifndef CLIENT_DLL
-	CPortal_Player *pPortalPlayer = ToPortalPlayer(pPlayer);
+	CPortal_Player *pPortalPlayer = static_cast<CPortal_Player*>( pPlayer );
 
 	if (pPortalPlayer == NULL)
 		return;
@@ -371,7 +358,7 @@ void CPortalGameRules::ClientSettingsChanged(CBasePlayer *pPlayer)
 	if (!strcmp(szColorSet, "4"))
 		pPortalPlayer->m_iCustomPortalColorSet = 4;
 
-	CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+	CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
 	if (pPortalgun)
 	{
 		if (pPortalgun && pPortalgun->m_hPrimaryPortal.Get())
@@ -381,7 +368,18 @@ void CPortalGameRules::ClientSettingsChanged(CBasePlayer *pPlayer)
 			pPortalgun->m_hSecondaryPortal.Get()->m_iCustomPortalColorSet = pPortalPlayer->m_iCustomPortalColorSet;
 
 		pPortalgun->m_iCustomPortalColorSet = pPortalPlayer->m_iCustomPortalColorSet;
+		
+		// HACK: Do this so that the SetupSkin function will work!!!
+		if (pPortalgun->m_iCustomPortalColorSet && sv_allow_customized_portal_colors.GetBool())
+		{
+			pPortalgun->m_iPortalColorSet = pPortalgun->m_iCustomPortalColorSet - 1;
+		}
+		else
+			pPortalgun->m_iPortalColorSet = pPortalgun->m_iPortalLinkageGroupID;
+			
 	}
+
+	pPortalPlayer->SetupSkin();
 
 	BaseClass::ClientSettingsChanged(pPlayer);
 #endif
@@ -451,7 +449,6 @@ const char *CPortalGameRules::GetGameDescription( void )
 	//-----------------------------------------------------------------------------
 	void CPortalGameRules::PlayerSpawn( CBasePlayer *pPlayer )
 	{
-
 		if (sv_portalgun_spawn.GetBool())
 		{
 			CWeaponPortalgun *pPortalgun = (CWeaponPortalgun*)CreateEntityByName("weapon_portalgun");
@@ -473,18 +470,79 @@ const char *CPortalGameRules::GetGameDescription( void )
 
 			DispatchSpawn(pPortalgun);
 			pPlayer->Weapon_Equip(pPortalgun);
+		}
+		else
+		{
+			// Sooo the reason why we can't use the info_player_portalcoop entity directly is because the portalgun spawns too fast, I think.
+			// We know for sure that spawning under the gamerules works fine, so we'll use it and we'll let cvars override our values. - Wonderland_War
 
-			/*
-			Vector vPlayerOrigin = pPlayer->GetAbsOrigin();
-			pPortalgun->SetAbsOrigin(vPlayerOrigin);
-			pPortalgun->Spawn();
-			*/
+			CPortal_Player *pPortalPlayer = ToPortalPlayer(pPlayer);
+			
+			if (pPortalPlayer->m_pSpawnedPortalgun)
+			{
+				DispatchSpawn(pPortalPlayer->m_pSpawnedPortalgun);
+				pPlayer->Weapon_Equip(pPortalPlayer->m_pSpawnedPortalgun);
+			}
+
+			pPortalPlayer->m_pSpawnedPortalgun = NULL;
+
 		}
 
 		if (sv_spawn_with_suit.GetBool())
 		{
 			pPlayer->EquipSuit();
 		}
+	}
+
+	//-----------------------------------------------------------------------------
+	// Purpose:
+	//-----------------------------------------------------------------------------
+	CBaseEntity *CPortalGameRules::GetPlayerSpawnSpot( CBasePlayer *pPlayer )
+	{
+		
+		
+		CBaseEntity *pSpawnSpot = pPlayer->EntSelectSpawnPoint();
+		
+
+		CInfoPlayerPortalCoop *pCoopSpawn = dynamic_cast<CInfoPlayerPortalCoop*>(pSpawnSpot);
+
+		if ( pCoopSpawn )
+		{
+			Assert( pCoopSpawn->CanSpawnOnMe( pPlayer ) );
+
+			pPlayer->SetLocalOrigin( pSpawnSpot->GetAbsOrigin() + Vector(0,0,1) );
+			pPlayer->SetAbsVelocity( vec3_origin );
+			pPlayer->SetLocalAngles( pSpawnSpot->GetLocalAngles() );
+			pPlayer->m_Local.m_vecPunchAngle = vec3_angle;
+			pPlayer->m_Local.m_vecPunchAngleVel = vec3_angle;
+			pPlayer->SnapEyeAngles( pSpawnSpot->GetLocalAngles() );
+
+			pCoopSpawn->PlayerSpawned( pPlayer );
+		}
+		else
+		{			
+			pPlayer->SetLocalOrigin( pSpawnSpot->GetAbsOrigin() + Vector(0,0,1) );
+			pPlayer->SetAbsVelocity( vec3_origin );
+			pPlayer->SetLocalAngles( pSpawnSpot->GetLocalAngles() );
+			pPlayer->m_Local.m_vecPunchAngle = vec3_angle;
+			pPlayer->m_Local.m_vecPunchAngleVel = vec3_angle;
+			pPlayer->SnapEyeAngles( pSpawnSpot->GetLocalAngles() );
+		}
+
+		return pSpawnSpot;
+	}
+
+	
+	//-----------------------------------------------------------------------------
+	// Purpose: Checks if the spawn point is valid
+	//-----------------------------------------------------------------------------
+	bool CPortalGameRules::IsSpawnPointValid( CBaseEntity *pSpot, CBasePlayer *pPlayer  )
+	{
+		CInfoPlayerPortalCoop *pCoopSpawn = dynamic_cast<CInfoPlayerPortalCoop*>(pSpot);
+		if ( pCoopSpawn && !pCoopSpawn->CanSpawnOnMe( pPlayer ) )
+			return false;
+
+		return BaseClass::IsSpawnPointValid( pSpot, pPlayer );
 	}
 	
 	//------------------------------------------------------------------------------
@@ -494,6 +552,11 @@ const char *CPortalGameRules::GetGameDescription( void )
 	//------------------------------------------------------------------------------
 	void CPortalGameRules::InitDefaultAIRelationships( void )
 	{
+		// This could really go anywhere
+#ifdef PORTAL
+		m_bOldAllowPortalCustomization = sv_allow_customized_portal_colors.GetBool();
+#endif
+
 		int i, j;
 
 		//  Allocate memory for default relationships
@@ -1360,12 +1423,89 @@ const char *CPortalGameRules::GetGameDescription( void )
 		if (GetBonusChallenge() == PORTAL_CHALLENGE_TIME)
 		UpdateSecondsTaken();
 
+		if ( m_bOldAllowPortalCustomization != sv_allow_customized_portal_colors.GetBool() )
+		{
+			m_bOldAllowPortalCustomization = sv_allow_customized_portal_colors.GetBool();
+
+			for (int i = 1; i <= gpGlobals->maxClients; ++i)
+			{
+				CPortal_Player *pPlayer = static_cast<CPortal_Player*>(UTIL_EntityByIndex(i));
+				if (!pPlayer)
+					continue;
+				
+				CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>( pPlayer->Weapon_OwnsThisType("weapon_portalgun") );
+				
+				// HACK: Setup portalgun colors here so that the skin is setup properly!
+				if (pPortalgun)
+				{
+					pPortalgun->m_iCustomPortalColorSet = pPlayer->m_iCustomPortalColorSet;
+	
+					if (pPortalgun->m_iCustomPortalColorSet && sv_allow_customized_portal_colors.GetBool())
+						pPortalgun->m_iPortalColorSet = pPortalgun->m_iCustomPortalColorSet - 1;
+					else
+						pPortalgun->m_iPortalColorSet = pPortalgun->m_iPortalLinkageGroupID;
+				}			
+			
+				pPlayer->SetupSkin();
+
+			}
+		}
 
 		//m_iBonusChallenge = sv_bonus_challenge.GetInt();
 		//sv_bonus_challenge.SetValue(0);
 
 	}
+	
+#ifdef GAME_DLL
+	//=========================================================
+	//=========================================================
+	void CPortalGameRules::ClientDisconnected( edict_t *pClient )
+	{
+		if ( pClient )
+		{
+			CBasePlayer *pPlayer = (CBasePlayer *)CBaseEntity::Instance( pClient );
 
+			if ( pPlayer )
+			{
+				FireTargets( "game_playerleave", pPlayer, pPlayer, USE_TOGGLE, 0 );
+
+				pPlayer->RemoveAllItems( true );// destroy all of the players weapons and items
+
+				// Kill off view model entities
+				pPlayer->DestroyViewModels();
+
+				pPlayer->SetConnected( PlayerDisconnected );
+			}
+
+			if ( sv_restart_server.GetBool() )
+			{
+				int iConnectedPlayers = 0;
+
+				for ( int i = 1; i <= gpGlobals->maxClients; ++i )
+				{
+					CBasePlayer *pConnectedPlayer = UTIL_PlayerByIndex( i );
+
+					if ( !pConnectedPlayer )
+						continue;
+
+					if ( pConnectedPlayer->IsBot() && !sv_restart_server_include_bots.GetBool() )
+						continue;
+
+					++iConnectedPlayers;
+
+				}
+
+				// We actually have to subtract this value by 1
+				--iConnectedPlayers;
+			
+				if ( iConnectedPlayers == 0 )
+				{
+					engine->ChangeLevel( sv_restart_server_map.GetString(), NULL );
+				}
+			}
+		}
+	}
+#endif
 	//-----------------------------------------------------------------------------
 	// Purpose: Returns how much damage the given ammo type should do to the victim
 	//			when fired by the attacker.

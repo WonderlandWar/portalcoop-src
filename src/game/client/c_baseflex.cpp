@@ -130,8 +130,12 @@ C_BaseFlex::C_BaseFlex() :
 	((Vector&)m_viewtarget).Init();
 #endif
 
-	AddVar( &m_viewtarget, &m_iv_viewtarget, LATCH_ANIMATION_VAR | INTERPOLATE_LINEAR_ONLY );
-	AddVar( m_flexWeight, &m_iv_flexWeight, LATCH_ANIMATION_VAR );
+	//if ( !(GetEFlags() & EF_NOINTERP) )
+	{
+		AddVar( &m_viewtarget, &m_iv_viewtarget, LATCH_ANIMATION_VAR | INTERPOLATE_LINEAR_ONLY );
+		AddVar( m_flexWeight, &m_iv_flexWeight, LATCH_ANIMATION_VAR );
+	}
+
 
 	// Fill in phoneme class lookup
 	SetupMappings( "phonemes" );

@@ -85,8 +85,12 @@ public:
 	virtual bool   HasPreferredCarryAnglesForPlayer( CBasePlayer *pPlayer )
 	{
 		if ( HasInteraction( PROPINTER_PHYSGUN_LAUNCH_SPIN_Z ) )
+		{
+			m_bHasPreferredCarryAngles = true;
 			return true;
-
+		}
+		
+		m_bHasPreferredCarryAngles = false;
 		return false; 
 	}
 
@@ -111,7 +115,9 @@ public:
 
 	int				m_iMinHealthDmg;
 
-	QAngle			m_preferredCarryAngles;
+	CNetworkQAngle( m_preferredCarryAngles );
+
+	CNetworkVar( bool, m_bHasPreferredCarryAngles );
 
 public:
 // IBreakableWithPropData

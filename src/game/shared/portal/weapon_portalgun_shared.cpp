@@ -24,6 +24,7 @@
 	#include "c_triggers.h"
 	#include "c_trigger_portal_cleanser.h"
 	#include "prediction.h"
+	#include "view.h"
 #endif
 
 ConVar use_server_portal_particles( "use_server_portal_particles", "0", FCVAR_REPLICATED );
@@ -69,11 +70,17 @@ CWeaponPortalgun::CWeaponPortalgun( void )
 #ifdef GAME_DLL
 	m_fCanPlacePortal1OnThisSurfaceNetworked = m_fCanPlacePortal1OnThisSurface;
 	m_fCanPlacePortal2OnThisSurfaceNetworked = m_fCanPlacePortal2OnThisSurface;
+	
+	m_iValidPlayer = 0;
+
+	//m_iValidPlayer = 0;
+
 #endif
 
 #ifdef CLIENT_DLL
-	if (sv_playtesting.GetBool())
-		m_iOldPortalLinkageGroupID = 255; // This has to be done so that m_iOldPortalLinkageGroupID != m_iPortalLinkageGroupID for OnDataChanged
+	//if (sv_playtesting.GetBool())
+	m_iOldPortalLinkageGroupID = 255; // This has to be done so that m_iOldPortalLinkageGroupID != m_iPortalLinkageGroupID for OnDataChanged
+	m_iOldPortalColorSet = 255; // This has to be done so that m_iOldPortalColorSet != m_iPortalColorSet for OnDataChanged
 #endif
 
 	m_fMinRange1	= 0.0f;
@@ -286,7 +293,7 @@ void CWeaponPortalgun::PrimaryAttack( void )
 	// Don't fire again until fire animation has completed
 	m_flNextPrimaryAttack = gpGlobals->curtime + 0.5f;//SequenceDuration();
 	m_flNextSecondaryAttack = gpGlobals->curtime + 0.5f;//SequenceDuration();
-
+	
 	// player "shoot" animation
 	pPlayer->SetAnimation( PLAYER_ATTACK1 );
 
@@ -589,14 +596,10 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 	Vector vTracerOrigin;
 	
 	CBaseEntity *pOwner = GetOwner();
-	CPortal_Player *pPlayer = NULL;
-	if ( pOwner && pOwner->IsPlayer() )
-	{
-		pPlayer = ToPortalPlayer( pOwner );
-	}
+	CPortal_Player *pPlayer = ToPortalPlayer(pOwner);
+
 	if( pPlayer )
 	{
-	//	CPortal_Player *pPlayer = (CPortal_Player *)pOwner;
 
 		if ( !bTest && pPlayer )
 		{
@@ -604,7 +607,11 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 		}
 
 		Vector forward, right, up;
+		
+
 		AngleVectors( pPlayer->EyeAngles(), &forward, &right, &up );
+
+
 		pPlayer->EyeVectors( &vDirection, NULL, NULL );
 		vEye = pPlayer->EyePosition();
 
@@ -649,6 +656,7 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 			+ forward * 30.0f
 			+ right * 4.0f
 			+ up * (-5.0f);
+		
 	}
 	else
 	{
@@ -700,9 +708,22 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 
 	ray.Init(vTraceStart, tr.endpos);
 
-	float fraction = 2.0f;
-	CProp_Portal *pHitPortal = UTIL_Portal_FirstAlongRayAll(ray, fraction);
+	CProp_Portal *pHitPortal = NULL;
 	
+	float fraction = 2.0f;
+	pHitPortal = UTIL_Portal_FirstAlongRayAll( ray, fraction );
+		
+	if ( bTest && !pHitPortal && tr.DidHit() && &tr.surface != NULL && tr.surface.name != NULL && !tr.surface.name != NULL ) // We need to do this because a normal trace isn't going to work.
+	{
+		if ( !IsNoPortalMaterial(tr.surface))
+		{
+			QAngle qNormal;
+			VectorAngles( tr.plane.normal, qNormal );
+			pHitPortal = GetTheoreticalOverlappedPartnerPortal( m_iPortalLinkageGroupID, tr.endpos, qNormal );
+		}
+	}
+	
+
 	// Test for portal steal in coop after we've collided against likely targets
 	//(const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, bool bTest = false);
 	if ( ShouldStealCoopPortal(pHitPortal, fPlacementSuccess))
@@ -712,12 +733,10 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 	
 	if ( !bTest )
 	{
-		pPortal->m_pHitPortal = pHitPortal;
 		if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_STEAL)
 		{
 			vFinalPosition = pHitPortal->GetAbsOrigin();
 			qFinalAngles = pHitPortal->GetAbsAngles();
-			pHitPortal->m_pPortalReplacingMe = pPortal;
 			pPortal->m_iDelayedFailure = PORTAL_FIZZLE_SUCCESS;
 		}
 		
@@ -736,18 +755,8 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 
 		float fDelay = vTracerOrigin.DistTo( tr.endpos ) / ( ( pPlayer ) ? ( BLAST_SPEED ) : ( BLAST_SPEED_NON_PLAYER ) );
 
-#if 0
-		DoEffectBlast(pOwner, pPortal->m_bIsPortal2, ePlacedBy, vTracerOrigin, vFinalPosition, qFireAngles, fDelay, m_iPortalLinkageGroupID );
-		if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_NEAR)
-		{
-			if (bPortal2)
-				pHitPortal->DoFizzleEffect(PORTAL_FIZZLE_NEAR_RED, m_iPortalLinkageGroupID);
-			else
-				pHitPortal->DoFizzleEffect(PORTAL_FIZZLE_NEAR_BLUE, m_iPortalLinkageGroupID);
-		}
-#else
 		DoEffectBlast(pOwner, pPortal->m_bIsPortal2, ePlacedBy, vTracerOrigin, vFinalPosition, qFireAngles, fDelay, m_iPortalColorSet );
-		if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_NEAR)
+		if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_NEAR && pHitPortal)
 		{
 			if (bPortal2)
 				pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_NEAR_RED, m_iPortalColorSet, false );
@@ -755,7 +764,6 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 				pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_NEAR_BLUE, m_iPortalColorSet, false );
 		}
 
-#endif
 		else
 		{
 			pPortal->PlacePortal(vFinalPosition, qFinalAngles, fPlacementSuccess, true);
@@ -1009,6 +1017,7 @@ void CWeaponPortalgun::FirePortal1( void )
 	CBaseCombatCharacter *pOwner = GetOwner();
 	CPortal_Player *pPlayer = ToPortalPlayer( pOwner );
 
+
 #ifdef GAME_DLL
 	if( m_hPrimaryPortal.Get() == NULL )
 	{
@@ -1039,7 +1048,7 @@ void CWeaponPortalgun::FirePortal1( void )
 	}
 	*/
 #endif
-
+	
 	FirePortal( false );
 	m_iLastFiredPortal = 1;
 	
@@ -1163,6 +1172,7 @@ void CWeaponPortalgun::Think( void )
 			m_iPortalColorSet = m_iPortalLinkageGroupID;
 
 	}
+
 	if ( !pPlayer || pPlayer->GetActiveWeapon() != this )
 	{
 #ifdef GAME_DLL
@@ -1279,8 +1289,6 @@ const char *CWeaponPortalgun::GetPlacementSuccess(float fPlacementSuccess)
 		sPlacementSuccess = "PORTAL_ANALOG_SUCCESS_CANT_FIT";
 	else if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_CLEANSER)
 		sPlacementSuccess = "PORTAL_ANALOG_SUCCESS_CLEANSER";
-	else if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_OVERLAP_PARTNER_PORTAL)
-		sPlacementSuccess = "PORTAL_ANALOG_SUCCESS_OVERLAP_PARTNER_PORTAL";
 	else if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_OVERLAP_LINKED)
 		sPlacementSuccess = "PORTAL_ANALOG_SUCCESS_OVERLAP_LINKED";
 	else if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_NEAR)

@@ -1173,10 +1173,17 @@ void CPortalRenderable_FlatBasic::RenderFogQuad( void )
 	pMesh->Draw();
 }
 
-void CPortalRenderable_FlatBasic::DrawPortal( int iLinkageGroupID )
-{
+void CPortalRenderable_FlatBasic::DrawPortal( void )
+{	
 	if( (view->GetDrawFlags() & DF_RENDER_REFLECTION) != 0 )
 		return;
+
+	int iPortalColorSet = 0;
+
+	C_Prop_Portal *pPropPortal = GetPropPortal();
+
+	if ( pPropPortal )
+		iPortalColorSet = pPropPortal->m_iPortalColorSet;
 
 	if ( g_pPortalRender->ShouldUseStencilsToRenderPortals() )
 	{
@@ -1191,11 +1198,11 @@ void CPortalRenderable_FlatBasic::DrawPortal( int iLinkageGroupID )
 				}
 			}
 			
-			if (iLinkageGroupID == 1)
+			if (iPortalColorSet == 1)
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li1[((m_bIsPortal2)?(1):(0))] );
-			else if (iLinkageGroupID == 2)
+			else if (iPortalColorSet == 2)
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li2[((m_bIsPortal2)?(1):(0))] );
-			else if (iLinkageGroupID == 3)
+			else if (iPortalColorSet == 3)
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li3[((m_bIsPortal2)?(1):(0))] );
 			else
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay[((m_bIsPortal2)?(1):(0))] );
@@ -1220,11 +1227,11 @@ void CPortalRenderable_FlatBasic::DrawPortal( int iLinkageGroupID )
 			}
 			else
 			{
-				if (iLinkageGroupID == 1)
+				if (iPortalColorSet == 1)
 					DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li1[((m_bIsPortal2)?(1):(0))] );
-				else if (iLinkageGroupID == 2)
+				else if (iPortalColorSet == 2)
 					DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li2[((m_bIsPortal2)?(1):(0))] );
-				else if (iLinkageGroupID == 3)
+				else if (iPortalColorSet == 3)
 					DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li3[((m_bIsPortal2)?(1):(0))] );
 				else
 					DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay[((m_bIsPortal2)?(1):(0))] );
@@ -1252,11 +1259,11 @@ void CPortalRenderable_FlatBasic::DrawPortal( int iLinkageGroupID )
 			{
 				DrawSimplePortalMesh( m_Materials.m_Portal_Refract[ ( ( m_bIsPortal2 ) ? ( 1 ) : ( 0 ) ) ] );
 			}
-			if (iLinkageGroupID == 1)
+			if (iPortalColorSet == 1)
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li1[((m_bIsPortal2)?(1):(0))] );
-			else if (iLinkageGroupID == 2)
+			else if (iPortalColorSet == 2)
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li2[((m_bIsPortal2)?(1):(0))] );
-			else if (iLinkageGroupID == 3)
+			else if (iPortalColorSet == 3)
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay_li3[((m_bIsPortal2)?(1):(0))] );
 			else
 				DrawSimplePortalMesh( m_Materials.m_PortalStaticOverlay[((m_bIsPortal2)?(1):(0))] );

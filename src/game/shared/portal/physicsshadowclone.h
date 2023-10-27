@@ -82,6 +82,15 @@ public:
 	virtual int		ObjectCaps( void );
 	virtual void	UpdateOnRemove( void );
 
+#ifdef CLIENT_DLL
+
+	void SetupCloneIndex( void );
+
+	int m_iCloneIndex; // Client shadow clones need a fake index since they aren't in the entity list.
+	
+	virtual int	entindex( void ) const { return m_iCloneIndex + 1024 /* Do this so it doesn't interfere with entities with a real index */ ; }
+
+#endif
 
 
 	//routing to the source entity for cloning goodness
@@ -120,7 +129,7 @@ public:
 	//given a physics object that is part of this clone, tells you which physics object in the source
 	IPhysicsObject *TranslatePhysicsToClonedEnt( const IPhysicsObject *pPhysics );
 
-	static bool IsShadowClone( const CBaseEntity *pEntity );
+	static bool IsShadowClone( CBaseEntity *pEntity );
 	static CPhysicsShadowCloneLL *GetClonesOfEntity( const CBaseEntity *pEntity );
 	static void FullSyncAllClones( void );
 

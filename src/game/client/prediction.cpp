@@ -471,15 +471,15 @@ void CPrediction::PostNetworkDataReceived( int commands_acknowledged )
 			C_BaseEntity *ent = predictables->GetPredictable( i );
 			if ( !ent )
 				continue;
+			
+			if ( !ent->GetPredictable() )
+				continue;
 
-			bHadErrors[i] = ent->PostNetworkDataReceived(m_nServerCommandsAcknowledged);
+			bHadErrors[i] = ent->PostNetworkDataReceived( m_nServerCommandsAcknowledged );
 
-			if ( ent->GetPredictable() )
+			if ( bHadErrors[i] )
 			{
-				if ( bHadErrors )
-				{
-					m_bPreviousAckHadErrors = true;
-				}
+				m_bPreviousAckHadErrors = true;
 			}
 
 			if ( showlist )
@@ -530,7 +530,8 @@ void CPrediction::PostNetworkDataReceived( int commands_acknowledged )
 			}
 #endif
 		}
-		//Give entities with predicted fields that are not networked a chance to fix their current values for those fields.
+	
+			//Give entities with predicted fields that are not networked a chance to fix their current values for those fields.
 			//We do this in two passes. One pass to fix the fields, then another to save off the changes after they've all finished (to handle interdependancies, portals)
 			if( m_bPreviousAckHadErrors )
 			{

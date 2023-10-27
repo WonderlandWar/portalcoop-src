@@ -838,13 +838,9 @@ void CProtoSniper::PaintTarget( const Vector &vecTarget, float flPaintTime )
 bool CProtoSniper::IsPlayerAllySniper()
 {
 	CBaseEntity *pPlayer;
-	if (gpGlobals->maxClients == 1)
+	//if (gpGlobals->maxClients == 1)
 	{
 		pPlayer = AI_GetSinglePlayer();
-	}
-	else
-	{
-		pPlayer = AI_GetMultiPlayer();
 	}
 
 	return IRelationType( pPlayer ) == D_LI;
@@ -1404,15 +1400,10 @@ int CProtoSniper::SelectSchedule ( void )
 	}
 	
 	CBaseEntity *pPlayer;
-	if (gpGlobals->maxClients == 1)
+//	if (gpGlobals->maxClients == 1)
 	{
 		pPlayer = AI_GetSinglePlayer();
 	}
-	else
-	{
-		pPlayer = AI_GetMultiPlayer();
-	}
-
 	if( !pPlayer->IsAlive() && m_bKilledPlayer )
 	{
 		if( HasCondition(COND_IN_PVS) )
@@ -1979,13 +1970,9 @@ void CProtoSniper::StartTask( const Task_t *pTask )
 	case TASK_SNIPER_PLAYER_DEAD:
 		{
 			CBaseEntity *pPlayer;
-			if (gpGlobals->maxClients == 1)
+//			if (gpGlobals->maxClients == 1)
 			{
 				pPlayer = AI_GetSinglePlayer();
-			}
-			else
-			{
-				pPlayer = AI_GetMultiPlayer();
 			}
 			m_hSweepTarget = pPlayer;
 			SetWait( 4.0f );
@@ -2633,14 +2620,11 @@ CBaseEntity *CProtoSniper::PickDeadPlayerTarget()
 {
 	const int iSearchSize = 32;
 	CBaseEntity *pTarget;
-	if (gpGlobals->maxClients == 1)
+//	if (gpGlobals->maxClients == 1)
 	{
 		pTarget = AI_GetSinglePlayer();
 	}
-	else
-	{
-		pTarget = AI_GetMultiPlayer();
-	}
+
 	CBaseEntity *pEntities[ iSearchSize ];
 
 	int iNumEntities = UTIL_EntitiesInSphere( pEntities, iSearchSize, pTarget->GetAbsOrigin(), 180.0f, 0 );

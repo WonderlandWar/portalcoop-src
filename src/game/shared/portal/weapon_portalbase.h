@@ -76,6 +76,8 @@ public:
 
 		void Materialize( void );
 	#endif
+		
+	virtual void	ItemPreFrame( void );
 
 	// All predicted weapons need to implement and return true
 	virtual bool	IsPredicted() const;
@@ -89,8 +91,7 @@ public:
 	void WeaponSound( WeaponSound_t sound_type, float soundtime = 0.0f );
 	
 	CPortalSWeaponInfo const	&GetPortalWpnData() const;
-
-
+	
 	virtual void FireBullets( const FireBulletsInfo_t &info );
 	
 public:
@@ -107,7 +108,7 @@ public:
 		virtual void	GetRenderBounds( Vector& theMins, Vector& theMaxs );
 
 		virtual bool	OnFireEvent( C_BaseViewModel *pViewModel, const Vector& origin, const QAngle& angles, int event, const char *options );
-
+		
 	#else
 
 		virtual void	Spawn();

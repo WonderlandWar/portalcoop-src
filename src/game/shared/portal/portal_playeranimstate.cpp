@@ -119,6 +119,16 @@ Activity CPortalPlayerAnimState::TranslateActivity( Activity actDesired )
 	return translateActivity;
 }
 
+void CPortalPlayerAnimState::Update( float eyeYaw, float eyePitch )
+{
+	BaseClass::Update( eyeYaw, eyePitch );
+
+#ifdef CLIENT_DLL
+	//GetPortalPlayer()->UpdateLookAt();
+#endif
+
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : event - 
@@ -251,7 +261,17 @@ bool CPortalPlayerAnimState::HandleMoving( Activity &idealActivity )
 bool CPortalPlayerAnimState::HandleDucking( Activity &idealActivity )
 {
 #if 1
-	if ( GetBasePlayer()->m_Local.m_bDucking || GetBasePlayer()->m_Local.m_bDucked || GetBasePlayer()->GetFlags() & FL_DUCKING )
+
+#ifdef CLIENT_DLL
+	bool bLocalPlayer = GetBasePlayer()->IsLocalPlayer();
+#else
+	bool bLocalPlayer = true;
+#endif
+
+	if (
+		// There have been some issues where players always appear crouched, hopefully the IsLocalPlayer() check fixes it.
+		( bLocalPlayer && ( GetBasePlayer()->m_Local.m_bDucking || GetBasePlayer()->m_Local.m_bDucked ) ) ||
+		GetBasePlayer()->GetFlags() & FL_DUCKING )
 	{
 		if ( GetOuterXYSpeed() < MOVING_MINIMUM_SPEED )
 		{

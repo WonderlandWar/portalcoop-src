@@ -182,6 +182,7 @@ BEGIN_NETWORK_TABLE( C_WeaponPortalgun, DT_WeaponPortalgun )
 	RecvPropInt( RECVINFO( m_iPortalLinkageGroupID ) ),
 	RecvPropInt( RECVINFO( m_iCustomPortalColorSet ) ),	
 	RecvPropInt( RECVINFO( m_iPortalColorSet ) ),
+	RecvPropInt( RECVINFO( m_iValidPlayer ) ),
 	RecvPropEHandle( RECVINFO (m_hPrimaryPortal) ),
 	RecvPropEHandle( RECVINFO (m_hSecondaryPortal) )
 END_NETWORK_TABLE()
@@ -200,6 +201,8 @@ BEGIN_PREDICTION_DATA( C_WeaponPortalgun )
 //	DEFINE_FIELD( m_fCanPlacePortal2OnThisSurface, FIELD_FLOAT ),
 	DEFINE_FIELD( m_fCanPlacePortal1OnThisSurfaceNetworked, FIELD_FLOAT ),
 	DEFINE_FIELD( m_fCanPlacePortal2OnThisSurfaceNetworked, FIELD_FLOAT ),
+	DEFINE_FIELD( m_iValidPlayer, FIELD_INTEGER ),
+
 END_PREDICTION_DATA()
 
 LINK_ENTITY_TO_CLASS( weapon_portalgun, C_WeaponPortalgun );
@@ -229,16 +232,13 @@ void C_WeaponPortalgun::StartEffects( void )
 	int i;
 
 	CBaseCombatCharacter *pOwner = GetOwner();
-	CPortal_Player *pPlayer = NULL;
-	if (pOwner && pOwner->IsPlayer())
-	{
-		pPlayer = ToPortalPlayer(pOwner);
-	}
+	CPortal_Player *pPlayer = ToPortalPlayer( pOwner );
+
 	CBaseEntity *pModelView = NULL;
 	CBaseEntity *pModelWorld = this;
 	if (pPlayer)
 	{
-		pModelView = ((GetOwner()) ? (ToBasePlayer(GetOwner())->GetViewModel()) : (0));
+		pModelView = ((GetOwner()) ? (pPlayer->GetViewModel()) : (0));
 	}
 	
 	if ( !pModelView )
@@ -677,7 +677,7 @@ void C_WeaponPortalgun::DoEffectReady( void )
 		m_Beams[i].SetVisible3rdPerson( false );
 	}
 
-	CPortal_Player* pPlayer = (CPortal_Player*)GetOwner();
+	CPortal_Player* pPlayer = ToPortalPlayer(GetOwner());
 	if ( pPlayer )
 	{
 		RumbleEffect( RUMBLE_PHYSCANNON_OPEN, 0, RUMBLE_FLAG_STOP );
@@ -852,7 +852,12 @@ void C_WeaponPortalgun::OnDataChanged( DataUpdateType_t updateType )
 	}
 	
 	// Update effect state when out of parity with the server
-	else if ( m_nOldEffectState != m_EffectState || m_bOldCanFirePortal1 != m_bCanFirePortal1 || m_bOldCanFirePortal2 != m_bCanFirePortal2 || m_iOldPortalLinkageGroupID != m_iPortalLinkageGroupID )
+	else if ( m_nOldEffectState != m_EffectState || 
+		m_bOldCanFirePortal1 != m_bCanFirePortal1 || 
+		m_bOldCanFirePortal2 != m_bCanFirePortal2 || 
+		m_iOldPortalLinkageGroupID != m_iPortalLinkageGroupID //|| 
+		//m_iOldPortalColorSet != m_iPortalColorSet 
+		)
 	{
 		DoEffect( m_EffectState );
 		m_nOldEffectState = m_EffectState;
@@ -862,6 +867,7 @@ void C_WeaponPortalgun::OnDataChanged( DataUpdateType_t updateType )
 
 		//StartEffects();
 		m_iOldPortalLinkageGroupID = m_iPortalLinkageGroupID;
+	//	m_iOldPortalColorSet = m_iPortalColorSet;
 	}
 
 	if (m_iPortalColorSet != m_iOldPortalColorSet)

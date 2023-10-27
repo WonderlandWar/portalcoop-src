@@ -53,6 +53,7 @@ public:
 	virtual void EndTouchAll() {}
 	bool IsTouching( CBaseEntity *pOther );
 	bool AllPlayersAreTouching( void );
+	bool MaxPlayersAreTouching( void );
 
 	CBaseEntity *GetTouchedEntityOfType( const char *sClassName );
 
@@ -63,7 +64,7 @@ public:
 
 	bool PointIsWithin( const Vector &vecPoint );
 
-	CNetworkVarForDerived( bool, m_bDisabled );
+	CNetworkVar( bool, m_bDisabled );
 
 //	bool		m_bDisabled;
 	string_t	m_iFilterName;
@@ -79,6 +80,7 @@ protected:
 	COutputEvent m_OnTouching;
 	COutputEvent m_OnNotTouching;
 	COutputEvent m_OnAllPlayersTouching;
+	COutputEvent m_OnMaxPlayersTouching;
 	// Entities currently being touched by this trigger
 	CUtlVector< EHANDLE >	m_hTouchingEntities;
 	CUtlVector< CHandle<CBasePlayer> >	m_hTouchingPlayers;

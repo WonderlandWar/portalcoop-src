@@ -21,24 +21,11 @@
 #define CProp_Portal C_Prop_Portal
 #endif
 
-IMPLEMENT_NETWORKCLASS_ALIASED( PhysicsCloneArea, DT_PhysicsCloneArea)
-BEGIN_NETWORK_TABLE(CPhysicsCloneArea, DT_PhysicsCloneArea)
-
-#ifdef CLIENT_DLL
-RecvPropEHandle(RECVINFO(m_hAttachedPortal)),
+#ifdef GAME_DLL
+LINK_ENTITY_TO_CLASS( physicsclonearea, CPhysicsCloneArea );
 #else
-SendPropEHandle(SENDINFO(m_hAttachedPortal)),
+LINK_ENTITY_TO_CLASS_CLIENTONLY( physicsclonearea, CPhysicsCloneArea );
 #endif
-
-END_NETWORK_TABLE()
-
-#ifdef CLIENT_DLL
-BEGIN_PREDICTION_DATA(CPhysicsCloneArea)
-END_PREDICTION_DATA()
-#endif
-
-
-LINK_ENTITY_TO_CLASS_ALIASED( physicsclonearea, PhysicsCloneArea );
 
 #define PHYSICSCLONEAREASCALE 4.0f
 
@@ -50,6 +37,46 @@ const Vector CPhysicsCloneArea::vLocalMaxs( PORTAL_HALF_HEIGHT * PHYSICSCLONEARE
 											PORTAL_HALF_HEIGHT * PHYSICSCLONEAREASCALE );
 
 extern ConVar sv_portal_debug_touch;
+
+#ifdef CLIENT_DLL
+CPhysicsCloneArea::CPhysicsCloneArea()
+{
+	SetNextClientThink( CLIENT_THINK_ALWAYS );
+	cl_entitylist->AddNonNetworkableEntity( GetIClientUnknown() );
+
+	//m_flFakeTouchRadius = 256.0f;
+}
+
+CPhysicsCloneArea::~CPhysicsCloneArea()
+{
+	cl_entitylist->RemoveEntity( GetIClientUnknown()->GetRefEHandle() );
+}
+
+void CPhysicsCloneArea::ClientThink( void )
+{
+	BaseClass::ClientThink();
+	HandleFakeTouch();
+}
+
+bool CPhysicsCloneArea::TouchCondition( C_BaseEntity *pOther )
+{
+	if ( !m_bActive )
+		return false;
+
+	if ( FClassnameIs( pOther, "prop_portal" ) )
+		return false;
+	
+	if ( pOther->GetSolid() == SOLID_NONE )
+		return false;
+
+	if ( ( pOther->GetSolidFlags() & FSOLID_NOT_SOLID ) != 0 )
+		return false;
+
+	return true;
+}
+
+#endif
+
 
 void CPhysicsCloneArea::StartTouch( CBaseEntity *pOther )
 {
@@ -166,10 +193,6 @@ void CPhysicsCloneArea::UpdatePosition( void )
 
 void CPhysicsCloneArea::CloneNearbyEntities( void )
 {
-#ifdef GAME_DLL
-	SetTransmitState(FL_EDICT_ALWAYS);
-#endif
-
 	CBaseEntity*	pList[ 1024 ];
 
 	Vector vForward, vUp, vRight;

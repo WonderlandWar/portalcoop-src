@@ -17,8 +17,11 @@
 	#include "util.h"
 	#include "ndebugoverlay.h"
 	#include "env_debughistory.h"
+	#include "portal_player.h"
+	#include "weapon_portalgun.h"
 #else
 	#include "c_portal_player.h"
+	#include "c_weapon_portalgun.h"
 #endif
 #include "PortalSimulation.h"
 
@@ -171,34 +174,182 @@ Color UTIL_Portal_Color( int iPortal, int iLinkageGroupID )
 			if (iLinkageGroupID == 3)
 				return Color( 255, 0, 255, 255 ); //pink
 			else
-				return Color(255, 160, 32, 255); //default orange
+				return Color( 255, 160, 32, 255 ); //default orange
 	}
 
 	return Color( 255, 255, 255, 255 );
 }
 
+extern ConVar sv_allow_customized_portal_colors;
+
+void UTIL_Ping_Color( CPortal_Player *pPlayer, Vector &vColor, int &iPortalColorSet )
+{
+
+	iPortalColorSet = 0;
+	vColor = Vector(1.0, 0.6274509804, 0.1254901961); // 255 160 32
+
+	if (!pPlayer)
+	{
+		return;
+	}
+	
+	CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+
+	if ( sv_allow_customized_portal_colors.GetBool() )
+	{
+		if (pPortalgun)
+		{
+			iPortalColorSet = pPortalgun->m_iPortalColorSet;
+		}
+		else if ( pPlayer->m_iCustomPortalColorSet != 0 ) // This means the player is not letting the Portal ID decide what the color set is
+		{
+			iPortalColorSet = pPlayer->m_iCustomPortalColorSet - 1; // Use this for consistency
+		}
+		else
+		{
+			iPortalColorSet = pPlayer->entindex();
+		}
+	}
+	else
+	{
+		if (pPortalgun)
+		{
+			iPortalColorSet = pPortalgun->m_iPortalColorSet;
+		}
+		else // We don't have a portalgun, but this should theoretically accurately get our colors
+		{
+			iPortalColorSet = pPlayer->entindex(); // The linkage group ID of the portalgun is equal to the player's ent index, so use that instead
+		}
+	}
+		
+	if ( iPortalColorSet == 1 )
+		vColor = Vector(0.6, 0, 1.0); // 153 0 255
+	else if ( iPortalColorSet == 2 )
+		vColor = Vector(1.0, 0, 0); // 255 0 0
+	else if ( iPortalColorSet == 3 )
+		vColor = Vector(0.0, 255, 0); // 0 255 0
+
+}
+
+void UTIL_Ping_Color( CPortal_Player *pPlayer, Color &color, int &iPortalColorSet )
+{
+	iPortalColorSet = 0;
+	color = Color(255, 160, 32);
+	
+	if (!pPlayer)
+	{
+		return;
+	}
+	
+	CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+	
+	if ( sv_allow_customized_portal_colors.GetBool() )
+	{
+		if (pPortalgun)
+		{
+#ifdef CLIENT_DLL
+			iPortalColorSet = pPortalgun->m_iPortalColorSet;
+#else
+			iPortalColorSet = pPortalgun->m_iPortalColorSet.m_Value;
+#endif
+		}
+		else if ( pPlayer->m_iCustomPortalColorSet != 0 ) // This means the player is not letting the Portal ID decide what the color set is
+		{
+			// Use this for consistency
+#ifdef CLIENT_DLL
+			iPortalColorSet = pPlayer->m_iCustomPortalColorSet;
+#else
+			iPortalColorSet = pPlayer->m_iCustomPortalColorSet.m_Value;
+#endif
+		}
+		else
+		{
+			iPortalColorSet = pPlayer->entindex();
+		}
+	}
+	else
+	{
+		if ( pPortalgun )
+		{
+#ifdef CLIENT_DLL
+			iPortalColorSet = pPortalgun->m_iPortalColorSet;
+#else
+			iPortalColorSet = pPortalgun->m_iPortalColorSet.m_Value;
+#endif
+		}
+		else // We don't have a portalgun, but this should theoretically accurately get our colors
+		{
+			iPortalColorSet = pPlayer->entindex(); // The linkage group ID of the portalgun is equal to the player's ent index, so use that instead
+		}
+	}
+	
+	if ( iPortalColorSet == 1 )
+		color = Color(128, 0, 255);
+	else if ( iPortalColorSet == 2 )
+		color = Color(255, 0, 0);
+	else if ( iPortalColorSet == 3 )
+		color = Color(0, 255, 0);
+}
+
+
+void UTIL_Portalgun_Color( CWeaponPortalgun *pPortalgun, Vector &vColor )
+{
+	vColor = Vector(1.0, 0.6274509804, 0.1254901961); // 255 160 32
+
+	if (!pPortalgun)
+	{
+		return;
+	}
+		
+	if ( pPortalgun->m_iPortalColorSet == 1 )
+		vColor = Vector(0.6, 0, 1.0); // 153 0 255
+	else if ( pPortalgun->m_iPortalColorSet == 2 )
+		vColor = Vector(1.0, 0, 0); // 255 0 0
+	else if ( pPortalgun->m_iPortalColorSet == 3 )
+		vColor = Vector(0.0, 255, 0); // 0 255 0
+}
+
+void UTIL_Portalgun_Color( CWeaponPortalgun *pPortalgun, Color &color )
+{
+	color = Color(255, 160, 32, 255);
+	
+	if (!pPortalgun)
+	{
+		return;
+	}
+	
+	if ( pPortalgun->m_iPortalColorSet == 1 )
+		color = Color(128, 0, 255, 255);
+	else if ( pPortalgun->m_iPortalColorSet == 2 )
+		color = Color(255, 0, 0, 255);
+	else if ( pPortalgun->m_iPortalColorSet == 3 )
+		color = Color(0, 255, 0, 255
+		);
+}
+
 void UTIL_Portal_Trace_Filter( CTraceFilterSimpleClassnameList *traceFilterPortalShot )
 {
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_override" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_multiplayer" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_respawnable" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "func_physbox" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_portal_turret_floor" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_turret_floor" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_manhack" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_rollermine" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_cscanner" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_clawscanner" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_energy_ball" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_combine_ball" ); //client class linked
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_override" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_multiplayer" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_respawnable" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "func_physbox" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_portal_turret_floor" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_turret_floor" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_manhack" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_rollermine" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_cscanner" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_clawscanner" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_energy_ball" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_combine_ball" ); 
 	traceFilterPortalShot->AddClassnameToIgnore( "npc_security_camera" );
-	traceFilterPortalShot->AddClassnameToIgnore( "player" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "simple_physics_prop" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "simple_physics_brush" ); //client class linked
+	traceFilterPortalShot->AddClassnameToIgnore( "player" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "simple_physics_prop" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "simple_physics_brush" ); 
 	traceFilterPortalShot->AddClassnameToIgnore( "prop_ragdoll" );
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_glados_core" ); //client class linked
-	traceFilterPortalShot->AddClassnameToIgnore( "updateitem2" ); //client class linked
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_glados_core" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "updateitem2" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "weapon_portalgun" ); 
 
 }
 
@@ -1460,12 +1611,12 @@ float UTIL_IntersectRayWithPortal( const Ray_t &ray, const CProp_Portal *pPortal
 	{
 		return -1.0f;
 	}
-#ifdef GAME_DLL
+
 	if (!pPortal->IsActive())
 	{
 		return -1.0f;
 	}
-#endif
+
 	Vector vForward;
 	pPortal->GetVectors( &vForward, NULL, NULL );
 
@@ -1548,6 +1699,30 @@ CProp_Portal *UTIL_IntersectEntityExtentsWithPortal( const CBaseEntity *pEntity 
 
 	Vector vMin, vMax;
 	pEntity->CollisionProp()->WorldSpaceAABB( &vMin, &vMax );
+	Vector ptCenter = ( vMin + vMax ) * 0.5f;
+	Vector vExtents = ( vMax - vMin ) * 0.5f;
+
+	CProp_Portal **pPortals = CProp_Portal_Shared::AllPortals.Base();
+	for( int i = 0; i != iPortalCount; ++i )
+	{
+		CProp_Portal *pTempPortal = pPortals[i];
+		if (pTempPortal->IsActive() &&
+			(pTempPortal->m_hLinkedPortal.Get() != NULL) &&
+			UTIL_IsBoxIntersectingPortal( ptCenter, vExtents, pTempPortal )	)
+		{
+			return pPortals[i];
+		}
+	}
+
+	return NULL;
+}
+
+CProp_Portal *UTIL_IntersectBoxExtentsWithPortal( Vector vMin, Vector vMax )
+{
+	int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
+	if( iPortalCount == 0 )
+		return NULL;
+
 	Vector ptCenter = ( vMin + vMax ) * 0.5f;
 	Vector vExtents = ( vMax - vMin ) * 0.5f;
 
@@ -2035,6 +2210,25 @@ bool UTIL_Portal_EntityIsInPortalHole( const CProp_Portal *pPortal, CBaseEntity 
 	return OBBHasFullyContainedIntersectionWithQuad( vForward, vRight, vUp, ptOBBCenter, 
 		vPortalForward, vPortalForward.Dot( ptPortalCenter ), ptPortalCenter, 
 		vPortalRight, PORTAL_HALF_WIDTH + 1.0f, vPortalUp, PORTAL_HALF_HEIGHT + 1.0f );
+}
+
+
+CProp_Portal *UTIL_Portal_GetPortalWhoOwnsPlane( CBaseEntity *pEntity )
+{
+	
+	CProp_Portal **pPortals = CProp_Portal_Shared::AllPortals.Base();
+
+	int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
+	for( int i = 0; i != iPortalCount; ++i )
+	{
+		CProp_Portal *pTempPortal = pPortals[i];
+		if ( pTempPortal && pTempPortal->IsActive() )
+		{
+			if ( UTIL_Portal_EntityIsInPortalHole( pTempPortal, pEntity ) )
+				return pTempPortal;
+		}
+	}
+	return NULL;
 }
 
 

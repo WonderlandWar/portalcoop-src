@@ -15,8 +15,9 @@
 #include "baseentity_shared.h"
 #ifdef CLIENT_DLL
 #include "c_prop_portal.h"
+#include "clienttouch.h"
 
-#define CPhysicsCloneArea C_PhysicsCloneArea
+//#define CPhysicsCloneArea C_PhysicsCloneArea
 #endif
 #ifdef GAME_DLL
 class CProp_Portal;
@@ -25,12 +26,25 @@ class C_Prop_Portal;
 #endif
 class CPortalSimulator;
 
+#ifdef GAME_DLL
 class CPhysicsCloneArea : public CBaseEntity
+#else
+class CPhysicsCloneArea : public C_BaseEntity, public CClientTouchable	
+#endif
 {
 public:
 	DECLARE_CLASS( CPhysicsCloneArea, CBaseEntity );
-	DECLARE_NETWORKCLASS();
-	DECLARE_PREDICTABLE();
+		
+#ifdef CLIENT_DLL
+	DECLARE_TOUCHABLE()
+	CPhysicsCloneArea();
+	~CPhysicsCloneArea();
+
+	virtual void ClientThink( void );
+
+	virtual bool TouchCondition( C_BaseEntity *pOther );
+
+#endif
 
 	static const Vector		vLocalMins;
 	static const Vector		vLocalMaxs;
@@ -44,14 +58,6 @@ public:
 
 	virtual int				ObjectCaps( void );
 	void					UpdatePosition( void );
-	
-#ifdef GAME_DLL
-	virtual int UpdateTransmitState( void )	// set transmit filter to transmit always
-	{
-		return SetTransmitState( FL_EDICT_ALWAYS );
-	}
-#else
-#endif
 
 	void					CloneTouchingEntities( void );
 	void					CloneNearbyEntities( void );
@@ -61,13 +67,10 @@ public:
 	static CPhysicsCloneArea *CreatePhysicsCloneArea( C_Prop_Portal *pFollowPortal );	
 #endif
 private:
-#ifdef GAME_DLL
+
 	CProp_Portal			*m_pAttachedPortal;
-	CNetworkHandle (CProp_Portal, m_hAttachedPortal);
-#else
-	C_Prop_Portal			*m_pAttachedPortal;
-	CHandle<C_Prop_Portal>			m_hAttachedPortal;
-#endif
+	CHandle<CProp_Portal>			m_hAttachedPortal;
+
 	CPortalSimulator		*m_pAttachedSimulator;
 	bool					m_bActive;
 

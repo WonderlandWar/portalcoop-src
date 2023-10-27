@@ -124,11 +124,13 @@ BEGIN_DATADESC( CBaseTrigger )
 	DEFINE_OUTPUT( m_OnNotTouching, "OnNotTouching" ),
 	
 	DEFINE_OUTPUT( m_OnAllPlayersTouching, "OnAllPlayersTouching" ),
+	DEFINE_OUTPUT( m_OnMaxPlayersTouching, "OnMaxPlayersTouching" ),
 END_DATADESC()
 
 IMPLEMENT_SERVERCLASS_ST( CBaseTrigger, DT_BaseTrigger )
 
 	SendPropBool( SENDINFO( m_bClientSidePredicted ) ),
+	SendPropBool( SENDINFO( m_bDisabled ) ),
 	SendPropInt( SENDINFO(m_spawnflags), -1, SPROP_NOSCALE )
 
 END_SEND_TABLE()
@@ -493,7 +495,11 @@ void CBaseTrigger::StartTouch(CBaseEntity *pOther)
 				
 		if ( AllPlayersAreTouching() && pPlayer )
 			m_OnAllPlayersTouching.FireOutput( pPlayer, this );
-
+		
+		if ( MaxPlayersAreTouching() && pPlayer )
+			m_OnMaxPlayersTouching.FireOutput( pPlayer, this );
+		
+		
 		if ( bAdded && ( m_hTouchingEntities.Count() == 1 ) )
 		{
 			// First entity to touch us that passes our filters
@@ -604,6 +610,18 @@ bool CBaseTrigger::AllPlayersAreTouching(void)
 	}
 
 	if ( m_hTouchingPlayers.Count() == iPlayerCount )
+		return true;
+
+	return false;
+}
+
+bool CBaseTrigger::MaxPlayersAreTouching(void)
+{
+	//Only test if we can
+	if (!HasSpawnFlags(SF_TRIGGER_ALLOW_CLIENTS) && !HasSpawnFlags(SF_TRIGGER_ALLOW_ALL))
+		return false;
+
+	if ( m_hTouchingPlayers.Count() == gpGlobals->maxClients )
 		return true;
 
 	return false;
@@ -1377,6 +1395,7 @@ public:
 	static int ChangeList( levellist_t *pLevelList, int maxList );
 
 	bool m_bAllPlayersMustBeTouching;
+	bool m_bMaxPlayersMustBeTouching;
 
 private:
 	void TouchChangeLevel( CBaseEntity *pOther );
@@ -1429,6 +1448,8 @@ BEGIN_DATADESC( CChangeLevel )
 //	DEFINE_FIELD( m_bTouched, FIELD_BOOLEAN ),
 
 	DEFINE_KEYFIELD( m_bAllPlayersMustBeTouching, FIELD_BOOLEAN, "AllPlayersMustBeTouching" ),
+	
+	DEFINE_KEYFIELD( m_bMaxPlayersMustBeTouching, FIELD_BOOLEAN, "MaxPlayersMustBeTouching" ),
 
 	// Function Pointers
 	DEFINE_FUNCTION( TouchChangeLevel ),
@@ -1481,7 +1502,7 @@ void CChangeLevel::Spawn( void )
 		Msg( "a trigger_changelevel doesn't have a map" );
 	}
 
-	if ( FStrEq( m_szLandmarkName, "" ) )
+	if ( FStrEq( m_szLandmarkName, "" ) && gpGlobals->maxClients == 1 )
 	{
 		Msg( "trigger_changelevel to %s doesn't have a landmark", m_szMapName );
 	}
@@ -1658,6 +1679,10 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 {
 	if ( !AllPlayersAreTouching() && m_bAllPlayersMustBeTouching )
 		return;
+	
+	if ( !MaxPlayersAreTouching() && m_bMaxPlayersMustBeTouching )
+		return;
+	
 
 	CBaseEntity	*pLandmark = FindLandmark( m_szLandmarkName );
 	levellist_t	levels[16];

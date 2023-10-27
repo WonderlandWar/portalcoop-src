@@ -1287,11 +1287,11 @@ bool CBasePlayer::ClearUseEntity()
 //-----------------------------------------------------------------------------
 // Purpose: Handles USE keypress
 //-----------------------------------------------------------------------------
-void CBasePlayer::PlayerUse ( void )
+bool CBasePlayer::PlayerUse ( void )
 {
 	// Was use pressed or released?
 	if ( ! ((m_nButtons | m_afButtonPressed | m_afButtonReleased) & IN_USE) )
-		return;
+		return false;
 
 	if ( IsObserver() )
 	{
@@ -1302,7 +1302,7 @@ void CBasePlayer::PlayerUse ( void )
 		else if ( m_afButtonReleased & IN_USE )
 			ObserverUse( false );
 #endif
-		return;
+		return true;
 	}
 
 #if !defined(_XBOX)
@@ -1349,7 +1349,7 @@ void CBasePlayer::PlayerUse ( void )
 		// Controlling some latched entity?
 		if ( ClearUseEntity() )
 		{
-			return;
+			return true;
 		}
 #ifdef GAME_DLL
 		else
@@ -1358,7 +1358,7 @@ void CBasePlayer::PlayerUse ( void )
 			{
 				m_afPhysicsFlags &= ~PFLAG_DIROVERRIDE;
 				m_iTrain = TRAIN_NEW|TRAIN_OFF;
-				return;
+				return false;
 			}
 			else
 			{	// Start controlling the train!
@@ -1369,7 +1369,7 @@ void CBasePlayer::PlayerUse ( void )
 					m_iTrain = TrainSpeed(pTrain->m_flSpeed, ((CFuncTrackTrain*)pTrain)->GetMaxSpeed());
 					m_iTrain |= TRAIN_NEW;
 					EmitSound( "Player.UseTrain" );
-					return;
+					return true;
 				}
 			}
 		}
@@ -1413,7 +1413,10 @@ void CBasePlayer::PlayerUse ( void )
 	else if ( m_afButtonPressed & IN_USE )
 	{
 		PlayUseDenySound();
+		return false;
 	}
+
+	return pUseEntity != NULL;
 }
 
 ConVar	sv_suppress_viewpunch( "sv_suppress_viewpunch", "0", FCVAR_REPLICATED );
@@ -1863,6 +1866,8 @@ void CBasePlayer::SharedSpawn()
 		SetCollisionBounds( VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX );
 	else
 		SetCollisionBounds( VEC_HULL_MIN, VEC_HULL_MAX );
+
+	m_hUseEntity = NULL;
 
 	// dont let uninitialized value here hurt the player
 	m_Local.m_flFallVelocity = 0;

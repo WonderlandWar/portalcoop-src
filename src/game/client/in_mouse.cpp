@@ -28,6 +28,9 @@
 #include "tier1/convar_serverbounded.h"
 #include "cam_thirdperson.h"
 #include "inputsystem/iinputsystem.h"
+#ifdef PORTAL
+#include "c_portal_player.h"
+#endif
 
 #if defined( _X360 )
 #include "xbox/xbox_win32stubs.h"
@@ -652,7 +655,19 @@ void CInput::MouseMove( CUserCmd *cmd )
 
 	// Get view angles from engine
 	engine->GetViewAngles( viewangles );
+	/*
+#ifdef PORTAL
 
+	C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPortalPlayer();
+
+	if ( pPlayer && pPlayer->m_bEyePositionIsTransformedByPortal )
+	{
+		viewangles = pPlayer->m_qPrePortalledStoredViewAngles;
+	}
+
+
+#endif
+	*/
 	// Validate mouse speed/acceleration settings
 	CheckMouseAcclerationVars();
 

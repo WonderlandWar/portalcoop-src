@@ -90,12 +90,7 @@ public:
 	void SetBloodColor( int nBloodColor );
 
 	virtual void		DoMuzzleFlash();
-
-#ifdef GLOWS_ENABLE
-	void				SetClientSideGlowEnabled( bool bEnabled ){ m_bClientSideGlowEnabled = bEnabled; UpdateGlowEffect(); }
-	bool				IsClientSideGlowEnabled( void ){ return m_bClientSideGlowEnabled; }
-#endif // GLOWS_ENABLE
-
+	
 public:
 
 	float			m_flNextAttack;

@@ -219,7 +219,7 @@ public:
 	void InputUnSuppressCrosshair( inputdata_t &inputdata );
 	void InputSetPortalgunColor( inputdata_t &inputdata );
 	void InputSetPortalgunLinkageID( inputdata_t &inputdata );
-#endif // PORTAL2
+#endif // PORTAL
 
 	void Activate ( void );
 
@@ -2802,18 +2802,18 @@ bool CHL2_Player::ClientCommand( const CCommand &args )
 // Purpose: 
 // Output : void CBasePlayer::PlayerUse
 //-----------------------------------------------------------------------------
-void CHL2_Player::PlayerUse ( void )
+bool CHL2_Player::PlayerUse ( void )
 {
 	// Was use pressed or released?
 	if ( ! ((m_nButtons | m_afButtonPressed | m_afButtonReleased) & IN_USE) )
-		return;
+		return false;
 
 	if ( m_afButtonPressed & IN_USE )
 	{
 		// Currently using a latched entity?
 		if ( ClearUseEntity() )
 		{
-			return;
+			return false;
 		}
 		else
 		{
@@ -2821,7 +2821,7 @@ void CHL2_Player::PlayerUse ( void )
 			{
 				m_afPhysicsFlags &= ~PFLAG_DIROVERRIDE;
 				m_iTrain = TRAIN_NEW|TRAIN_OFF;
-				return;
+				return false;
 			}
 			else
 			{	// Start controlling the train!
@@ -2832,7 +2832,7 @@ void CHL2_Player::PlayerUse ( void )
 					m_iTrain = TrainSpeed(pTrain->m_flSpeed, ((CFuncTrackTrain*)pTrain)->GetMaxSpeed());
 					m_iTrain |= TRAIN_NEW;
 					EmitSound( "HL2Player.TrainUse" );
-					return;
+					return true;
 				}
 			}
 		}
@@ -2840,7 +2840,7 @@ void CHL2_Player::PlayerUse ( void )
 		// Tracker 3926:  We can't +USE something if we're climbing a ladder
 		if ( GetMoveType() == MOVETYPE_LADDER )
 		{
-			return;
+			return false;
 		}
 	}
 
@@ -2848,7 +2848,7 @@ void CHL2_Player::PlayerUse ( void )
 	{
 		// Something has temporarily stopped us being able to USE things.
 		// Obviously, this should be used very carefully.(sjb)
-		return;
+		return false;
 	}
 
 	CBaseEntity *pUseEntity = FindUseEntity();
@@ -2928,6 +2928,8 @@ void CHL2_Player::PlayerUse ( void )
 		m_Local.m_nOldButtons |= IN_USE;
 		m_afButtonPressed &= ~IN_USE;
 	}
+
+	return usedSomething;
 }
 
 ConVar	sv_show_crosshair_target( "sv_show_crosshair_target", "0" );
@@ -4065,7 +4067,7 @@ void CLogicPlayerProxy::InputSuppressCrosshair( inputdata_t &inputdata )
 {
 	if ( m_bUseActivator )
 	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer(inputdata.pActivator);
+		CPortal_Player *pPortalPlayer = ToPortalPlayer( inputdata.pActivator );
 
 		if (pPortalPlayer)
 		{
@@ -4089,11 +4091,11 @@ void CLogicPlayerProxy::InputUnSuppressCrosshair( inputdata_t &inputdata )
 {
 	if ( m_bUseActivator )
 	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer(inputdata.pActivator);
+		CPortal_Player *pPortalPlayer = ToPortalPlayer( inputdata.pActivator );
 
 		if (pPortalPlayer)
 		{
-			pPortalPlayer->SuppressCrosshair(true);
+			pPortalPlayer->SuppressCrosshair(false);
 		}
 		return;
 	}
@@ -4116,14 +4118,13 @@ void CLogicPlayerProxy::InputSetPortalgunColor( inputdata_t &inputdata )
 	
 	if ( m_bUseActivator )
 	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer(inputdata.pActivator);
+		CPortal_Player *pPortalPlayer = ToPortalPlayer( inputdata.pActivator );
 		
 		if (pPortalPlayer)
 		{
-			CBaseCombatWeapon *pWeapon = pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun");
-			if (pWeapon)
+			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+			//if (pWeapon)
 			{
-				CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pWeapon);
 				
 				if (pPortalgun)
 				{
@@ -4160,10 +4161,9 @@ void CLogicPlayerProxy::InputSetPortalgunColor( inputdata_t &inputdata )
 
 		if (pPortalPlayer)
 		{
-			CBaseCombatWeapon *pWeapon = pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun");
-			if (pWeapon)
+			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+			//if (pWeapon)
 			{
-				CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pWeapon);
 
 				if (pPortalgun)
 				{
@@ -4199,14 +4199,13 @@ void CLogicPlayerProxy::InputSetPortalgunLinkageID(inputdata_t &inputdata)
 	
 	if ( m_bUseActivator )
 	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer(inputdata.pActivator);
+		CPortal_Player *pPortalPlayer = ToPortalPlayer( inputdata.pActivator );
 		
 		if (pPortalPlayer)
 		{
-			CBaseCombatWeapon *pWeapon = pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun");
-			if (pWeapon)
+			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+			//if (pWeapon)
 			{
-				CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pWeapon);
 
 				if (pPortalgun)
 				{
@@ -4227,11 +4226,9 @@ void CLogicPlayerProxy::InputSetPortalgunLinkageID(inputdata_t &inputdata)
 
 		if (pPortalPlayer)
 		{
-			CBaseCombatWeapon *pWeapon = pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun");
-			if (pWeapon)
+			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+			//if (pWeapon)
 			{
-				CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>(pWeapon);
-
 				if (pPortalgun)
 				{
 					pPortalgun->m_bForceAlwaysUseSetID = true;

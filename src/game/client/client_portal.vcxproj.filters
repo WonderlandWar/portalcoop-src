@@ -1949,6 +1949,9 @@
     <ClInclude Include="clientsteamcontext.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="clienttouch.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="commentary_modelviewer.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -2039,6 +2042,9 @@
     <ClInclude Include="portal\c_func_portal_bumper.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
+    <ClInclude Include="portal\c_func_portal_orientation.h">
+      <Filter>Source Files\Portal</Filter>
+    </ClInclude>
     <ClInclude Include="portal\c_neurotoxin_countdown.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
@@ -2097,6 +2103,9 @@
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
     <ClInclude Include="portal\Portal_DynamicMeshRenderingUtils.h">
+      <Filter>Source Files\Portal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\game\shared\portal\portal_gamemovement.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
     <ClInclude Include="..\..\game\shared\portal\portal_gamerules.h">
@@ -2681,6 +2690,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="clientsteamcontext.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="clienttouch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\game\shared\collisionproperty.cpp">
@@ -3602,6 +3614,9 @@
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
     <ClCompile Include="portal\c_func_portal_bumper.cpp">
+      <Filter>Source Files\Portal</Filter>
+    </ClCompile>
+    <ClCompile Include="portal\c_func_portal_orientation.cpp">
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
     <ClCompile Include="portal\c_neurotoxin_countdown.cpp">

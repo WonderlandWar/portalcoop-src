@@ -15,8 +15,10 @@
 #include "debugoverlay_shared.h"
 #include "collisionutils.h"
 #include "weapon_physcannon.h"
+#include "portal_gamemovement.h"
 
 #ifdef CLIENT_DLL
+#include "c_func_portal_orientation.h"
 #include "c_portal_player.h"
 #include "c_basedoor.h"
 #include "prediction.h"
@@ -26,6 +28,9 @@
 #include "portal_gamestats.h"
 #include "env_debughistory.h"
 #endif
+
+extern CMoveData *g_pMoveData;
+extern IGameMovement *g_pGameMovement;
 
 ConVar sv_portal_unified_velocity( "sv_portal_unified_velocity", "1", FCVAR_REPLICATED, "An attempt at removing patchwork velocity tranformation in portals, moving to a unified approach." );
 extern ConVar sv_allow_customized_portal_colors;
@@ -107,32 +112,42 @@ void CProp_Portal::SetActive( bool bActive )
 	m_bActivated = bActive;
 
 #ifdef GAME_DLL
-	if (!IsActive())
+	if ( !bActive )
+	{
 		PunchAllPenetratingPlayers();
+		m_OnFizzled.FireOutput( this, this );
+	}
 #endif
 }
 
 void CProp_Portal::PortalSimulator_TookOwnershipOfEntity( CBaseEntity *pEntity )
 {
 	if( pEntity->IsPlayer() )
+	{
 		((CPortal_Player *)pEntity)->m_hPortalEnvironment = this;
+	}
 }
 
 void CProp_Portal::PortalSimulator_ReleasedOwnershipOfEntity( CBaseEntity *pEntity )
 {
 	if( pEntity->IsPlayer() && (((CPortal_Player *)pEntity)->m_hPortalEnvironment.Get() == this) )
+	{
+
 		((CPortal_Player *)pEntity)->m_hPortalEnvironment = NULL;
+	}
 }
+// This is causing issues with portal bumping
 void CProp_Portal::UpdateCollisionShape( void )
 {
+#if 1
 	if( m_pCollisionShape )
 	{
 		physcollision->DestroyCollide( m_pCollisionShape );
 		m_pCollisionShape = NULL;
 	}
 
-	Vector vLocalMins = GetLocalMins();
-	Vector vLocalMaxs = GetLocalMaxs();
+	Vector vLocalMins = CProp_Portal_Shared::vLocalMins;
+	Vector vLocalMaxs = CProp_Portal_Shared::vLocalMaxs;
 
 	if( (vLocalMaxs.x <= vLocalMins.x) || (vLocalMaxs.y <= vLocalMins.y) || (vLocalMaxs.z <= vLocalMins.z) )
 		return; //volume is 0 (or less)
@@ -176,6 +191,7 @@ void CProp_Portal::UpdateCollisionShape( void )
 	pPolyhedron->Release();
 	Assert( pConvex != NULL );
 	m_pCollisionShape = physcollision->ConvertConvexToCollide( &pConvex, 1 );
+#endif
 }
 
 //unify how we determine the velocity of objects when portalling them
@@ -278,9 +294,8 @@ void CProp_Portal::PlacePortal( const Vector &vOrigin, const QAngle &qAngles, fl
 	Vector vNewOrigin = vOrigin;
 	QAngle qNewAngles = qAngles;
 
-#ifdef GAME_DLL
 	UTIL_TestForOrientationVolumes( qNewAngles, vNewOrigin, this );
-#endif
+
 	if ( sv_portal_placement_never_fail.GetBool() )
 	{
 		fPlacementSuccess = PORTAL_FIZZLE_SUCCESS;
@@ -328,18 +343,70 @@ void CProp_Portal::PlacePortal( const Vector &vOrigin, const QAngle &qAngles, fl
 	{
 		NewLocation( vNewOrigin, qNewAngles );
 	}
+
+#ifdef CLIENT_DLL
+//	HandleNetworkChanges( true );
+#endif
+
 #ifdef GAME_DLL
 	CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>( m_hPlacedBy.Get() );
 
 	if( pPortalGun )
 	{
-		CPortal_Player *pFiringPlayer = dynamic_cast<CPortal_Player *>( pPortalGun->GetOwner() );
+		CPortal_Player *pFiringPlayer = ToPortalPlayer( pPortalGun->GetOwner() );
 		if( pFiringPlayer )
 		{
 			g_PortalGameStats.Event_PortalPlacement( pFiringPlayer->GetAbsOrigin(), vOrigin, m_iDelayedFailure );
 		}
 	}	
 #endif
+}
+
+
+void CProp_Portal::StealPortal( CProp_Portal *pHitPortal )
+{
+	if (!pHitPortal)
+		return;
+
+	CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>(m_hPlacedBy.Get());
+	
+	CBaseEntity *pActivator = this;
+
+	int iLinkageGroupID = 0;
+
+	if (pPortalGun)
+	{
+		if (pHitPortal)
+			iLinkageGroupID = pPortalGun->m_iPortalLinkageGroupID;
+		
+		if (pPortalGun->GetOwner())
+			pActivator = pPortalGun->GetOwner();
+		else
+			pActivator = pPortalGun;
+	}
+
+	if ( pHitPortal && (pHitPortal->GetLinkageGroup() != iLinkageGroupID))
+	{
+		
+#if defined( CLIENT_DLL )
+		if ( ShouldPredict() && prediction->InPrediction() )
+#endif		
+		{
+#ifdef GAME_DLL
+			// HACK!! For some inexplicable reason, if we don't make the caller pHitPortal, the output won't fire.
+			pHitPortal->OnStolen( pActivator, pHitPortal );
+#endif
+			pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_STOLEN, pHitPortal->m_iPortalColorSet, false );
+			pHitPortal->Fizzle();
+			//pHitPortal->SetActive( false );	// HACK: For replacing the portal, we need this!+
+
+#ifdef GAME_DLL
+			pHitPortal->PunchAllPenetratingPlayers();
+#endif
+			//m_pHitPortal->m_pPortalReplacingMe = NULL;
+			//m_pHitPortal = NULL;
+		}
+	}
 }
 
 extern ConVar sv_portal_placement_never_fail;
@@ -354,36 +421,19 @@ void CProp_Portal::DelayedPlacementThink( void )
 	Vector vForward;
 	AngleVectors( m_qDelayedAngles, &vForward );
 	
-	CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>(m_hPlacedBy.Get());
-	
-	int iLinkageGroupID = NULL;
-	if (m_pHitPortal)
-		iLinkageGroupID = m_pHitPortal->GetLinkageGroup();
-
-	if ( m_pHitPortal && (iLinkageGroupID != pPortalGun->m_iPortalLinkageGroupID))
-	{
-#if defined( CLIENT_DLL )
-	CBasePlayer *pFiredBy = m_pHitPortal->GetFiredByPlayer();
-		if (pFiredBy && pFiredBy->IsLocalPlayer())
-#endif
-		{
-			m_pHitPortal->DoFizzleEffect( PORTAL_FIZZLE_CLEANSER );
-			m_pHitPortal->Fizzle();
-			//m_pHitPortal->SetActive( false );	// HACK: For replacing the portal, we need this!+
-
-#ifdef GAME_DLL
-			m_pHitPortal->PunchAllPenetratingPlayers();
-#endif
-			m_pHitPortal->m_pPortalReplacingMe = NULL;
-			m_pHitPortal = NULL;
-		}
-	}
-
 	// Check if something made the spot invalid mid flight
 	// Bad surface and near fizzle effects take priority
 	if ( m_iDelayedFailure != PORTAL_FIZZLE_BAD_SURFACE && m_iDelayedFailure != PORTAL_FIZZLE_NEAR_BLUE && m_iDelayedFailure != PORTAL_FIZZLE_NEAR_RED )
 	{
-		if ( IsPortalOverlappingOtherPortals( this, m_vDelayedPosition, m_qDelayedAngles ) || IsPortalOverlappingPartnerPortals( this, m_vDelayedPosition, m_qDelayedAngles ) )
+		CProp_Portal *pHitPortal = GetOverlappedPartnerPortal( this, m_vDelayedPosition, m_qDelayedAngles );
+		if( pHitPortal )
+		{
+			m_vDelayedPosition = pHitPortal->GetAbsOrigin();
+			m_qDelayedAngles = pHitPortal->GetAbsAngles();
+			m_iDelayedFailure = PORTAL_FIZZLE_SUCCESS;
+			StealPortal( pHitPortal );
+		}
+		else if ( IsPortalOverlappingOtherPortals( this, m_vDelayedPosition, m_qDelayedAngles ) )
 		{
 			m_iDelayedFailure = PORTAL_FIZZLE_OVERLAPPED_LINKED;
 		}
@@ -408,17 +458,18 @@ void CProp_Portal::DelayedPlacementThink( void )
 	}
 	
 	// Do effects at old location if it was active
-	if ( GetOldActiveState() )
-//	if (IsActive())
+	if (IsActive())
 	{
-		DoFizzleEffect( PORTAL_FIZZLE_CLOSE, false );
+		DoFizzleEffect( PORTAL_FIZZLE_CLOSE, m_iPortalColorSet, false );
 	}
 
 
 #if defined( GAME_DLL )
+	CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>(m_hPlacedBy.Get());
+
 	if( pPortalGun )
 	{
-		CPortal_Player *pFiringPlayer = dynamic_cast<CPortal_Player *>( pPortalGun->GetOwner() );
+		CPortal_Player *pFiringPlayer = ToPortalPlayer( pPortalGun->GetOwner() );
 		if( pFiringPlayer )
 		{
 			PortalGameRules()->IncrementPortalsPlaced();
@@ -446,9 +497,6 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 		GetPortalCallQueue()->QueueCall( this, &CProp_Portal::TeleportTouchingEntity, pOther );
 		return;
 	}
-#ifdef CLIENT_DLL
-	Msg("We teleported a touching entity");
-#endif
 
 	Assert( m_hLinkedPortal.Get() != NULL );
 
@@ -494,10 +542,38 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 	{
 		qOtherAngles = pOtherAsPlayer->EyeAngles();
 
+#ifdef GAME_DLL
 		pOtherAsPlayer->m_qPrePortalledViewAngles = qOtherAngles;
 		pOtherAsPlayer->m_bFixEyeAnglesFromPortalling = true;
 		pOtherAsPlayer->m_matLastPortalled = m_matrixThisToLinked;
 
+		pOtherAsPlayer->m_bPendingPortalMessage = true;
+		pOtherAsPlayer->m_flTimeToWaitForPortalMessage = gpGlobals->curtime + 1.5;
+		pOtherAsPlayer->m_bGotPortalMessage = false;
+		
+		//Same concept as using m_bFixEyeAnglesFromPortalling, but takes ping into account
+		/*
+		{
+			int ping;
+			int packetlost;
+
+			UTIL_GetPlayerConnectionInfo( pOtherAsPlayer->entindex(), ping, packetlost );
+
+			float flPing = ping;
+
+			// TODO: Could the math for this be improved? Ideally, we should make this number as small as it needs to be, but 0.125 seems to be the best number that works ok (enough) for all pings.
+			float flTimeToStopEyeFix = gpGlobals->curtime + ( (flPing / 100) * 0.125 ) ;
+
+			
+			//Msg("gpGlobals->curtime: %f\n", gpGlobals->curtime);
+			//Msg("ping: %i\n", ping);
+			//Msg("flTimeToStopEyeFix: %f\n", flTimeToStopEyeFix);
+			
+
+			pOtherAsPlayer->m_flTimeToStopAngleUpdate = flTimeToStopEyeFix;
+		}
+		*/
+#endif
 		bNonPhysical = true;
 		//if( (fabs( RemotePortalDataAccess.Placement.vForward.z ) + fabs( LocalPortalDataAccess.Placement.vForward.z )) > 0.7071f ) //some combination of floor/ceiling
 		if( fabs( LocalPortalDataAccess.Placement.vForward.z ) > 0.0f )
@@ -518,7 +594,7 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 			{
 				//curl the player up into a little ball
 				pOtherAsPlayer->SetGroundEntity( NULL );
-#ifdef GAME_DLL
+//#ifdef GAME_DLL
 				if( !pOtherAsPlayer->IsDucked() )
 				{
 					pOtherAsPlayer->ForceDuckThisFrame();
@@ -529,7 +605,7 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 					else
 						ptOtherCenter.z += 16.0f; //portal facing down, shrink upwards
 				}
-#endif
+//#endif
 			}			
 		}
 	}
@@ -691,57 +767,69 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 	}
 
 #endif
+	
 			QAngle qTransformedEyeAngles = TransformAnglesToWorldSpace( qPlayerEyeAngles, m_matrixThisToLinked.As3x4() );
 			qTransformedEyeAngles.x = AngleNormalizePositive( qTransformedEyeAngles.x );
 			qTransformedEyeAngles.y = AngleNormalizePositive( qTransformedEyeAngles.y );
 			qTransformedEyeAngles.z = AngleNormalizePositive( qTransformedEyeAngles.z );
-			
-			pOtherAsPlayer->pl.v_angle = qTransformedEyeAngles;
-			
-#if defined( GAME_DLL )
-			pOtherAsPlayer->pl.fixangle = FIXANGLE_ABSOLUTE;
-			pOtherAsPlayer->UpdateVPhysicsPosition( ptNewOrigin, vNewVelocity, 0.0f );
-			pOtherAsPlayer->Teleport( &ptNewOrigin, &qNewAngles, &vNewVelocity );
 
-#else
+#if defined( GAME_DLL )
+#if 0
 			
 			pOtherAsPlayer->SetAbsOrigin( ptNewOrigin );
-			pOtherAsPlayer->SetAbsAngles( qNewAngles );
 			pOtherAsPlayer->SetAbsVelocity( vNewVelocity );
 
-			if (pOtherAsPlayer->IsLocalPlayer())
-			{
-				
-				matrix3x4_t matAngleTransformIn, matAngleTransformOut; //temps for angle transformation
-				matrix3x4_t matTransform = MatrixThisToLinked().As3x4();
+			pOtherAsPlayer->m_vecPrevOrigin = vec3_origin;
 
-				//VectorRotate(vNewVelocity, matTransform, vTransformedVelocity);
-
-				//engine view angles (for mouse input smoothness)
-				{
-					QAngle qEngineAngles;
-					engine->GetViewAngles( qEngineAngles );
-					AngleMatrix( qEngineAngles, matAngleTransformIn );
-					ConcatTransforms( matTransform, matAngleTransformIn, matAngleTransformOut );
-					MatrixAngles( matAngleTransformOut, qEngineAngles );
-					engine->SetViewAngles( qEngineAngles );
-				}
-
-				//predicted view angles
-				{
-					QAngle qPredViewAngles;
-					prediction->GetViewAngles( qPredViewAngles );
-				
-					AngleMatrix( qPredViewAngles, matAngleTransformIn );
-					ConcatTransforms( matTransform, matAngleTransformIn, matAngleTransformOut );
-					MatrixAngles( matAngleTransformOut, qPredViewAngles );
-
-					prediction->SetViewAngles( qPredViewAngles );
-				}
-					
-			}
+			pOtherAsPlayer->m_PlayerAnimState->Teleport(&ptNewOrigin, &qNewAngles, pOtherAsPlayer);
+#else
 			
-			//pOtherAsPlayer->ApplyPredictedPortalTeleportation( this, NULL, false );
+			pOtherAsPlayer->pl.v_angle = qTransformedEyeAngles;
+			pOtherAsPlayer->pl.fixangle = FIXANGLE_ABSOLUTE;			
+				
+			pOtherAsPlayer->Teleport( &ptNewOrigin, &qNewAngles, &vNewVelocity );
+							
+			pOtherAsPlayer->UpdateVPhysicsPosition( ptNewOrigin, vNewVelocity, 0.0f );
+
+#endif
+#else
+
+
+			if (pOtherAsPlayer->IsLocalPlayer() && pOtherAsPlayer->m_hPortalEnvironment.Get() == this)
+			{
+				Msg("TELEPORT PLAYER!!!\n");
+				pOtherAsPlayer->SetAbsOrigin( ptNewOrigin );
+				pOtherAsPlayer->SetLocalOrigin( ptNewOrigin );
+				pOtherAsPlayer->SetNetworkOrigin( ptNewOrigin );
+				
+				//pOtherAsPlayer->m_bMoveUseOriginHack = true;
+				//pOtherAsPlayer->m_vMoveOriginHack = ptNewOrigin;
+				
+//				CPortalGameMovement *pPortalMove = dynamic_cast<CPortalGameMovement*>(g_pGameMovement);
+				
+
+
+				//pPortalMove->ProcessMovement( pOtherAsPlayer, moveData );
+				pOtherAsPlayer->SetAbsAngles( qNewAngles );
+				pOtherAsPlayer->SetLocalAngles( qNewAngles );
+				pOtherAsPlayer->SetNetworkAngles( qNewAngles );
+
+				/*
+				pOtherAsPlayer->SetViewAngles( qTransformedEyeAngles );
+				engine->SetViewAngles( qTransformedEyeAngles );
+				prediction->SetViewAngles( qTransformedEyeAngles );
+				*/
+
+				pOtherAsPlayer->SetAbsVelocity( vNewVelocity );
+				pOtherAsPlayer->SetLocalVelocity( vNewVelocity );
+				pOtherAsPlayer->SetBaseVelocity( vNewVelocity );				
+
+			}
+	
+	
+			
+			//pOtherAsPlayer->m_bWantsToStoreAngles = true;
+			pOtherAsPlayer->m_PendingPortalMatrix = MatrixThisToLinked();
 #endif
 		}
 		else
@@ -927,7 +1015,8 @@ bool CProp_Portal::ShouldTeleportTouchingEntity( CBaseEntity *pOther )
 		return false;
 	}
 
-	if( !m_PortalSimulator.OwnsEntity( pOther ) ) //can't teleport an entity we don't own
+	//can't teleport an entity we don't own
+	if( !m_PortalSimulator.OwnsEntity( pOther ) ) 
 	{
 #ifdef GAME_DLL
 #if !defined ( DISABLE_DEBUG_HISTORY )
@@ -939,25 +1028,35 @@ bool CProp_Portal::ShouldTeleportTouchingEntity( CBaseEntity *pOther )
 #endif
 		if ( sv_portal_debug_touch.GetBool() )
 		{
-			Msg( "Portal %i not teleporting %s because it's not simulated by this portal. : %f \n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName(), gpGlobals->curtime );
+#ifdef GAME_DLL
+			Msg( "(server)Portal %i not teleporting %s because it's not simulated by this portal. : %f \n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName(), gpGlobals->curtime );
+#else
+			// This is actually okay because m_hPortalEnvironment is networked.
+			Msg( "(client)Portal %i not teleporting %s because it's not simulated by this portal. : %f \n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName(), gpGlobals->curtime );
+#endif
 		}
 		return false;
 	}
 
-	if( !CProp_Portal_Shared::IsEntityTeleportable( pOther ) )
+	if ( !CProp_Portal_Shared::IsEntityTeleportable(pOther) )
+	{		
+		if ( sv_portal_debug_touch.GetBool() )
+			Msg( "Portal %i not teleporting %s because the entity isn't teleportable. : %f \n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName(), gpGlobals->curtime );
+		
 		return false;
-
+	}
 	//Vector ptOtherOrigin = pOther->GetAbsOrigin();
 	//IPhysicsObject *pOtherPhysObject = pOther->VPhysicsGetObject();
 
 	Vector ptOtherCenter = pOther->WorldSpaceCenter();
 
-	Vector vOtherVelocity = Portal_FindUsefulVelocity( pOther );
+	//Vector vOtherVelocity = Portal_FindUsefulVelocity( pOther );
 
 	// Test for entity's center being past portal plane
 	if(m_PortalSimulator.GetInternalData().Placement.PortalPlane.m_Normal.Dot( ptOtherCenter ) < m_PortalSimulator.GetInternalData().Placement.PortalPlane.m_Dist)
 	{
 		//entity wants to go further into the plane
+
 		if( m_PortalSimulator.EntityIsInPortalHole( pOther ) )
 		{
 #ifdef _DEBUG
@@ -969,11 +1068,6 @@ bool CProp_Portal::ShouldTeleportTouchingEntity( CBaseEntity *pOther )
 				--iAntiRecurse;
 			}
 #endif
-
-#ifdef CLIENT_DLL
-			Msg("I can teleport a touching entity!!\n");
-#endif
-
 			return true;
 		}
 		else
@@ -991,6 +1085,18 @@ bool CProp_Portal::ShouldTeleportTouchingEntity( CBaseEntity *pOther )
 				Msg( "Portal %i not teleporting %s because it was not in the portal hole.\n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName() );
 			}
 		}
+	}
+	else
+	{
+		// To spammy
+		/*
+#ifdef CLIENT_DLL
+		if ( sv_portal_debug_touch.GetBool() )
+		{
+			Msg( "Portal %i not teleporting %s because it was not past the portal plane\n", ((m_bIsPortal2)?(2):(1)), pOther->GetDebugName() );
+		}
+#endif
+		*/
 	}
 
 	return false;

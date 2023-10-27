@@ -33,13 +33,14 @@ static void DrawDebugOverlayForShadowClone( CPhysicsShadowClone *pClone );
 #ifdef GAME_DLL
 LINK_ENTITY_TO_CLASS( physicsshadowclone, CPhysicsShadowClone );
 #else
-LINK_ENTITY_TO_CLASS_CLIENTONLY( physicsshadowclone, CPhysicsShadowClone );
+//LINK_ENTITY_TO_CLASS_CLIENTONLY( physicsshadowclone, CPhysicsShadowClone );
 #endif
 
 static CUtlVector<CPhysicsShadowClone *> s_ActiveShadowClones;
 CUtlVector<CPhysicsShadowClone *> const &CPhysicsShadowClone::g_ShadowCloneList = s_ActiveShadowClones;
+#ifdef GAME_DLL
 static bool s_IsShadowClone[MAX_EDICTS] = { false };
-
+#endif
 static CPhysicsShadowCloneLL *s_EntityClones[MAX_EDICTS] = { NULL };
 struct ShadowCloneLLEntryManager
 {
@@ -68,6 +69,10 @@ struct ShadowCloneLLEntryManager
 };
 static ShadowCloneLLEntryManager s_SCLLManager;
 
+#ifdef CLIENT_DLL
+int g_iNextCloneIndex = 0;
+#endif
+
 
 CPhysicsShadowClone::CPhysicsShadowClone( void )
 {
@@ -75,6 +80,12 @@ CPhysicsShadowClone::CPhysicsShadowClone( void )
 	m_matrixShadowTransform_Inverse.Identity();
 	m_bShadowTransformIsIdentity = true;
 	s_ActiveShadowClones.AddToTail( this );
+
+#ifdef CLIENT_DLL
+	cl_entitylist->AddNonNetworkableEntity( GetIClientUnknown() );
+	SetupCloneIndex();
+#endif
+
 }
 
 CPhysicsShadowClone::~CPhysicsShadowClone( void )
@@ -83,8 +94,13 @@ CPhysicsShadowClone::~CPhysicsShadowClone( void )
 	VPhysicsSetObject( NULL );
 	m_hClonedEntity = NULL;
 	s_ActiveShadowClones.FindAndRemove( this ); //also removed in UpdateOnRemove()
+#ifdef GAME_DLL
 	Assert( s_IsShadowClone[entindex()] == true );
 	s_IsShadowClone[entindex()] = false;
+#endif
+#ifdef CLIENT_DLL
+	cl_entitylist->RemoveEntity( GetIClientUnknown()->GetRefEHandle() );
+#endif
 }
 
 void CPhysicsShadowClone::UpdateOnRemove( void )
@@ -145,8 +161,9 @@ void CPhysicsShadowClone::Spawn( void )
 	m_bInAssumedSyncState = false;
 	
 	BaseClass::Spawn();
-
+#ifdef GAME_DLL
 	s_IsShadowClone[entindex()] = true;
+#endif
 }
 
 
@@ -355,6 +372,15 @@ void CPhysicsShadowClone::FullSync( bool bAllowAssumedSync )
 		DrawDebugOverlayForShadowClone( this );
 }
 
+#ifdef CLIENT_DLL
+
+void CPhysicsShadowClone::SetupCloneIndex()
+{
+	m_iCloneIndex = g_iNextCloneIndex;
+	++g_iNextCloneIndex;
+}
+#endif
+
 void CPhysicsShadowClone::SyncEntity( bool bPullChanges )
 {
 	m_bShouldUpSync = false;
@@ -432,7 +458,7 @@ static void FullSyncPhysicsObject( IPhysicsObject *pSource, IPhysicsObject *pDes
 		//Assert( pPlayer );
 
 		CBaseEntity *pLookingForEntity = (CBaseEntity *)pSource->GetGameData();
-
+#ifdef GAME_DLL
 		CBasePlayer *pHoldingPlayer = GetPlayerHoldingEntity( pLookingForEntity );
 		if( pHoldingPlayer )
 		{
@@ -441,8 +467,11 @@ static void FullSyncPhysicsObject( IPhysicsObject *pSource, IPhysicsObject *pDes
 			if ( !pGrabController )
 				pGrabController = GetGrabControllerForPhysCannon( pHoldingPlayer->GetActiveWeapon() );
 		}
-
+#else
+		pGrabController = pLookingForEntity->GetGrabController();
+#endif
 		AssertMsg( pGrabController, "Physics object is held, but we can't find the holding controller." );
+				
 		GetSavedParamsForCarriedPhysObject( pGrabController, pSource, &fSavedMass, &fSavedRotationalDamping );
 	}
 
@@ -984,8 +1013,14 @@ CPhysicsShadowClone *CPhysicsShadowClone::CreateShadowClone( IPhysicsEnvironment
 	}
 	++g_iShadowCloneCount;
 
+#ifdef GAME_DLL
 	CPhysicsShadowClone *pClone = (CPhysicsShadowClone*)CreateEntityByName("physicsshadowclone");
+#else
+	CPhysicsShadowClone *pClone = new CPhysicsShadowClone();
+#endif
+#ifdef GAME_DLL
 	s_IsShadowClone[pClone->entindex()] = true;
+#endif
 	pClone->m_pOwnerPhysEnvironment = pInPhysicsEnvironment;
 	pClone->m_hClonedEntity = hEntToClone;
 	DBG_CODE_NOSCOPE( pClone->m_szDebugMarker = szDebugMarker; );
@@ -1066,9 +1101,13 @@ void CPhysicsShadowClone::VPhysicsCollision( int index, gamevcollisionevent_t *p
 
 
 
-bool CPhysicsShadowClone::IsShadowClone( const CBaseEntity *pEntity )
+bool CPhysicsShadowClone::IsShadowClone( CBaseEntity *pEntity )
 {
+#ifdef GAME_DLL
 	return s_IsShadowClone[pEntity->entindex()];
+#else
+	return dynamic_cast<CPhysicsShadowClone*>( pEntity ) != NULL;
+#endif
 }
 
 CPhysicsShadowCloneLL *CPhysicsShadowClone::GetClonesOfEntity( const CBaseEntity *pEntity )

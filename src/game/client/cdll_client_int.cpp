@@ -2269,15 +2269,12 @@ void OnRenderStart()
 
 	// Simulate all the entities.
 	SimulateEntities();
-#if 1
-#ifdef PORTAL //slight detour if we're the portal mod
+
+#if defined( PORTAL ) && 1 //slight detour if we're the portal mod
 	PortalPhysicsSimulate();
 #else
 	PhysicsSimulate();
 #endif //PORTAL
-#else
-	PhysicsSimulate();
-#endif
 	C_BaseAnimating::ThreadedBoneSetup();
 
 	{

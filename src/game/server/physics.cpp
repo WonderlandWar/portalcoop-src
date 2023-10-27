@@ -470,6 +470,15 @@ int CCollisionEvent::ShouldCollide_2( IPhysicsObject *pObj0, IPhysicsObject *pOb
 	if ( !pEntity0 || !pEntity1 )
 		return 1;
 
+	// Sometimes pEntity is plain garbage, -17891602 seems to be a value set for all values for the garbage pointer. Let's just hope GetCollisionGroup won't crash this crap.
+	// We use GetCollisionGroup() because get collision group should never be lower than 0!
+	
+	if (pEntity0->GetCollisionGroup() < 0)
+		return 1;
+
+	if (pEntity1->GetCollisionGroup() < 0)
+		return 1;
+		
 	unsigned short gameFlags0 = pObj0->GetGameFlags();
 	unsigned short gameFlags1 = pObj1->GetGameFlags();
 
@@ -2885,7 +2894,7 @@ void DebugDrawContactPoints(IPhysicsObject *pPhysics)
 
 
 
-#if 0
+#if 1
 
 #include "filesystem.h"
 //-----------------------------------------------------------------------------

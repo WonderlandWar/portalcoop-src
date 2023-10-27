@@ -66,7 +66,6 @@ public:
 	bool	m_bInProgress;
 	bool	m_bShouldBeTicking;
 	bool	m_bShouldDoDamage;
-	bool	m_bShouldUseMaxTimeLeft;
 
 	// Inputs
 

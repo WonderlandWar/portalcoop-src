@@ -96,7 +96,7 @@ void C_FuncNoPortalVolume::OnActivate( void )
 				IsOBBIntersectingOBB( pTempPortal->GetAbsOrigin(), pTempPortal->GetAbsAngles(), CProp_Portal_Shared::vLocalMins, CProp_Portal_Shared::vLocalMaxs, 
 									  GetAbsOrigin(), GetCollideable()->GetCollisionAngles(), GetCollideable()->OBBMins(), GetCollideable()->OBBMaxs() ) )
 			{
-				pTempPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
+				pTempPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, pTempPortal->m_iPortalColorSet, false );
 				pTempPortal->Fizzle();
 			}
 		}

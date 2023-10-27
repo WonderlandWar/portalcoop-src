@@ -27,13 +27,13 @@
 #include "c_triggers.h"
 #include "prediction.h"
 #include "soundenvelope.h"
+#include "c_weapon_portalgun.h"
 
 #include "gameui/BonusMapsDialog.h"
 
 // NVNT for fov updates
 #include "haptics/ihaptics.h"
 
-static ConVar cl_pinghudhint("cl_pinghudhint", "1", FCVAR_USERINFO | FCVAR_ARCHIVE | FCVAR_SERVER_CAN_EXECUTE, "Sets if players should see the ping hud hint on spawn.");
 ConVar tf_max_separation_force ( "tf_max_separation_force", "256", FCVAR_DEVELOPMENTONLY );
 
 extern ConVar cl_forwardspeed;
@@ -59,6 +59,10 @@ extern ConVar cl_sidespeed;
 
 ConVar cl_reorient_in_air("cl_reorient_in_air", "1", FCVAR_ARCHIVE, "Allows the player to only reorient from being upside down while in the air." ); 
 
+#if FIXANGLEMETHOD_CONVAR
+// I sincerely hate networking stuff with cvars, but it's the only way I know how to do it.
+ConVar cl_got_portal_message("cl_got_portal_message", "0", FCVAR_HIDDEN | FCVAR_SERVER_CAN_EXECUTE | FCVAR_USERINFO, "Let's the server know if we teleported");
+#endif
 
 // -------------------------------------------------------------------------------- //
 // Player animation event. Sent to the client when a player fires, jumps, reloads, etc..
@@ -73,7 +77,7 @@ public:
 	virtual void PostDataUpdate( DataUpdateType_t updateType )
 	{
 		// Create the effect.
-		C_Portal_Player *pPlayer = dynamic_cast< C_Portal_Player* >( m_hPlayer.Get() );
+		C_Portal_Player *pPlayer = ToPortalPlayer( m_hPlayer.Get() );
 		if ( pPlayer && !pPlayer->IsDormant() )
 		{
 			pPlayer->DoAnimationEvent( (PlayerAnimEvent_t)m_iEvent.Get(), m_nData );
@@ -214,7 +218,7 @@ void C_PortalRagdoll::CreatePortalRagdoll()
 {
 	// First, initialize all our data. If we have the player's entity on our client,
 	// then we can make ourselves start out exactly where the player is.
-	C_Portal_Player *pPlayer = dynamic_cast<C_Portal_Player*>( m_hPlayer.Get() );
+	C_Portal_Player *pPlayer = ToPortalPlayer( m_hPlayer.Get() );
 
 	if ( pPlayer && !pPlayer->IsDormant() )
 	{
@@ -290,12 +294,16 @@ IMPLEMENT_CLIENTCLASS_DT(C_Portal_Player, DT_Portal_Player, CPortal_Player)
 	RecvPropBool( RECVINFO( m_bPitchReorientation ) ),
 	RecvPropEHandle( RECVINFO( m_hPortalEnvironment ) ),
 	RecvPropEHandle( RECVINFO( m_hSurroundingLiquidPortal ) ),
+	RecvPropEHandle(RECVINFO(m_hHeldObjectPortal)),
 	RecvPropBool( RECVINFO( m_bSuppressingCrosshair ) ),
 	RecvPropBool( RECVINFO( m_bHasSprintDevice ) ),
 	RecvPropBool( RECVINFO( m_bSprintEnabled ) ),
 	RecvPropBool( RECVINFO( m_bSilentDropAndPickup ) ),
 	RecvPropBool( RECVINFO( m_bIsListenServerHost ) ),
+	RecvPropBool( RECVINFO( m_bHeldObjectOnOppositeSideOfPortal ) ),
+	
 	RecvPropInt( RECVINFO( m_iCustomPortalColorSet ) ),	
+
 	
 END_RECV_TABLE()
 
@@ -304,7 +312,7 @@ LINK_ENTITY_TO_CLASS( player, C_Portal_Player )
 BEGIN_PREDICTION_DATA( C_Portal_Player )
 
 
-	DEFINE_PRED_FIELD( m_nSkin, FIELD_INTEGER, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE ),
+	//DEFINE_PRED_FIELD( m_nSkin, FIELD_INTEGER, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE ), // This doesn't need prediction.
 	DEFINE_PRED_FIELD( m_nBody, FIELD_INTEGER, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE ),
 	DEFINE_PRED_FIELD( m_nSequence, FIELD_INTEGER, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE | FTYPEDESC_NOERRORCHECK ),
 	DEFINE_PRED_FIELD( m_flPlaybackRate, FIELD_FLOAT, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE | FTYPEDESC_NOERRORCHECK ),
@@ -319,10 +327,10 @@ BEGIN_PREDICTION_DATA( C_Portal_Player )
 
 //	DEFINE_PRED_FIELD( m_iOldModelType, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 
-	DEFINE_SOUNDPATCH( m_pWooshSound ),
+	//DEFINE_SOUNDPATCH( m_pWooshSound ),
 	
 	DEFINE_FIELD(m_bHeldObjectOnOppositeSideOfPortal, FIELD_BOOLEAN),
-	DEFINE_FIELD(m_pHeldObjectPortal, FIELD_EHANDLE),
+	DEFINE_FIELD(m_hHeldObjectPortal, FIELD_EHANDLE),
 	
 	DEFINE_FIELD( m_fLatestServerTeleport, FIELD_FLOAT ),
 	DEFINE_FIELD( m_matLatestServerTeleportationInverseMatrix, FIELD_VMATRIX ),
@@ -349,14 +357,13 @@ C_Portal_Player::C_Portal_Player()
 	SetPredictionEligible(true);
 
 	m_iIDEntIndex = 0;
-	m_iIDPortalEntIndex = 0;
+	m_pLookAtPortal = NULL;
 	m_iSpawnInterpCounterCache = 0;
 
 	m_hRagdoll.Set( NULL );
-	m_flStartLookTime = 0.0f;
 
 	m_bHeldObjectOnOppositeSideOfPortal = false;
-	m_pHeldObjectPortal = NULL;
+	m_hHeldObjectPortal = NULL;
 
 	m_bPitchReorientation = false;
 	m_fReorientationRate = 0.0f;
@@ -444,6 +451,13 @@ void C_Portal_Player::UpdatePortalPlaneSounds(void)
 
 			Vector vEarCenter = (vMax + vMin) / 2.0f;
 			Vector vDiagonal = vMax - vMin;
+			
+			/*
+			if (pPortal && m_bIntersectingPortalPlane)
+			{
+				pPortal->Touch(this);
+			}
+			*/
 
 			if (!m_bIntersectingPortalPlane)
 			{
@@ -451,7 +465,6 @@ void C_Portal_Player::UpdatePortalPlaneSounds(void)
 
 				if (UTIL_IsBoxIntersectingPortal(vEarCenter, vDiagonal, pPortal))
 				{
-
 					m_bIntersectingPortalPlane = true;
 
 					CPASAttenuationFilter filter(this);
@@ -536,10 +549,11 @@ int C_Portal_Player::GetIDTarget() const
 	return m_iIDEntIndex;
 }
 
-int C_Portal_Player::GetPortalIDTarget() const
+C_Prop_Portal *C_Portal_Player::GetPortalTarget()
 {
-	return m_iIDPortalEntIndex;
+	return m_pLookAtPortal;
 }
+
 
 //-----------------------------------------------------------------------------
 // Purpose: Update this client's target entity
@@ -550,7 +564,7 @@ void C_Portal_Player::UpdateIDTarget()
 		return;
 
 	// Clear old target and find a new one
-	m_iIDEntIndex = 0;
+	m_iIDEntIndex = -1;
 
 	// don't show IDs in chase spec mode
 	if ( GetObserverMode() == OBS_MODE_CHASE || 
@@ -561,11 +575,14 @@ void C_Portal_Player::UpdateIDTarget()
 	Vector vecStart, vecEnd;
 	VectorMA( MainViewOrigin(), 1500, MainViewForward(), vecEnd );
 	VectorMA( MainViewOrigin(), 10,   MainViewForward(), vecStart );
+#if 0
 	Ray_t ray;
 	ray.Init( vecStart, vecEnd );
 	
 	UTIL_Portal_TraceRay( ray, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
-
+#else
+	UTIL_TraceLine( vecStart, vecEnd, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
+#endif
 	// Sigh, can't see my own name :(
 #if 0
 	CProp_Portal *pShootThroughPortal = NULL;
@@ -580,15 +597,16 @@ void C_Portal_Player::UpdateIDTarget()
 		pShootThroughPortal = NULL;
 	}
 #endif
-	//UTIL_TraceLine( vecStart, vecEnd, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
 
 	if ( !tr.startsolid && tr.DidHitNonWorldEntity() )
 	{
+		
 		C_BaseEntity *pEntity = tr.m_pEnt;
-
+						
 		if ( pEntity && (pEntity != this) )
 		{
-			m_iIDEntIndex = pEntity->entindex();
+			if ( dynamic_cast<C_Prop_Portal*>( pEntity ) == NULL ) // Don't do portals.
+				m_iIDEntIndex = pEntity->entindex();
 		}
 	}
 }
@@ -596,13 +614,10 @@ void C_Portal_Player::UpdateIDTarget()
 //-----------------------------------------------------------------------------
 // Purpose: Update this client's target portal entity
 //-----------------------------------------------------------------------------
-void C_Portal_Player::UpdatePortalIDTarget()
+void C_Portal_Player::UpdatePortalTarget()
 {
 	if ( !IsLocalPlayer() )
 		return;
-
-	// Clear old target and find a new one
-	m_iIDPortalEntIndex = 0;
 
 	// don't show IDs in chase spec mode
 	if ( GetObserverMode() == OBS_MODE_CHASE || 
@@ -621,11 +636,9 @@ void C_Portal_Player::UpdatePortalIDTarget()
 
 	float flMustBeCloserThan = 2.0f;
 	CProp_Portal *pPortal = UTIL_Portal_FirstAlongRayAll(ray, flMustBeCloserThan);
-	
-	if ( pPortal )
-	{
-		m_iIDPortalEntIndex = pPortal->entindex();
-	}
+
+	m_pLookAtPortal = pPortal;
+
 }
 
 void C_Portal_Player::TraceAttack( const CTakeDamageInfo &info, const Vector &vecDir, trace_t *ptr )
@@ -692,7 +705,7 @@ CStudioHdr *C_Portal_Player::OnNewModel( void )
 void C_Portal_Player::UpdateLookAt( void )
 {
 	//Only I can see me looking at myself
-	if (IsLocalPlayer())
+	//if (IsLocalPlayer())
 	{
 		//Don't try to always look at me if I don't have a Portal otherwise it looks weird to other people/players
 		//Nope, this completely makes heads snappy
@@ -716,7 +729,13 @@ void C_Portal_Player::UpdateLookAt( void )
 
 		// defaults if no portals are around
 		Vector vPlayerForward;
-		GetVectors( &vPlayerForward, NULL, NULL );
+		//GetVectors( &vPlayerForward, NULL, NULL );
+		if (IsLocalPlayer())
+			AngleVectors( GetLocalAngles(), &vPlayerForward );
+		else
+			AngleVectors( m_angEyeAngles, &vPlayerForward );
+
+
 		Vector vCurLookTarget = EyePosition();
 
 		if ( !IsAlive() )
@@ -725,64 +744,112 @@ void C_Portal_Player::UpdateLookAt( void )
 			return;
 		}
 
-		bool bNewTarget = false;
-		if ( UTIL_IntersectEntityExtentsWithPortal( this ) != NULL )
-		{
-			// player is in a portal
-			vCurLookTarget = EyePosition() + vPlayerForward*10.0f;
-		}
-		else if ( pPortals && pPortals[0] )
-		{
-			// Test through any active portals: This may be a shorter distance to the target
-			for( int i = 0; i != iPortalCount; ++i )
-			{
-				CProp_Portal *pTempPortal = pPortals[i];
+		bool bFoundViewTarget = false;
 
-				if( pTempPortal && pTempPortal->IsActive() && pTempPortal->m_hLinkedPortal.Get() )
+		if ( IsLocalPlayer() )
+		{
+			if ( UTIL_IntersectEntityExtentsWithPortal( this ) != NULL )
+			{
+				// player is in a portal
+				vCurLookTarget = EyePosition() + vPlayerForward*10.0f;
+			}
+			else if ( pPortals && pPortals[0] )
+			{
+				// Test through any active portals: This may be a shorter distance to the target
+				for( int i = 0; i != iPortalCount; ++i )
 				{
-					Vector vEyeForward, vPortalForward;
-					EyeVectors( &vEyeForward );
-					pTempPortal->GetVectors( &vPortalForward, NULL, NULL );
-					fPortalDot[i] = vEyeForward.Dot( vPortalForward );
-					if ( fPortalDot[i] < flLowDot )
+					CProp_Portal *pTempPortal = pPortals[i];
+
+					if( pTempPortal && pTempPortal->IsActive() && pTempPortal->m_hLinkedPortal.Get() )
 					{
-						flLowDot = fPortalDot[i];
-						iUsePortal = i;
+						Vector vEyeForward, vPortalForward;
+						EyeVectors( &vEyeForward );
+						pTempPortal->GetVectors( &vPortalForward, NULL, NULL );
+						fPortalDot[i] = vEyeForward.Dot( vPortalForward );
+						if ( fPortalDot[i] < flLowDot )
+						{
+							flLowDot = fPortalDot[i];
+							iUsePortal = i;
+						}
+					}
+				}
+
+				if ( iUsePortal >= 0 )
+				{
+					C_Prop_Portal* pPortal = pPortals[iUsePortal];
+					if ( pPortal )
+					{
+						vCurLookTarget = pPortal->MatrixThisToLinked()*vCurLookTarget;
 					}
 				}
 			}
-
-			if ( iUsePortal >= 0 )
+		}
+		else // if ( IsLocalPlayer() )
+		{
+			for( int iClient = 1; iClient <= gpGlobals->maxClients; ++iClient )
 			{
-				C_Prop_Portal* pPortal = pPortals[iUsePortal];
-				if ( pPortal )
+				CBasePlayer *pEnt = UTIL_PlayerByIndex( iClient );
+				if( !pEnt )
+					continue;
+
+				if ( pEnt->entindex() == entindex() )
+					continue;
+
+				Vector vTargetOrigin = pEnt->GetAbsOrigin();
+				Vector vMyOrigin = GetAbsOrigin();
+
+				Vector vDir = vTargetOrigin - vMyOrigin;
+		
+				if ( vDir.Length() > 128 ) 
 				{
-					vCurLookTarget = pPortal->MatrixThisToLinked()*vCurLookTarget;
-					if ( vCurLookTarget != m_vLookAtTarget )
-					{
-						bNewTarget = true;
-					}
+					continue;
 				}
+
+				VectorNormalize( vDir );
+
+				if ( DotProduct( vPlayerForward, vDir ) < 0.0f )
+				{
+					 continue;
+				}
+				vCurLookTarget = pEnt->EyePosition();
+
+				bFoundViewTarget = true;
+				
+				break;
+			}
+
+			if (bFoundViewTarget == false)
+			{
+				vCurLookTarget = EyePosition() + vPlayerForward*10.0f;
 			}
 		}
-		else
-		{
-			// No other look targets, look straight ahead
-			vCurLookTarget += vPlayerForward*10.0f;
-		}
+
 
 		// Figure out where we want to look in world space.
+
+		Vector to;
+
 		QAngle desiredAngles;
-		Vector to = vCurLookTarget - EyePosition();
+		if (bFoundViewTarget)
+			to = vCurLookTarget - GetAbsOrigin() + Vector(0,0,0);
+		else
+			to = vCurLookTarget - EyePosition();
+
+
 		VectorAngles( to, desiredAngles );
-		QAngle aheadAngles;
-		VectorAngles( vCurLookTarget, aheadAngles );
+		
+		if (bFoundViewTarget)
+			desiredAngles[PITCH] = 0; // Just set it to 0 because it looks weird without this hack.
+
+		//if (IsLocalPlayer())
+		//Msg("desiredAngles: %f %f %f\n", desiredAngles.x, desiredAngles.y, desiredAngles.z);
 
 		// Figure out where our body is facing in world space.
 		QAngle bodyAngles( 0, 0, 0 );
-		bodyAngles[YAW] = GetLocalAngles()[YAW];
-
-		m_flLastBodyYaw = bodyAngles[YAW];
+		if ( IsLocalPlayer() )
+			bodyAngles[YAW] = GetLocalAngles()[YAW];
+		else
+			bodyAngles[YAW] = m_angEyeAngles[YAW];
 
 		// Set the head's yaw.
 		float desiredYaw = AngleNormalize( desiredAngles[YAW] - bodyAngles[YAW] );
@@ -790,15 +857,10 @@ void C_Portal_Player::UpdateLookAt( void )
 
 		float desiredPitch = AngleNormalize( desiredAngles[PITCH] );
 		desiredPitch = clamp( desiredPitch, m_headPitchMin, m_headPitchMax );
-
-		if ( bNewTarget )
-		{
-			m_flStartLookTime = gpGlobals->curtime;
-		}
-
+		
 		float dt = (gpGlobals->frametime);
 		float flSpeed	= 1.0f - ExponentialDecay( 0.7f, 0.033f, dt );
-
+		
 		m_flCurrentHeadYaw = m_flCurrentHeadYaw + flSpeed * ( desiredYaw - m_flCurrentHeadYaw );
 		m_flCurrentHeadYaw	= AngleNormalize( m_flCurrentHeadYaw );
 		SetPoseParameter( m_headYawPoseParam, m_flCurrentHeadYaw );	
@@ -810,72 +872,77 @@ void C_Portal_Player::UpdateLookAt( void )
 		// This orients the eyes
 		m_viewtarget = m_vLookAtTarget = vCurLookTarget;
 	}
-#if HL2DM_LOOKAT
-	//-------------------------//
-	// HL2DM UpdateLookAt code //
-	//-------------------------//
-	else 
-	{
-		// head yaw
-		if (m_headYawPoseParam < 0 || m_headPitchPoseParam < 0)
-			return;
-
-		// This is buggy with dt 0, just skip since there is no work to do.
-		if ( gpGlobals->frametime <= 0.0f )
-			return;
-
-		// orient eyes
-		m_viewtarget = m_vLookAtTarget;
-
-		// blinking
-		if (m_blinkTimer.IsElapsed())
-		{
-			m_blinktoggle = !m_blinktoggle;
-			m_blinkTimer.Start( RandomFloat( 1.5f, 4.0f ) );
-		}
-
-		// Figure out where we want to look in world space.
-		QAngle desiredAngles;
-		Vector to = m_vLookAtTarget - EyePosition();
-		VectorAngles( to, desiredAngles );
-
-		// Figure out where our body is facing in world space.
-		QAngle bodyAngles( 0, 0, 0 );
-		bodyAngles[YAW] = GetLocalAngles()[YAW];
-
-
-		float flBodyYawDiff = bodyAngles[YAW] - m_flLastBodyYaw;
-		m_flLastBodyYaw = bodyAngles[YAW];
-
-	
-
-		// Set the head's yaw.
-		float desired = AngleNormalize( desiredAngles[YAW] - bodyAngles[YAW] );
-		desired = clamp( desired, m_headYawMin, m_headYawMax );
-		m_flCurrentHeadYaw = ApproachAngle( desired, m_flCurrentHeadYaw, 130 * gpGlobals->frametime );
-
-		// Counterrotate the head from the body rotation so it doesn't rotate past its target.
-		m_flCurrentHeadYaw = AngleNormalize( m_flCurrentHeadYaw - flBodyYawDiff );
-		desired = clamp( desired, m_headYawMin, m_headYawMax );
-	
-		SetPoseParameter( m_headYawPoseParam, m_flCurrentHeadYaw );
-
-	
-		// Set the head's yaw.
-		desired = AngleNormalize( desiredAngles[PITCH] );
-		desired = clamp( desired, m_headPitchMin, m_headPitchMax );
-	
-		m_flCurrentHeadPitch = ApproachAngle( desired, m_flCurrentHeadPitch, 130 * gpGlobals->frametime );
-		m_flCurrentHeadPitch = AngleNormalize( m_flCurrentHeadPitch );
-		SetPoseParameter( m_headPitchPoseParam, m_flCurrentHeadPitch );
-	}
-#endif
 }
+
+#define ACTIVATE_GLOW_SOUNDSCRIPT "Player.Activate_Player_Glow"
 
 void C_Portal_Player::ClientThink( void )
 {
 	//PortalEyeInterpolation.m_bNeedToUpdateEyePosition = true;
 
+	if (IsLocalPlayer()) // Just in case.
+	{
+		if ( m_afButtonPressed & IN_GLOW_PLAYERS )
+		{
+			for (int i = 1; i <= gpGlobals->maxClients; ++i)
+			{
+				C_Portal_Player *pPlayer = (C_Portal_Player*)UTIL_PlayerByIndex(i);
+
+				if (!pPlayer)
+					continue;
+
+				if (pPlayer->IsLocalPlayer())
+					continue;
+
+							
+				pPlayer->SetClientSideGlowEnabled( true );
+
+				// We also want the player's weapon to glow
+				for (int i = 1; i <= pPlayer->WeaponCount(); ++i)
+				{					
+					C_BaseCombatWeapon *pWeapon = pPlayer->GetWeapon(i);
+
+					if (!pWeapon)
+						continue;
+
+					pWeapon->SetClientSideGlowEnabled( true );
+
+				}
+			}
+
+			EmitSound( ACTIVATE_GLOW_SOUNDSCRIPT );
+		}
+		// Don't do else if
+		if ( m_afButtonReleased & IN_GLOW_PLAYERS )
+		{
+			for (int i = 1; i <= gpGlobals->maxClients; ++i)
+			{
+				C_Portal_Player *pPlayer = (C_Portal_Player*)UTIL_PlayerByIndex(i);
+
+				if (!pPlayer)
+					continue;
+			
+				if (pPlayer->IsLocalPlayer())
+					continue;
+
+				pPlayer->SetClientSideGlowEnabled( false );
+			
+				// Don't forget to turn off the weapon glow!
+				for (int i = 1; i <= pPlayer->WeaponCount(); ++i)
+				{					
+					C_BaseCombatWeapon *pWeapon = pPlayer->GetWeapon(i);
+
+					if (!pWeapon)
+						continue;
+
+					pWeapon->SetClientSideGlowEnabled( false );
+
+				}
+			}
+		}
+
+	}
+	
 	Vector vForward;
 	AngleVectors( GetLocalAngles(), &vForward );
 
@@ -884,38 +951,6 @@ void C_Portal_Player::ClientThink( void )
 
 	FixTeleportationRoll();
 		
-	//Hacks to get client sided triggers working
-#if 0
-	C_BaseEntity *pList[1024];
-
-	// PARTITION_ALL_CLIENT_EDICTS
-	// PARTITION_CLIENT_TRIGGER_ENTITIES
-	int count = UTIL_EntitiesInBox( pList, 1024, GetPlayerMins(), GetPlayerMaxs(), MASK_ALL, PARTITION_ALL_CLIENT_EDICTS );
-
-	for (int i = 1; i <= count; ++i)
-	{
-
-		C_BaseEntity *pEntity = pList[i];
-
-		if (pEntity && (pEntity != this))
-		{
-			C_BaseTrigger *pTrigger = dynamic_cast<C_BaseTrigger*>(pEntity);
-			if (pTrigger)
-			{
-				pTrigger->Touch(this);
-			}
-
-			C_BaseCombatWeapon *pWeapon = dynamic_cast<C_BaseCombatWeapon*>(pList[i]);
-
-			if (pWeapon)
-			{
-				Msg("Touching Classname: %s\n", pWeapon->GetClassname());
-			}
-
-
-		}
-	}
-#endif
 
 	//QAngle vAbsAngles = EyeAngles();
 
@@ -1050,7 +1085,7 @@ void C_Portal_Player::ClientThink( void )
 #endif
 
 	UpdateIDTarget();
-	UpdatePortalIDTarget();
+	UpdatePortalTarget();
 	
 	if (IsLocalPlayer())
 	{
@@ -1225,9 +1260,9 @@ const QAngle& C_Portal_Player::GetRenderAngles()
 void C_Portal_Player::UpdateClientSideAnimation( void )
 {
 
-	/*
 	UpdateLookAt();
 
+	/*
 	// Update the animation data. It does the local check here so this works when using
 	// a third-person camera (and we don't have valid player angles).
 	if ( this == C_Portal_Player::GetLocalPortalPlayer() )
@@ -1434,7 +1469,6 @@ void C_Portal_Player::ApplyUnpredictedPortalTeleportation( const CProp_Portal *p
 	Warning( "C_Portal_Player::ApplyUnpredictedPortalTeleportation( %f )\n", flTeleportationTime/*gpGlobals->curtime*/ );
 #endif
 
-	m_bFixEyeAnglesFromPortalling = true;
 	PostTeleportationCameraFixup( pEnteredPortal );
 
 	if( IsToolRecording() )
@@ -1502,7 +1536,7 @@ void C_Portal_Player::ApplyPredictedPortalTeleportation( CProp_Portal *pEnteredP
 		msg->deleteThis();
 	}
 
-	// This fixes viewmodel popping once and for all! - Wonderland_War
+
 	for ( int i = 0; i < MAX_VIEWMODELS; i++ )
 	{
 		CBaseViewModel *pViewModel = GetViewModel( i );
@@ -1788,7 +1822,28 @@ void C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 	//Msg( "Pforwardmove=%f, sidemove=%f\n", pCmd->forwardmove, pCmd->sidemove );
 }
 
-ConVar cl_use_portalling_angle_fix("cl_use_portalling_angle_fix", "0", FCVAR_CLIENTCMD_CAN_EXECUTE | FCVAR_ARCHIVE, "Attempts to make portal teleportations seem less laggy");
+ConVar cl_use_portalling_angle_fix("cl_use_portalling_angle_fix", "1", FCVAR_CLIENTCMD_CAN_EXECUTE | FCVAR_ARCHIVE, "Attempts to make portal teleportations seem less laggy");
+
+CON_COMMAND(portalenvironmentresponse, "Let's use know if we have a portal environment\n")
+{
+	C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPortalPlayer();
+
+	if (!pPlayer)
+		return;
+
+	C_Prop_Portal *pPortalEnv = pPlayer->m_hPortalEnvironment.Get();
+
+	if (pPortalEnv)
+	{
+		Msg("m_hPortalEnvironment: Portal %i, ID %i\n", pPortalEnv->m_bIsPortal2 ? 2 : 1, pPortalEnv->m_iLinkageGroupID);
+	}
+	else
+	{
+		Msg("m_hPortalEnvironment == NULL\n");
+	}
+}
+
+ConVar cl_portal_debug_eye_angles("cl_portal_debug_eye_angles", "0", FCVAR_CHEAT);
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -1804,20 +1859,80 @@ bool C_Portal_Player::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 		bFakeLag = (net_fakelag.GetInt() != 0);
 	}
 
-	if ( m_hPortalEnvironment.Get() )
-		DetectAndHandlePortalTeleportation( m_hPortalEnvironment.Get() );
+	//if ( m_hPortalEnvironment.Get() )
+	//	DetectAndHandlePortalTeleportation( m_hPortalEnvironment.Get() );
 
 	// This works GREAT for everyone! Well, except for the listen server host.
 	// What happens is that it the stored view angles are set before the listen server host actually teleports, and portal angles have never been a problem for the listen server host.
 	if ( (m_bShouldFixAngles && !m_bIsListenServerHost ) || ( m_bShouldFixAngles && m_bIsListenServerHost && bFakeLag ) )
 	{
 		m_bShouldFixAngles = false;
+
+		bool bFixAngles = true;
+
+		C_Prop_Portal *pPrePortalledLinkedPortal = NULL;
+
+		if(m_pPrePortalledPortal)
+		{
+			pPrePortalledLinkedPortal = m_pPrePortalledPortal->m_hLinkedPortal.Get();
+		}
+
+#if 0
+		if ( UTIL_Portal_EntityIsInPortalHole( m_pPrePortalledPortal->m_hLinkedPortal.Get(), this ) )
+		{
+			bFixAngles = false;
+			if( cl_portal_debug_eye_angles.GetBool() )
+			Msg("Not fixing angles because we are in the linked PrePortalledPortal hole\n");
+		}
+		if ( !UTIL_Portal_EntityIsInPortalHole( m_pPrePortalledPortal, this ) )
+		{
+			bFixAngles = false;
+			if( cl_portal_debug_eye_angles.GetBool() )
+			Msg("Not fixing angles because we are in the PrePortalledPortal hole\n");
+		}
+
+		if ( m_pPrePortalledPortal != m_hPortalEnvironment.Get() )
+		{
+			bFixAngles = false;
+			if( cl_portal_debug_eye_angles.GetBool() )
+			Msg("Not fixing angles because PrePortalledPortal is our Portal Environment\n");
+		}
+		
+		if ( m_pPrePortalledPortal != m_hPortalMoveEnvironment.Get() )
+		{
+			bFixAngles = false;
+			if( cl_portal_debug_eye_angles.GetBool() )
+			Msg("Not fixing angles because PrePortalledPortal is our Portal Move Environment\n");
+		}
+#else
+		
+		//Hmm, if a player goes too fast, they can ignore the later check and it's a failure, so let's use the last portal environment.
+		if (m_hPortalLastEnvironment && ( m_hPortalLastEnvironment->GetLinkedPortal() != pPrePortalledLinkedPortal ))
+		{
+			bFixAngles = false;
+			if( cl_portal_debug_eye_angles.GetBool() )
+			Msg("Not fixing angles because our last portal environment isn't the Pre Portalled Linked Portal\n");
+		}
+		//HACK: Improper eye angles are caused by the Eye Position being on the other side of the portal when the client finally knows that the server teleported it.
+		else if ( m_pPrePortalledPortal && pPrePortalledLinkedPortal && !pPrePortalledLinkedPortal->m_bEyePositionIsInPortalEnvironment )
+		{
+			bFixAngles = false;
+			if( cl_portal_debug_eye_angles.GetBool() )
+			Msg("Not fixing angles because our eyes aren't in the new portal environment.\n");
+		}
+#endif
+
+		if (m_bForceFixAngles)
+			bFixAngles = true;
+
 		// This is just causing way too many problems, it could've worked, but it doesn't very well. I'll make it optional though.
-		if (cl_use_portalling_angle_fix.GetBool())
+		if ( cl_use_portalling_angle_fix.GetBool() && bFixAngles )
 		{
 			pCmd->viewangles = m_qPrePortalledStoredViewAngles;
 			FixEyeAnglesFromPortalling(); 
 		}
+
+		m_bForceFixAngles = false;
 	}
 
 	AvoidPlayers( pCmd );
@@ -1827,25 +1942,7 @@ bool C_Portal_Player::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 
 void C_Portal_Player::SetupMove( CUserCmd *ucmd, IMoveHelper *pHelper )
 {
-#if 0
-	if (m_bFixEyeAnglesFromPortalling)
-	{
-		//the idea here is to handle the notion that the player has portalled, but they sent us an angle update before receiving that message.
-		//If we don't handle this here, we end up sending back their old angles which makes them hiccup their angles for a frame
-		float fOldAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, m_qPrePortalledViewAngles.x));
-		fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, m_qPrePortalledViewAngles.y));
-		fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, m_qPrePortalledViewAngles.z));
 
-		float fCurrentAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, pl.v_angle.x));
-		fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, pl.v_angle.y));
-		fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, pl.v_angle.z));
-
-		if (fCurrentAngleDiff > fOldAngleDiff)
-			ucmd->viewangles = TransformAnglesToWorldSpace(ucmd->viewangles, m_matLastPortalled.As3x4());
-
-		m_bFixEyeAnglesFromPortalling = false;
-	}
-#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -1917,7 +2014,7 @@ void C_Portal_Player::AddEntity( void )
 
 	SetLocalAngles( vTempAngles );
 
-	UpdateLookAt();
+	//UpdateLookAt();
 	
 #if 0
 	// Update the animation data. It does the local check here so this works when using
@@ -2059,10 +2156,65 @@ CON_COMMAND(setviewangletesting, "Sets angles to 0 90 0")
 }
 #endif
 
+//-----------------------------------------------------------------------------
+// Purpose: Store the local player's angles right before the player is teleported
+//-----------------------------------------------------------------------------
+void __MsgFunc_PrePlayerPortalled(bf_read &msg)
+{
+	long iEncodedEHandle;
+	int iEntity, iSerialNum;
+
+	//grab portal EHANDLE
+	iEncodedEHandle = msg.ReadLong();
+
+	if( iEncodedEHandle == INVALID_NETWORKED_EHANDLE_VALUE )
+		return;
+
+	iEntity = iEncodedEHandle & ((1 << MAX_EDICT_BITS) - 1);
+	iSerialNum = iEncodedEHandle >> MAX_EDICT_BITS;
+
+	EHANDLE hPortal( iEntity, iSerialNum );
+	C_Prop_Portal *pPortal = ( C_Prop_Portal *)(hPortal.Get());
+
+	if( pPortal == NULL )
+		return;
+
+
+
+	//grab other entity's EHANDLE
+
+	iEncodedEHandle = msg.ReadLong();
+
+	if( iEncodedEHandle == INVALID_NETWORKED_EHANDLE_VALUE )
+		return;	
+
+	iEntity = iEncodedEHandle & ((1 << MAX_EDICT_BITS) - 1);
+	iSerialNum = iEncodedEHandle >> MAX_EDICT_BITS;
+
+	EHANDLE hEntity( iEntity, iSerialNum );
+	C_BaseEntity *pEntity = hEntity.Get();
+	if( pEntity == NULL )
+		return;
+	
+	C_Portal_Player *pPlayer = ToPortalPlayer( pEntity );
+	if ( !pPlayer || !pPlayer->IsLocalPlayer() )
+		return;
+	
+	pPlayer->m_pPrePortalledPortal = pPortal;
+	pPlayer->PrePlayerPortalled(  );
+
+}
+
 void C_Portal_Player::PrePlayerPortalled( void )
 {	
-	m_qPrePortalledStoredViewAngles = MainViewAngles();
-	m_qPrePortalledStoredAngles = GetLocalAngles();
+
+	ConVarRef cam_command("cam_command"); // Doing extern ConVar cam_command won't work, for some reason...
+
+
+	//if (cam_command.GetInt() == 0) //CAM_COMMAND_NONE
+	//	m_qPrePortalledStoredViewAngles = MainViewAngles();
+	//else
+	//	m_qPrePortalledStoredViewAngles = EyeAngles();
 }
 
 void C_Portal_Player::PlayerPortalled( C_Prop_Portal *pEnteredPortal, float fTime, bool bForcedDuck )
@@ -2167,10 +2319,9 @@ void C_Portal_Player::PlayerPortalled( C_Prop_Portal *pEnteredPortal, float fTim
 void C_Portal_Player::FixEyeAnglesFromPortalling( void )
 {	
 	
-	SetViewAngles( m_qPrePortalledStoredAngles );
+	SetViewAngles( m_qPrePortalledStoredViewAngles );
 
-	// Unbeknownst to me, this was a terrible idea as it causes angles to improperly snap
-#if 0
+#if 1
 	//engine view angles (for mouse input smoothness)
 	{
 		engine->SetViewAngles( m_qPrePortalledStoredViewAngles );
@@ -2182,13 +2333,12 @@ void C_Portal_Player::FixEyeAnglesFromPortalling( void )
 	}
 #endif
 
-	// Unnecessary
-#if 0
-	SetLocalAngles(m_qPrePortalledStoredAngles);
-	SetAbsAngles(m_qPrePortalledStoredAngles);
-	SetNetworkAngles(m_qPrePortalledStoredAngles);
+	// Unnecessary probably
+#if 1
+	SetLocalAngles(m_qPrePortalledStoredViewAngles);
+	SetAbsAngles(m_qPrePortalledStoredViewAngles);
+	SetNetworkAngles(m_qPrePortalledStoredViewAngles);
 #endif
-
 }
 
 void C_Portal_Player::CheckPlayerAboutToTouchPortal( void )
@@ -2322,6 +2472,11 @@ void C_Portal_Player::OnDataChanged( DataUpdateType_t type )
 	if (pPortal)
 		DetectAndHandlePortalTeleportation(pPortal);
 
+	if ( m_hOldPortalEnvironment != m_hPortalEnvironment )
+	{
+		m_hOldPortalEnvironment = m_hPortalEnvironment;
+	}
+
 	if ( type == DATA_UPDATE_CREATED )
 	{
 #ifdef CCDEATH
@@ -2377,19 +2532,36 @@ bool C_Portal_Player::DetectAndHandlePortalTeleportation( CProp_Portal *pPortal 
 
 			m_PlayerAnimState->Teleport ( &ptNewPosition, &GetNetworkAngles(), this );
 
-			// Reorient last facing direction to fix pops in view model lag
-			for ( int i = 0; i < MAX_VIEWMODELS; i++ )
+			// Predicted teleportations should handle this, don't rotate it again.
+					
+			bool bFakeLag = false;
+			ConVarRef net_fakelag("net_fakelag");
+			if (net_fakelag.IsValid())
 			{
-				CBaseViewModel *vm = GetViewModel( i );
-				if ( !vm )
-					continue;
-
-				UTIL_Portal_VectorTransform( m_PendingPortalMatrix, vm->m_vecLastFacing, vm->m_vecLastFacing );
+				bFakeLag = (net_fakelag.GetInt() != 0);
 			}
+
+			//if ( m_pPrePortalledPortal && m_pPrePortalledPortal->m_bEyePositionIsInPortalEnvironment )
+			if ( m_bIsListenServerHost && !bFakeLag )
+			{
+				// Reorient last facing direction to fix pops in view model lag
+				for ( int i = 0; i < MAX_VIEWMODELS; i++ )
+				{
+					CBaseViewModel *vm = GetViewModel( i );
+					if ( !vm )
+						continue;
+
+					UTIL_Portal_VectorTransform( m_PendingPortalMatrix, vm->m_vecLastFacing, vm->m_vecLastFacing );
+				}
+			}
+#if FIXANGLEMETHOD_CONVAR
+			engine->ClientCmd_Unrestricted("cl_got_portal_message 1");
+#elif FIXANGLEMETHOD_CONCOMMAND
+			engine->ClientCmd_Unrestricted("gotportalmessage");
+#endif
 		}
 		m_bPortalledMessagePending = false;
 	}
-
 	return false;
 }
 
@@ -2408,7 +2580,7 @@ void C_Portal_Player::PostDataUpdate( DataUpdateType_t updateType )
 
 	// C_BaseEntity assumes we're networking the entity's angles, so pretend that it
 	// networked the same value we already have.
-	SetNetworkAngles( GetLocalAngles() );
+	//SetNetworkAngles( GetLocalAngles() );
 
 	if ( m_iSpawnInterpCounter != m_iSpawnInterpCounterCache )
 	{
@@ -2798,7 +2970,7 @@ void C_Portal_Player::CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNe
 		
 	// in multiplayer we want to make sure we get the screenshakes and stuff
 	//	if ( gpGlobals->maxClients >> 1 )
-	//		CalcPortalView( eyeOrigin, eyeAngles );
+			CalcPortalView( eyeOrigin, eyeAngles );
 
 	}
 	else
@@ -2820,6 +2992,18 @@ void C_Portal_Player::CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNe
 					//time for hax
 					m_bEyePositionIsTransformedByPortal = bEyeTransform_Backup;
 					CalcPortalView( eyeOrigin, eyeAngles );
+				}
+				else
+				{
+					/*
+					m_qPrePortalledStoredViewAngles = eyeAngles;
+					if (!m_bTransformFacing)
+					{
+						m_bForceFixAngles = true;
+					}
+					*/
+
+					m_bTransformFacing = true;
 				}
 			}
 		}
@@ -2958,7 +3142,79 @@ void C_Portal_Player::CalcPortalView( Vector &eyeOrigin, QAngle &eyeAngles )
 
 		VMatrix matThisToLinked = pPortal->MatrixThisToLinked();
 		UTIL_Portal_PointTransform( matThisToLinked, eyeOrigin, eyeOrigin );
+
+		//Using eyeAngles just changes the MainViewAngles(), which doesn't effect gameplay, so use other angles that effect gameplay instead.
 		UTIL_Portal_AngleTransform( matThisToLinked, eyeAngles, eyeAngles );
+
+		// This works well, but we need to fix the movement issues first.
+		/*
+		if (m_bTransformFacing)
+		{
+			//Engine
+			{
+				QAngle qEngineAngle;
+				engine->GetViewAngles(qEngineAngle);
+				UTIL_Portal_AngleTransform( matThisToLinked, qEngineAngle, qEngineAngle );
+				engine->SetViewAngles(qEngineAngle);
+			}
+
+			//Prediction
+			{
+				QAngle qPredictionAngle;
+				prediction->GetViewAngles(qPredictionAngle);
+				UTIL_Portal_AngleTransform( matThisToLinked, qPredictionAngle, qPredictionAngle );
+				prediction->SetViewAngles(qPredictionAngle);
+			}
+		
+			//pl.v_angle
+			{			
+				UTIL_Portal_AngleTransform( matThisToLinked, pl.v_angle, pl.v_angle );
+			}
+		
+			// Network
+			{
+				QAngle qNetworkAngles = GetNetworkAngles();
+				UTIL_Portal_AngleTransform( matThisToLinked, qNetworkAngles, qNetworkAngles );
+				SetLocalAngles(qNetworkAngles);
+			}
+
+			// Local
+			{
+				QAngle qLocalAngles = GetLocalAngles();
+				UTIL_Portal_AngleTransform( matThisToLinked, qLocalAngles, qLocalAngles );
+				SetLocalAngles(qLocalAngles);
+			}
+
+
+			// Abs
+			{
+				QAngle qAbsAngles = GetAbsAngles();
+				UTIL_Portal_AngleTransform(matThisToLinked, qAbsAngles, qAbsAngles);
+				SetLocalAngles(qAbsAngles);
+			}
+		}
+			*/
+
+		m_qPrePortalledStoredViewAngles = eyeAngles;
+
+		// This won't work if our eye isn't in the portal environment
+		if (m_bTransformFacing)
+		{
+			// Reorient last facing direction to fix pops in view model lag
+			for ( int i = 0; i < MAX_VIEWMODELS; i++ )
+			{
+				CBaseViewModel *vm = GetViewModel( i );
+				if ( !vm )
+					continue;
+
+				m_pTransformPortal = UTIL_IntersectEntityExtentsWithPortal( this );
+
+				if (pPortal && pPortal->m_bEyePositionIsInPortalEnvironment)
+				UTIL_Portal_VectorTransform( matThisToLinked, vm->m_vecLastFacing, vm->m_vecLastFacing );
+			}
+
+			m_bTransformFacing = false;			
+		}
 
 		//DevMsg( 2, "transforming portal view to   <%f %f %f> <%f %f %f>\n", eyeOrigin.x, eyeOrigin.y, eyeOrigin.z, eyeAngles.x, eyeAngles.y, eyeAngles.z );
 

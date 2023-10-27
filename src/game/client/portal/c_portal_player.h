@@ -124,7 +124,7 @@ public:
 	CBaseEntity*	FindUseEntity( void );
 	CBaseEntity*	FindUseEntityThroughPortal( void );
 	
-	virtual void PlayerUse( void );
+	virtual bool PlayerUse( void );
 
 	inline bool		IsCloseToPortal( void ) //it's usually a good idea to turn on draw hacks when this is true
 	{
@@ -138,9 +138,9 @@ public:
 	void	UpdateLookAt( void );
 	void	Initialize( void );
 	int		GetIDTarget() const;
-	int		GetPortalIDTarget() const;
+	C_Prop_Portal *GetPortalTarget();
 	void	UpdateIDTarget( void );
-	void	UpdatePortalIDTarget( void );
+	void	UpdatePortalTarget( void );
 	bool	ShouldCollide( int collisionGroup, int contentsMask ) const;
 	void	AvoidPlayers( CUserCmd *pCmd );
 	
@@ -185,12 +185,12 @@ public:
 	void ToggleHeldObjectOnOppositeSideOfPortal( void ) { m_bHeldObjectOnOppositeSideOfPortal = !m_bHeldObjectOnOppositeSideOfPortal; }
 	void SetHeldObjectOnOppositeSideOfPortal( bool p_bHeldObjectOnOppositeSideOfPortal ) { m_bHeldObjectOnOppositeSideOfPortal = p_bHeldObjectOnOppositeSideOfPortal; }
 	bool IsHeldObjectOnOppositeSideOfPortal( void ) { return m_bHeldObjectOnOppositeSideOfPortal; }
-	CProp_Portal *GetHeldObjectPortal( void ) { return m_pHeldObjectPortal; }
+	CProp_Portal *GetHeldObjectPortal( void ) { return m_hHeldObjectPortal; }
 	void SetHeldObjectPortal( CProp_Portal *pPortal )
 	{
 		// What is calling this function?
 	//	Assert(!pPortal);
-		m_pHeldObjectPortal = pPortal; 
+		m_hHeldObjectPortal = pPortal; 
 	}
 	
 	IPhysicsObject *GetHeldPhysicsPortal(void) { return m_pHeldPhysicsPortal; }
@@ -216,10 +216,8 @@ public:
 
 	bool IsSuppressingCrosshair( void ) { return m_bSuppressingCrosshair; }
 	
-	QAngle						m_qPrePortalledViewAngles;
-	bool						m_bFixEyeAnglesFromPortalling;
-	VMatrix						m_matLastPortalled;
-
+	C_Prop_Portal *m_pPrePortalledPortal;
+	
 	int m_iCustomPortalColorSet;
 	
 	float GetLatestServerTeleport() { return m_fLatestServerTeleport; }
@@ -230,18 +228,33 @@ public:
 	
 	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
 	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
+
+	bool m_bShouldFixAngles;
+	bool m_bForceFixAngles;
+
+	C_Prop_Portal *m_pPortalEnvironments;
+	C_Prop_Portal *m_pTransformPortal;
+
+	bool m_bTransformFacing;
+
+	VMatrix m_PendingPortalMatrix;
 	
+	// May as well not store these in memory...
+	/*
+	bool m_bMoveUseOriginHack;
+	Vector m_vMoveOriginHack;
+	*/
+
+	QAngle m_qPrePortalledStoredViewAngles;
+	//QAngle m_qPrePortalledStoredAngles;
+
 protected:
 
 	virtual void	FireGameEvent( IGameEvent *event );
 
-	bool m_bShouldFixAngles;
-
-	QAngle m_qPrePortalledStoredAngles;
-	QAngle m_qPrePortalledStoredViewAngles;
 
 private:
-
+	
 	bool m_bIsListenServerHost;
 
 	float m_fLatestServerTeleport;
@@ -276,13 +289,11 @@ private:
 	bool m_isInit;
 	Vector m_vLookAtTarget;
 
-	float m_flLastBodyYaw;
 	float m_flCurrentHeadYaw;
 	float m_flCurrentHeadPitch;
-	float m_flStartLookTime;
 
 	int	  m_iIDEntIndex;
-	int	  m_iIDPortalEntIndex;
+	C_Prop_Portal *m_pLookAtPortal;
 
 	CountdownTimer m_blinkTimer;
 
@@ -290,7 +301,8 @@ private:
 	int	  m_iSpawnInterpCounterCache;
 
 	bool  m_bHeldObjectOnOppositeSideOfPortal;
-	CProp_Portal *m_pHeldObjectPortal;
+	CHandle<CProp_Portal> m_hHeldObjectPortal;
+
 	IPhysicsObject *m_pHeldPhysicsPortal;
 
 	int	m_iForceNoDrawInPortalSurface; //only valid for one frame, used to temp disable drawing of the player model in a surface because of freaky artifacts
@@ -327,7 +339,6 @@ private:
 	float				m_flDeathCCWeight;	// for fading in cc effect	
 #endif //CCDEATH
 	bool	m_bPortalledMessagePending; //Player portalled. It's easier to wait until we get a OnDataChanged() event or a CalcView() before we do anything about it. Otherwise bits and pieces can get undone
-	VMatrix m_PendingPortalMatrix;
 
 	bool m_bToolMode_EyeHasPortalled_LastRecord; //when recording, keep track of whether we teleported the camera position last capture or not. Need to avoid interpolating when switching
 
@@ -347,8 +358,13 @@ public:
 	bool	m_bEyePositionIsTransformedByPortal; //when the eye and body positions are not on the same side of a portal
 
 	CHandle<C_Prop_Portal>	m_hPortalEnvironment; //a portal whose environment the player is currently in, should be invalid most of the time
+	CHandle<C_Prop_Portal>	m_hOldPortalEnvironment;
+
+	CHandle<C_Prop_Portal>	m_hPortalLastEnvironment;
+
 	void FixPortalEnvironmentOwnership( void ); //if we run prediction, there are multiple cases where m_hPortalEnvironment != CPortalSimulator::GetSimulatorThatOwnsEntity( this ), and that's bad
 	CHandle<C_Func_LiquidPortal>	m_hSurroundingLiquidPortal; //a liquid portal whose volume the player is standing in
+
 };
 
 inline C_Portal_Player *ToPortalPlayer( CBaseEntity *pEntity )
@@ -356,7 +372,7 @@ inline C_Portal_Player *ToPortalPlayer( CBaseEntity *pEntity )
 	if ( !pEntity || !pEntity->IsPlayer() )
 		return NULL;
 
-	return dynamic_cast<C_Portal_Player*>( pEntity );
+	return static_cast<C_Portal_Player*>( pEntity );
 }
 
 inline C_Portal_Player *GetPortalPlayer( void )

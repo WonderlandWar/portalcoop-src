@@ -2535,9 +2535,9 @@ bool CGameMovement::CheckJumpButton( void )
 //	if ( gpGlobals->maxClients == 1 )
 	{
 		player->m_Local.m_flJumpTime = GAMEMOVEMENT_JUMP_TIME;
-#ifdef GAME_DLL
+
 		player->m_Local.m_bInDuckJump = true;
-#endif
+
 	}
 
 #if defined( HL2_DLL )

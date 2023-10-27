@@ -106,8 +106,6 @@ struct game_shadowcontrol_params_t : public hlshadowcontrol_params_t
 #define	NUM_BEAMS	4
 #define	NUM_SPRITES	6
 
-#ifndef CLIENTSHOULDNOTSEEGRABCONTROLLER
-
 #ifdef CLIENT_DLL
 #define CGrabController C_GrabController
 #endif
@@ -136,7 +134,7 @@ public:
 	QAngle TransformAnglesToPlayerSpace( const QAngle &anglesIn, CPortal_Player *pPlayer );
 	QAngle TransformAnglesFromPlayerSpace( const QAngle &anglesIn, CPortal_Player *pPlayer );
 
-	CBaseEntity *GetAttached() { return (CBaseEntity *)m_attachedEntity; }
+	CBaseEntity *GetAttached() { return m_attachedEntity.Get(); }
 
 	IMotionEvent::simresult_e Simulate( IPhysicsMotionController *pController, IPhysicsObject *pObject, float deltaTime, Vector &linear, AngularImpulse &angular );
 	float GetSavedMass( IPhysicsObject *pObject );
@@ -172,7 +170,6 @@ private:
 //	CNetworkQAngle ( m_vecPreferredCarryAngles );
 //	CNetworkVar(bool, m_bHasPreferredCarryAngles);
 //	CNetworkVar(bool, m_bIgnoreRelativePitch);
-#else
 #endif
 	QAngle			m_vecPreferredCarryAngles;
 	bool			m_bHasPreferredCarryAngles;
@@ -195,7 +192,8 @@ private:
 	friend void GetSavedParamsForCarriedPhysObject( CGrabController *pGrabController, IPhysicsObject *pObject, float *pSavedMassOut, float *pSavedRotationalDampingOut );
 };
 
-#endif //CLIENTSHOULDNOTSEEGRABCONTROLLER
+
+
 
 struct thrown_objects_t
 {
@@ -205,7 +203,6 @@ struct thrown_objects_t
 	DECLARE_SIMPLE_DATADESC();
 };
 
-#ifndef CLIENTSHOULDNOTSEEPHYSCANNON
 
 class CWeaponPhysCannon : public CBasePortalCombatWeapon
 {
@@ -236,9 +233,9 @@ public:
 
 	void	ForceDrop( void );
 	bool	DropIfEntityHeld( CBaseEntity *pTarget );	// Drops its held entity if it matches the entity passed in
-#ifndef CLIENTSHOULDNOTSEEGRABCONTROLLER
+
 	CGrabController &GetGrabController() { return m_grabController; }
-#endif
+
 	bool	CanHolster( void );
 	bool	Holster( CBaseCombatWeapon *pSwitchingTo = NULL );
 	bool	Deploy( void );
@@ -396,9 +393,9 @@ protected:
 	CHandle<CSprite>	m_hBlastSprite;
 #endif
 	CSoundPatch			*m_sndMotor;		// Whirring sound for the gun
-#ifndef CLIENTSHOULDNOTSEEGRABCONTROLLER
+
 	CGrabController		m_grabController;
-#endif
+	
 	bool				m_bPhyscannonState;
 
 	// A list of the objects thrown or punted recently, and the time done so.
@@ -429,32 +426,24 @@ private:
 // force the physcannon to drop an object (if carried)
 void PhysCannonForceDrop( CBaseCombatWeapon *pActiveWeapon, CBaseEntity *pOnlyIfHoldingThis );
 void PhysCannonBeginUpgrade( CBaseAnimating *pAnim );
-#endif //CLIENTSHOULDNOTSEEPHYSCANNON
 
 bool PlayerPickupControllerIsHoldingEntity( CBaseEntity *pPickupController, CBaseEntity *pHeldEntity );
 void ShutdownPickupController( CBaseEntity *pPickupControllerEntity );
 float PlayerPickupGetHeldObjectMass( CBaseEntity *pPickupControllerEntity, IPhysicsObject *pHeldObject );
-#ifndef CLIENTSHOULDNOTSEEPHYSCANNON
+
 float PhysCannonGetHeldObjectMass( CBaseCombatWeapon *pActiveWeapon, IPhysicsObject *pHeldObject );
 CBaseEntity *PhysCannonGetHeldEntity( CBaseCombatWeapon *pActiveWeapon );
 CBasePlayer *GetPlayerHoldingEntity(CBaseEntity *pEntity);
-#endif
 
 CBaseEntity *GetPlayerHeldEntity(CBasePlayer *pPlayer);
 
-#ifndef CLIENTSHOULDNOTSEEGRABCONTROLLER
 CGrabController *GetGrabControllerForPlayer( CBasePlayer *pPlayer );
 CGrabController *GetGrabControllerForPhysCannon( CBaseCombatWeapon *pActiveWeapon );
 void GetSavedParamsForCarriedPhysObject( CGrabController *pGrabController, IPhysicsObject *pObject, float *pSavedMassOut, float *pSavedRotationalDampingOut );
 void UpdateGrabControllerTargetPosition( CPortal_Player *pPlayer, Vector *vPosition, QAngle *qAngles );
-#endif
 
-#ifndef CLIENTSHOULDNOTSEEPHYSCANNON
 bool PhysCannonAccountableForObject( CBaseCombatWeapon *pPhysCannon, CBaseEntity *pObject );
-#endif
 
-#ifndef CLIENTSHOULDNOTSEEGRABCONTROLLER
 void GrabController_SetPortalPenetratingEntity( CGrabController *pController, CBaseEntity *pPenetrated );
-#endif
 
 #endif // WEAPON_PHYSCANNON_H

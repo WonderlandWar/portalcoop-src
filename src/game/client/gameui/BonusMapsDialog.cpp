@@ -257,8 +257,12 @@ CBonusMapsDialog::CBonusMapsDialog(vgui::Panel *parent) : BaseClass(parent, "Bon
 	V_strcpy_safe(m_MultiplayerOptions.sHostname, "Portal: Cooperative");
 	
 	V_strcpy_safe(m_MultiplayerOptions.sPassword, "");
-	m_MultiplayerOptions.bForceRespawn = true;
-	m_MultiplayerOptions.bLanServer = true;
+
+	ConVarRef mp_forcerespawn("mp_forcerespawn");
+	ConVarRef sv_lan("sv_lan");
+
+	m_MultiplayerOptions.bForceRespawn = mp_forcerespawn.GetBool();
+	m_MultiplayerOptions.bLanServer = sv_lan.GetBool();
 
 	SetDeleteSelfOnClose(true);
 	//SetBounds(0, 0, 512, 384);

@@ -81,6 +81,9 @@ public:
 	COutputEvent m_OnEntityTeleportToMe;
 	COutputEvent m_OnPlayerTeleportToMe;
 
+	COutputEvent m_OnFizzled;
+	COutputEvent m_OnStolen;
+
 	cplane_t m_plane_Origin; //a portal plane on the entity origin
 	
 	CNetworkVector( m_ptOrigin );
@@ -178,14 +181,18 @@ public:
 			
 	virtual bool			IsPredicted() const { return true; }
 
-	CProp_Portal			*m_pHitPortal;
-	CProp_Portal			*m_pPortalReplacingMe;
+	void	StealPortal( CProp_Portal *pHitPortal );
+
+	//CProp_Portal			*m_pHitPortal;
+	//CProp_Portal			*m_pPortalReplacingMe;
 
 	CNetworkVar(int, m_iCustomPortalColorSet);
 	int	m_iPortalColorSet;
 	
-	void					OnEntityTeleportedToPortal( CBaseEntity *pEntity );
-	void					OnEntityTeleportedFromPortal( CBaseEntity *pEntity );
+	void	OnEntityTeleportedToPortal( CBaseEntity *pEntity );
+	void	OnEntityTeleportedFromPortal( CBaseEntity *pEntity );
+
+	void	OnStolen( CBaseEntity *pActivator, CBaseEntity *pCaller );
 
 protected:
 	

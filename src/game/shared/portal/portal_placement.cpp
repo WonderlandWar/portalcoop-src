@@ -1090,7 +1090,7 @@ bool IsPortalOverlappingOtherPortals( const CProp_Portal *pIgnorePortal, const V
 
 					if ( bFizzle || ( !bLinkedPortal && bFizzlePartnerPortals ))
 					{
-						pTempPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
+						pTempPortal->DoFizzleEffect( PORTAL_FIZZLE_STOLEN, pTempPortal->m_iPortalColorSet, false );
 						pTempPortal->Fizzle();
 						if ( bLinkedPortal )
 						{
@@ -1122,11 +1122,8 @@ bool IsPortalOverlappingOtherPortals( const CProp_Portal *pIgnorePortal, const V
 	return bOverlappedOtherPortal;
 }
 
-bool IsPortalOverlappingPartnerPortals( const CProp_Portal *pIgnorePortal, const Vector &vOrigin, const QAngle &qAngles, bool bFizzle /*= false*/, bool bFizzlePartnerPortals /*= false*/ )
-{
-	
-	bool bOverlappedPartnerPortal = false;
-	
+CProp_Portal *GetOverlappedPartnerPortal( const CProp_Portal *pIgnorePortal, const Vector &vOrigin, const QAngle &qAngles )
+{	
 	Vector vForward;
 	AngleVectors( qAngles, &vForward, NULL, NULL );
 
@@ -1140,7 +1137,7 @@ bool IsPortalOverlappingPartnerPortals( const CProp_Portal *pIgnorePortal, const
 		for( int i = 0; i != iPortalCount; ++i )
 		{
 			CProp_Portal *pTempPortal = pPortals[i];
-			if (pTempPortal != pIgnorePortal && pTempPortal->IsActive())
+			if ( pTempPortal != pIgnorePortal && pTempPortal->IsActive() && pTempPortal->m_iLinkageGroupID != pIgnorePortal->m_iLinkageGroupID )
 			{
 				Vector vOtherOrigin = pTempPortal->GetAbsOrigin();
 				QAngle qOtherAngles = pTempPortal->GetAbsAngles();
@@ -1162,32 +1159,62 @@ bool IsPortalOverlappingPartnerPortals( const CProp_Portal *pIgnorePortal, const
 
 						DevMsg( "Portal overlapped another portal.\n" );
 					}
-					
-					bool bLinkedPortal = !GameRules()->IsMultiplayer() || (pTempPortal->GetFiredByPlayer() == pIgnorePortal->GetFiredByPlayer());
 
-					if ( bFizzle || ( !bLinkedPortal && bFizzlePartnerPortals ))
-					{
-						pTempPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, false );
-						pTempPortal->Fizzle();
-						if ( !bLinkedPortal )
-						{
-							bOverlappedPartnerPortal = true;
-						}
-					}
-
-					else
-					{
-						return true;
-					}
+					return pTempPortal;
 				}
 			}
 		}
 	}
-	
-	if ( bOverlappedPartnerPortal )
-		return true;
 
-	return false;
+	return NULL;
+}
+
+
+CProp_Portal *GetTheoreticalOverlappedPartnerPortal( int iLinkageGroupID, const Vector &vOrigin, const QAngle &qAngles )
+{	
+	Vector vForward;
+	AngleVectors( qAngles, &vForward, NULL, NULL );
+
+	Vector vPortalOBBMin = CProp_Portal_Shared::vLocalMins + Vector( 1.0f, 1.0f, 1.0f );
+	Vector vPortalOBBMax = CProp_Portal_Shared::vLocalMaxs - Vector( 1.0f, 1.0f, 1.0f );
+
+	int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
+	if( iPortalCount != 0 )
+	{
+		CProp_Portal **pPortals = CProp_Portal_Shared::AllPortals.Base();
+		for( int i = 0; i != iPortalCount; ++i )
+		{
+			CProp_Portal *pTempPortal = pPortals[i];
+			if ( pTempPortal && pTempPortal->IsActive() && pTempPortal->m_iLinkageGroupID != iLinkageGroupID )
+			{
+				Vector vOtherOrigin = pTempPortal->GetAbsOrigin();
+				QAngle qOtherAngles = pTempPortal->GetAbsAngles();
+
+				Vector vLinkedForward;
+				AngleVectors( qOtherAngles, &vLinkedForward, NULL, NULL );
+
+				// If they're not on the same face then don't worry about overlap
+				if ( vForward.Dot( vLinkedForward ) < 0.95f )
+					continue;
+
+				if ( IsOBBIntersectingOBB( vOrigin, qAngles, vPortalOBBMin, vPortalOBBMax, 
+										   vOtherOrigin, qOtherAngles, vPortalOBBMin, vPortalOBBMax, 0.0f ) )
+				{
+					if ( sv_portal_placement_debug.GetBool() )
+					{
+						UTIL_Portal_NDebugOverlay( vOrigin, qAngles, 0, 0, 255, 128, false, 0.5f );
+						UTIL_Portal_NDebugOverlay( pTempPortal, 255, 0, 0, 128, false, 0.5f );
+
+						DevMsg( "Portal overlapped another portal.\n" );
+					}
+
+					return pTempPortal;
+				}
+			}
+		}
+	}
+
+	return NULL;
 }
 
 bool IsPortalOnValidSurface( const Vector &vOrigin, const Vector &vForward, const Vector &vRight, const Vector &vUp, ITraceFilter *traceFilterPortalShot )
@@ -1389,6 +1416,12 @@ float VerifyPortalPlacement( const CProp_Portal *pIgnorePortal, Vector &vOrigin,
 		{
 			if ( g_bBumpedByLinkedPortal )
 			{
+				// Succeed if it's overlapping someone else's portal
+				if (bTest && GetOverlappedPartnerPortal(pIgnorePortal, vOrigin, qAngles))
+				{
+					return PORTAL_ANALOG_SUCCESS_STEAL;
+					g_bBumpedByLinkedPortal = false;
+				}
 				return PORTAL_ANALOG_SUCCESS_OVERLAP_LINKED;
 			}
 
@@ -1441,19 +1474,7 @@ float VerifyPortalPlacement( const CProp_Portal *pIgnorePortal, Vector &vOrigin,
 	{
 		return PORTAL_ANALOG_SUCCESS_INVALID_VOLUME;
 	}
-
-	// Fail if it's overlapping the linked portal
-	if ( bTest && IsPortalOverlappingOtherPortals( pIgnorePortal, vOrigin, qAngles ) )
-	{
-		return PORTAL_ANALOG_SUCCESS_OVERLAP_LINKED;
-	}
-	
-	// Fail(?) if it's overlapping another linked portal
-	if ( bTest && IsPortalOverlappingPartnerPortals( pIgnorePortal, vOrigin, qAngles ) )
-	{
-		return PORTAL_ANALOG_SUCCESS_OVERLAP_PARTNER_PORTAL;
-	}
-
+		
 	// Fail if it's on a flagged surface material
 	if ( !IsPortalOnValidSurface( vOrigin, vForward, vRight, vUp, &traceFilterPortalShot ) )
 	{
@@ -1462,6 +1483,17 @@ float VerifyPortalPlacement( const CProp_Portal *pIgnorePortal, Vector &vOrigin,
 			UTIL_Portal_NDebugOverlay( vOrigin, qAngles, 0, 0, 255, 128, false, 0.5f );
 		}
 		return PORTAL_ANALOG_SUCCESS_INVALID_SURFACE;
+	}
+
+	// Succeed if it's overlapping someone else's portal
+	if (bTest && GetOverlappedPartnerPortal(pIgnorePortal, vOrigin, qAngles))
+	{
+		return PORTAL_ANALOG_SUCCESS_STEAL;
+	}
+	// Fail if it's overlapping the linked portal
+	if ( bTest && IsPortalOverlappingOtherPortals( pIgnorePortal, vOrigin, qAngles ) )
+	{
+		return PORTAL_ANALOG_SUCCESS_OVERLAP_LINKED;
 	}
 
 	float fAnalogSuccessMultiplier = 1.0f - ( fBumpDistance / MAXIMUM_BUMP_DISTANCE );
@@ -1481,11 +1513,11 @@ float VerifyPortalPlacementAndFizzleBlockingPortals(const CProp_Portal *pIgnoreP
 		IsPortalOverlappingOtherPortals( pIgnorePortal, vOrigin, qAngles, true, false );
 		placementResult = VerifyPortalPlacement( pIgnorePortal, vOrigin, qAngles, iPlacedBy, bTest );
 	}
-	else if ( placementResult == PORTAL_ANALOG_SUCCESS_OVERLAP_PARTNER_PORTAL )
+	else if ( placementResult == PORTAL_ANALOG_SUCCESS_STEAL )
 	{
 		// overlapping partner's portal. Fizzle them and try again.
 		//IsPortalOverlappingOtherPortals( pIgnorePortal, vOrigin, qAngles, false, true );
-		IsPortalOverlappingPartnerPortals ( pIgnorePortal, vOrigin, qAngles, false, true );
+		GetOverlappedPartnerPortal ( pIgnorePortal, vOrigin, qAngles );
 		
 		placementResult = VerifyPortalPlacement( pIgnorePortal, vOrigin, qAngles, iPlacedBy, bTest );
 	}

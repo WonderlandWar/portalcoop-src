@@ -125,6 +125,8 @@ void CTargetID::Paint()
 	sIDString[0] = 0;
 	wchar_t sPortalIDString[MAX_ID_STRING];
 	sPortalIDString[0] = 0;
+	wchar_t sPortalGunIDString[MAX_ID_STRING];
+	sPortalGunIDString[0] = 0;
 
 	C_Portal_Player *pLocalPlayer = C_Portal_Player::GetLocalPortalPlayer();
 
@@ -133,10 +135,10 @@ void CTargetID::Paint()
 
 	Color c = Color(255, 255, 255, 255);
 	Color cPortal = Color(255, 255, 255, 255);
+	Color cPortalgun = Color(255, 255, 255, 255);
 
 	// Get our target's ent index
 	int iEntIndex = pLocalPlayer->GetIDTarget();
-	int iPortalEntIndex = pLocalPlayer->GetPortalIDTarget();
 
 	//Nonsensical debugging
 #if 0
@@ -168,6 +170,10 @@ void CTargetID::Paint()
 		m_flLastChangeTime = gpGlobals->curtime;
 	}
 
+
+	C_Prop_Portal *pPortal = pLocalPlayer->GetPortalTarget();
+
+#if 0
 	if ( !iPortalEntIndex )
 	{
 		// Check to see if we should clear our ID
@@ -187,55 +193,134 @@ void CTargetID::Paint()
 	{
 		m_flLastPortalChangeTime = gpGlobals->curtime;
 	}
-	
-	C_WeaponPortalgun *pPortalgun = NULL;
+#endif
+
+	if ( pPortal )
+	{
+		//if ( pPortal )
+		{
+			const char *printPortalFormatString = NULL;
+			wchar_t wszPortalLinkageID[4];
+			bool bShowPortalLinkageID = false;
+
+			int iLinkageGroupIDPortal = pPortal->m_iLinkageGroupID;
+
+			if (hud_showportals.GetBool())
+			{
+				std::string s = std::to_string(iLinkageGroupIDPortal);
+				const char *sLinkageID = (s.c_str());
+
+				g_pVGuiLocalize->ConvertANSIToUnicode( sLinkageID,  wszPortalLinkageID, sizeof(wszPortalLinkageID) );
+
+				cPortal = GetColorForPortal(pPortal->entindex());
+
+				
+				if ( hud_showportals.GetBool() )
+				{
+					bShowPortalLinkageID = true;
+
+					printPortalFormatString = "#Portalid_linkageid";						
+				}
+				else
+				{
+						printPortalFormatString = "";
+				}
+			}
+			
+			if (printPortalFormatString)
+			{
+				// For showing portals
+			
+				if ( bShowPortalLinkageID )
+				{
+					g_pVGuiLocalize->ConstructString( sPortalIDString, sizeof(sPortalIDString), g_pVGuiLocalize->Find(printPortalFormatString), 1, wszPortalLinkageID );
+				}
+				else
+				{
+					g_pVGuiLocalize->ConstructString( sPortalIDString, sizeof(sPortalIDString), g_pVGuiLocalize->Find(printPortalFormatString), 0 );
+				}
+			}
+
+			
+		
+			if ( sPortalIDString[0] && hud_showportals.GetBool() && pPortal && bShowPortalLinkageID )
+			{
+				int wide, tall;
+				int ypos = YRES(150);
+				int xpos = XRES(10);
+
+				vgui::surface()->GetTextSize( m_hFont, sPortalIDString, wide, tall );
+
+				if( hud_centerid.GetInt() == 0 )
+				{
+					ypos = YRES(380);
+				}
+				else
+				{
+					xpos = (ScreenWidth() - wide) / 2;
+				}
+			
+				vgui::surface()->DrawSetTextFont( m_hFont );
+				vgui::surface()->DrawSetTextPos( xpos, ypos );
+				vgui::surface()->DrawSetTextColor( cPortal );
+				vgui::surface()->DrawPrintText( sPortalIDString, wcslen(sPortalIDString) );
+			}
+		}
+	}
 
 	// Is this an entindex sent by the server?
-	if ( iEntIndex || iPortalEntIndex)
+	if ( iEntIndex )
 	{
-		C_BasePlayer *pPlayer = static_cast<C_BasePlayer*>(ClientEntityList().GetEnt(iEntIndex));
-		C_Prop_Portal *pPortal = static_cast<C_Prop_Portal*>(ClientEntityList().GetEnt(iPortalEntIndex));
-
-		trace_t tr;
-		Vector vecStart, vecEnd;
-		VectorMA(MainViewOrigin(), 1500, MainViewForward(), vecEnd);
-		VectorMA(MainViewOrigin(), 10, MainViewForward(), vecStart);
-
-		UTIL_TraceLine(vecStart, vecEnd, MASK_SOLID, pLocalPlayer, COLLISION_GROUP_NONE, &tr);
-
-		Ray_t ray;
-		ray.Init(tr.startpos, tr.endpos);
-
-		
-		float flMustBeCloserThan = 2.0f;
-		CProp_Portal *pNewPortal = UTIL_Portal_FirstAlongRayAll(ray, flMustBeCloserThan);
+		C_BasePlayer *pPlayer = ToBasePlayer( ClientEntityList().GetEnt( iEntIndex ) );
+		C_WeaponPortalgun *pPortalGunTarget = dynamic_cast<C_WeaponPortalgun*>( ClientEntityList().GetEnt( iEntIndex ) );
 		
 	//	C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
 
 		const char *printFormatString = NULL;
-		const char *printPortalFormatString = NULL;
+		const char *printPortalGunFormatString = NULL;
 		wchar_t wszPlayerName[ MAX_PLAYER_NAME_LENGTH ];
 		wchar_t wszLinkageID[ 4 ];
-		wchar_t wszPortalLinkageID[ 4 ];
+		wchar_t wszPortalGunMessage[ 64 ];
 		bool bShowPlayerName = false;
 		//Portals
 		bool bShowLinkageID = false;
-		bool bShowPortalLinkageID = false;
+		bool bShowPortalgun = false;
 
 		// Some entities we always want to check, cause the text may change
 		// even while we're looking at it
-		// Is it a player?
-		if ( ( IsPlayerIndex( iEntIndex ) && pPlayer && !pPlayer->IsLocalPlayer() ) || pPortal )
+				
+		if (pPortalGunTarget)
+		{
+			const char *pszPlayerOnly = NULL;
+
+			C_Portal_Player *pPlayer = static_cast<C_Portal_Player*>( UTIL_PlayerByIndex( pPortalGunTarget->m_iValidPlayer ) );
+
+			if (pPlayer && !pPlayer->IsLocalPlayer())
+			{
+				bShowPortalgun = true;
+				printPortalGunFormatString = "#portalgunid_validpickup";
+				pszPlayerOnly = pPlayer->GetPlayerName();
+
+				g_pVGuiLocalize->ConvertANSIToUnicode(pszPlayerOnly, wszPortalGunMessage, sizeof(wszPortalGunMessage));
+
+				UTIL_Portalgun_Color(pPortalGunTarget, cPortalgun);
+			}
+		}
+
+		C_WeaponPortalgun *pPortalgun = NULL;
+
+		if ( pPlayer && !pPlayer->IsLocalPlayer() )
 		{
 			bShowPlayerName = true;
+
 			if ( IsPlayerIndex( iEntIndex ) && pPlayer && !pPlayer->IsLocalPlayer() )
 			{
 				g_pVGuiLocalize->ConvertANSIToUnicode( pPlayer->GetPlayerName(),  wszPlayerName, sizeof(wszPlayerName) );
 
-				pPortalgun = dynamic_cast<C_WeaponPortalgun*>(pPlayer->Weapon_OwnsThisType("weapon_portalgun"));
+				pPortalgun = static_cast<C_WeaponPortalgun*>(pPlayer->Weapon_OwnsThisType("weapon_portalgun"));
 			}
-		
-			int iLinkageGroupIDPortal = pPortal->m_iLinkageGroupID;
+					
+			c = GetColorForPortalgun(pPlayer->entindex());
 						
 			if ( pPortalgun )
 			{
@@ -244,74 +329,29 @@ void CTargetID::Paint()
 				const char *sLinkageID = (s.c_str());
 
 				g_pVGuiLocalize->ConvertANSIToUnicode( sLinkageID,  wszLinkageID, sizeof(wszLinkageID) );
-				
-				if (pPlayer->entindex())
-					c = GetColorForPortalgun(pPlayer->entindex());
-				
+								
 				if ( hud_showportalid.GetBool() )
 				{
 					bShowLinkageID = true;
-					if (!pPlayer->IsLocalPlayer())
-					{
+					//if (!pPlayer->IsLocalPlayer())
 						printFormatString = "#Playerid_linkageid";
-					}
-					else
-					{
-						printFormatString = "#Playerid_linkageid_you";
-					}
+					//else
+					//	printFormatString = "#Playerid_linkageid_you";
 				}
 				else
 				{
-					if (!pPlayer->IsLocalPlayer())
+					//if (!pPlayer->IsLocalPlayer())
 						printFormatString = "#Playerid_name";
-					else
-					{
-						printFormatString = "#Playerid_name_you";
-					}
+					//else
+					//	printFormatString = "#Playerid_name_you";
 				}
 			}
-			else if (!pPortalgun && pPlayer)
+			else
 			{
-				c = COLOR_GREY;
-
-				if (!pPlayer->IsLocalPlayer())
+				//if (!pPlayer->IsLocalPlayer())
 					printFormatString = "#Playerid_name";
-				else
-				{
-					printFormatString = "#Playerid_name_you";
-				}
-			}
-			if (pPortal)
-			{
-				if (hud_showportals.GetBool())
-				{
-					std::string s = std::to_string(iLinkageGroupIDPortal);
-					const char *sLinkageID = (s.c_str());
-
-					g_pVGuiLocalize->ConvertANSIToUnicode( sLinkageID,  wszPortalLinkageID, sizeof(wszPortalLinkageID) );
-
-					if (pPortal->entindex())
-						cPortal = GetColorForPortal(pPortal->entindex());
-
-				
-					if ( hud_showportals.GetBool() )
-					{
-						bShowPortalLinkageID = true;
-
-						if (!pPlayer->IsLocalPlayer())
-						{
-							printPortalFormatString = "#Portalid_linkageid";
-						}
-						else
-						{
-							printPortalFormatString = "#Portalid_linkageid";
-						}
-					}
-					else
-					{
-						printPortalFormatString = "";
-					}
-				}
+					//else
+					//	printFormatString = "#Playerid_name_you";
 			}
 		}
 
@@ -332,18 +372,18 @@ void CTargetID::Paint()
 				g_pVGuiLocalize->ConstructString( sIDString, sizeof(sIDString), g_pVGuiLocalize->Find(printFormatString), 0 );
 			}
 		}
-		
-		if (printPortalFormatString)
+				
+		if (printPortalGunFormatString)
 		{
-			// For showing portals
+			// For showing portalgun stuff
 			
-			if ( bShowPortalLinkageID )
+			if ( bShowPortalgun )
 			{
-				g_pVGuiLocalize->ConstructString( sPortalIDString, sizeof(sPortalIDString), g_pVGuiLocalize->Find(printPortalFormatString), 1, wszPortalLinkageID );
+				g_pVGuiLocalize->ConstructString( sPortalGunIDString, sizeof(sPortalGunIDString), g_pVGuiLocalize->Find(printPortalGunFormatString), 1, wszPortalGunMessage );
 			}
 			else
 			{
-				g_pVGuiLocalize->ConstructString( sPortalIDString, sizeof(sPortalIDString), g_pVGuiLocalize->Find(printPortalFormatString), 0 );
+				g_pVGuiLocalize->ConstructString( sPortalGunIDString, sizeof(sPortalGunIDString), g_pVGuiLocalize->Find(printPortalGunFormatString), 0 );
 			}
 		}
 
@@ -369,18 +409,19 @@ void CTargetID::Paint()
 			vgui::surface()->DrawSetTextColor( c );
 			vgui::surface()->DrawPrintText( sIDString, wcslen(sIDString) );
 		}
+
 		
-		if ( sPortalIDString[0] && hud_showportals.GetBool() && pPortal && pPortal == pNewPortal && bShowPortalLinkageID )
+		if ( sPortalGunIDString[0] && pPortalGunTarget && bShowPortalgun )
 		{
 			int wide, tall;
-			int ypos = YRES(150);
+			int ypos = YRES(260);
 			int xpos = XRES(10);
 
-			vgui::surface()->GetTextSize( m_hFont, sPortalIDString, wide, tall );
+			vgui::surface()->GetTextSize( m_hFont, sPortalGunIDString, wide, tall );
 
 			if( hud_centerid.GetInt() == 0 )
 			{
-				ypos = YRES(380);
+				ypos = YRES(420);
 			}
 			else
 			{
@@ -389,8 +430,8 @@ void CTargetID::Paint()
 			
 			vgui::surface()->DrawSetTextFont( m_hFont );
 			vgui::surface()->DrawSetTextPos( xpos, ypos );
-			vgui::surface()->DrawSetTextColor( cPortal );
-			vgui::surface()->DrawPrintText( sPortalIDString, wcslen(sPortalIDString) );
+			vgui::surface()->DrawSetTextColor( cPortalgun );
+			vgui::surface()->DrawPrintText( sPortalGunIDString, wcslen(sPortalGunIDString) );
 		}
 	}
 }

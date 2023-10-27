@@ -16,6 +16,7 @@ extern ConVar sv_portal_with_gamemovement;
 
 extern bool g_bBulletPortalTrace;
 
+
 #ifdef CLIENT_DLL
 	#include "client_class.h"
 	#include "interpolatedvar.h"
@@ -23,14 +24,32 @@ extern bool g_bBulletPortalTrace;
 	typedef C_Prop_Portal CProp_Portal;
 	class C_Beam;
 	typedef C_Beam CBeam;
+	class C_Portal_Player;
+	class C_WeaponPortalgun;
+
+#define CPortal_Player C_Portal_Player
+#define CWeaponPortalgun C_WeaponPortalgun
+
 #else
+	class CPortal_Player;
 	class CProp_Portal;
 	class CBeam;
+	class CWeaponPortalgun;
 #endif
 
 #define USEMOVEMENTFORPORTALLING 1
 
 Color UTIL_Portal_Color( int iPortal, int iLinkageGroupID );
+
+void UTIL_Ping_Color( CPortal_Player *pPlayer, Vector &vColor, int &iPortalColorSet );
+void UTIL_Ping_Color( CPortal_Player *pPlayer, Color &color, int &iPortalColorSet );
+
+void UTIL_Portalgun_Color( CWeaponPortalgun *pPortalgun, Vector &vColor );
+void UTIL_Portalgun_Color( CWeaponPortalgun *pPortalgun, Color &color );
+
+
+#undef CPortal_Player
+#undef CWeaponPortalgun
 
 void UTIL_Portal_Trace_Filter( class CTraceFilterSimpleClassnameList *traceFilterPortalShot );
 
@@ -92,6 +111,7 @@ bool UTIL_IsBoxIntersectingPortal( const Vector &vecBoxCenter, const Vector &vec
 bool UTIL_IsBoxIntersectingPortal( const Vector &vecBoxCenter, const Vector &vecBoxExtents, const CProp_Portal *pPortal, float flTolerance = 0.0f );
 
 CProp_Portal *UTIL_IntersectEntityExtentsWithPortal( const CBaseEntity *pEntity );
+CProp_Portal *UTIL_IntersectBoxExtentsWithPortal( Vector vMin, Vector vMax );
 bool UTIL_EntityIsIntersectingFloorPortal( const CBaseEntity *pEntity );
 bool UTIL_EntityIsIntersectingCeilingPortal( const CBaseEntity *pEntity );
 bool UTIL_EntityIsIntersectingPortalWithLinkedAlsoBeingFloorOrCeiling( const CBaseEntity *pEntity );
@@ -113,6 +133,7 @@ void UTIL_TransformInterpolatedPosition( CInterpolatedVar< Vector > &vInterped, 
 #endif
 
 bool UTIL_Portal_EntityIsInPortalHole( const CProp_Portal *pPortal, CBaseEntity *pEntity );
+CProp_Portal *UTIL_Portal_GetPortalWhoOwnsPlane( CBaseEntity *pEntity );
 
 bool UTIL_IsCollideableIntersectingPhysCollide( ICollideable *pCollideable, const CPhysCollide *pCollide, const Vector &vPhysCollideOrigin, const QAngle &qPhysCollideAngles );
 

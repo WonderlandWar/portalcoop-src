@@ -7,6 +7,10 @@
 #include "gamemovement.h"
 #include "func_ladder.h"
 
+#ifdef WIN32
+#pragma once
+#endif
+
 #if defined( CLIENT_DLL )
 
 #include "c_basehlplayer.h"

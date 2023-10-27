@@ -154,8 +154,8 @@ public:
 
 	void SetCanFirePortal1( bool bCanFire = true );
 	void SetCanFirePortal2( bool bCanFire = true );
-	float CanFirePortal1( void ) { return m_bCanFirePortal1; }
-	float CanFirePortal2( void ) { return m_bCanFirePortal2; }
+	bool CanFirePortal1( void ) { return m_bCanFirePortal1; }
+	bool CanFirePortal2( void ) { return m_bCanFirePortal2; }
 
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
@@ -187,7 +187,7 @@ public:
 	int m_iCustomPortalColorSet;
 	int	m_iOldPortalColorSet;
 	int m_iPortalColorSet;
-
+	int m_iValidPlayer;
 	bool m_bCanAttack;
 
 	CHandle<CProp_Portal> m_hPrimaryPortal;

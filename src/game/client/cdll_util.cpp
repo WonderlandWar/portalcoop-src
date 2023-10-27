@@ -27,6 +27,7 @@
 #include <vgui/ILocalize.h>
 #include "view.h"
 #include "ixboxsystem.h"
+#include "collisionutils.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -703,6 +704,53 @@ int UTIL_EntitiesAlongRay( const Ray_t &ray, CFlaggedEntitiesEnum *pEnum )
 {
 	partition->EnumerateElementsAlongRay( PARTITION_CLIENT_NON_STATIC_EDICTS, ray, false, pEnum );
 	return pEnum->GetCount();
+}
+
+// This function is completely broken
+int UTIL_PhysicsObjectsInBox( IPhysicsObject **pList, int listMax, const Vector &mins, const Vector &maxs )
+{
+	int count = 0;
+
+	int size = g_AllPhysObjects.Count();
+
+	for (int i = 0; i < size; ++i )
+	{
+		if ( i >= listMax )
+			return count;
+
+		IPhysicsObject *pPhys = g_AllPhysObjects[i];
+
+		if ( !pPhys )
+			continue;
+
+		Vector vPoint;
+		QAngle qAngles;
+		pPhys->GetPosition( &vPoint, &qAngles );
+
+		if ( IsPointInBox( vPoint, mins, maxs ) )
+		{
+			pList[count] = pPhys;
+			++count;
+			continue;
+		}		
+
+		C_BaseEntity *pEntity = static_cast<C_BaseEntity*>( pPhys->GetGameData() ) ;
+
+		if ( !pEntity )
+			continue;		
+
+		Vector vPhysMins = pEntity->CollisionProp()->OBBMins();
+		Vector vPhysMaxs = pEntity->CollisionProp()->OBBMaxs();
+		
+		if ( IsBoxIntersectingBox( mins, maxs, vPhysMins, vPhysMaxs ) )
+		{
+			pList[count] = pPhys;
+			++count;
+			continue;
+		}
+	}
+
+	return count;
 }
 
 CEntitySphereQuery::CEntitySphereQuery( const Vector &center, float radius, int flagMask, int partitionMask )

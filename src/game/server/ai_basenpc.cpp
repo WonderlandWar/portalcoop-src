@@ -644,14 +644,10 @@ void CAI_BaseNPC::Ignite( float flFlameLifetime, bool bNPCOnly, float flSize, bo
 
 #ifdef HL2_EPISODIC
 
-	CBasePlayer *pPlayer;
-	if (gpGlobals->maxClients == 1)
+	CBasePlayer *pPlayer = NULL;
+	//if (gpGlobals->maxClients == 1)
 	{
 		pPlayer = AI_GetSinglePlayer();
-	}
-	else
-	{
-		pPlayer = AI_GetMultiPlayer();
 	}
 
 

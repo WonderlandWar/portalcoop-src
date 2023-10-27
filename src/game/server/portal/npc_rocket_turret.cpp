@@ -622,6 +622,18 @@ void CNPC_RocketTurret::SearchThink()
 				if (!GetEnemy())
 				{
 					m_vecGoalAngles.y = m_vecGoalAngles.y + flOffsetY;
+
+					// Prevents the rocket turret from looking straight up or straight down
+					// FIXME: May not work well for rocket turrets at an angle!
+					if (m_vecGoalAngles.y > 60.0)
+					{
+						m_vecGoalAngles.y = 60.0;
+					}
+					else if (m_vecGoalAngles.y < -60.0)
+					{
+						m_vecGoalAngles.y = -60.0;
+					}
+
 				}
 				
 			}
@@ -952,17 +964,68 @@ void CNPC_RocketTurret::HackFindEnemy(void)
 
 	GetSenses()->Look(ROCKET_TURRET_RANGE);
 	SetEnemy( BestEnemy() );
-	/*
-	if (GetEnemy() == NULL)
+	
+	if ( GetEnemy() == NULL )
 	{
-		for (int i = 1; i <= gpGlobals->maxClients; ++i)
-		{
-			CPortal_Player* pPlayer = (CPortal_Player *)UTIL_PlayerByIndex(i);
-			if (pPlayer)
+		// Look through the list of sensed objects for possible targets
+		AISightIter_t iter;
+		CBaseEntity *pObject;
+		CBaseEntity	*pNearest = NULL;
+		float flClosestDistSqr = ROCKET_TURRET_RANGE * ROCKET_TURRET_RANGE;
+
+		for ( pObject = GetSenses()->GetFirstSeenEntity( &iter, SEEN_MISC ); pObject; pObject = GetSenses()->GetNextSeenEntity( &iter ) )
+		{			
+			float flDistSqr = pObject->WorldSpaceCenter().DistToSqr( GetAbsOrigin() );
+			if ( flDistSqr < flClosestDistSqr )
 			{
-				SetEnemy(pPlayer);
+				flClosestDistSqr = flDistSqr;
+				pNearest = pObject;
 			}
 		}
+
+		if ( pNearest )
+		{
+			SetEnemy( pNearest );
+		}
+
+		// No enemy still? Then do this hack.
+		if ( GetEnemy() == NULL )
+		{
+			for (int i = 1; i <= gpGlobals->maxClients; ++i)
+			{
+				CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+
+				if (!pPlayer)
+					continue;
+
+				if ((pPlayer->GetFlags() & FL_NOTARGET))
+					continue;
+				
+
+				Vector vecMidEnemy = pPlayer->GetAbsOrigin() + (pPlayer->WorldAlignMins() + pPlayer->WorldAlignMaxs()) * 0.5f;
+				bool bEnemyVisibleInWorld = FVisible(pPlayer);
+
+				// Test portals in our view as possible ways to view the player
+				bool bEnemyVisibleThroughPortal = TestPortalsForLOS( &vecMidEnemy, bEnemyVisibleInWorld );
+
+				bool bEnemyVisible = bEnemyVisibleInWorld || bEnemyVisibleThroughPortal;
+
+				if (bEnemyVisible)
+				{
+					SetEnemy(pPlayer);
+					break;
+				}				
+			}
+		}
+	}
+
+	/*
+	{
+		Msg("/ Enemy Info: /\n");
+		if (GetEnemy())
+			Msg("Classname: %s\n", GetEnemy()->GetClassname());
+		else
+			Msg("No info\n");
 	}
 	*/
 }
@@ -1402,7 +1465,7 @@ void CRocket_Turret_Projectile::DoExplosion( void )
 	StopLoopingSounds();
 
 	// Explode
-	ExplosionCreate( GetAbsOrigin(), GetAbsAngles(), GetOwnerEntity(), 250, 25, 
+	ExplosionCreate( GetAbsOrigin(), GetAbsAngles(), GetOwnerEntity(), 250, 35, 
 		SF_ENVEXPLOSION_NOSPARKS | SF_ENVEXPLOSION_NODLIGHTS | SF_ENVEXPLOSION_NOSMOKE, 100.0f, this);
 
 	// Hackish: Knock turrets in the area

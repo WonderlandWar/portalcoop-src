@@ -50,6 +50,6 @@ public:
 	void Spawn(void);
 	void Touch( C_BaseEntity *pOther );
 
-	bool m_bDisabled;
+	void UpdatePartitionListEntry( void );
 };
 #endif

@@ -19,6 +19,7 @@ class CFuncPortalOrientation : public CBaseEntity
 public:
 	DECLARE_CLASS( CFuncPortalOrientation, CBaseEntity );
 	DECLARE_DATADESC();
+	DECLARE_SERVERCLASS();
 
 	CFuncPortalOrientation();
 	~CFuncPortalOrientation();
@@ -33,14 +34,13 @@ public:
 	void InputDisable( inputdata_t &inputdata );
 
 	bool IsActive() { return !m_bDisabled; }	// is this area causing portals to lock orientation
-
-	bool					m_bMatchLinkedAngles;
-	QAngle					m_vecAnglesToFace;
-
+	
 	CFuncPortalOrientation		*m_pNext;			// Needed for the template list
 	unsigned int				m_iListIndex;
-private:
-	bool					m_bDisabled;				// are we currently locking portal orientations
+
+	CNetworkVar( bool, m_bDisabled ) // are we currently locking portal orientations
+	CNetworkVar( bool, m_bMatchLinkedAngles )
+	CNetworkQAngle( m_vecAnglesToFace )
 };
 
 CFuncPortalOrientation* GetPortalOrientationVolumeList();

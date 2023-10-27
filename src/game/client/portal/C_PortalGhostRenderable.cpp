@@ -20,6 +20,10 @@ C_PortalGhostRenderable::C_PortalGhostRenderable( C_Prop_Portal *pOwningPortal, 
 {
 	m_bSourceIsBaseAnimating = (dynamic_cast<C_BaseAnimating *>(pGhostSource) != NULL);
 
+#ifdef GHOSTBASEFLEX
+	m_bSourceIsBaseFlex = (dynamic_cast<C_BaseFlex *>(pGhostSource) != NULL);
+#endif
+
 	cl_entitylist->AddNonNetworkableEntity( GetIClientUnknown() );
 	g_pClientLeafSystem->AddRenderable( this, sourceRenderGroup );
 }
@@ -40,6 +44,7 @@ void C_PortalGhostRenderable::PerFrameUpdate( void )
 		SetModelName( m_pGhostedRenderable->GetModelName() );
 		SetModelIndex( m_pGhostedRenderable->GetModelIndex() );
 		SetEffects( m_pGhostedRenderable->GetEffects() | EF_NOINTERP );		
+
 		m_flAnimTime = m_pGhostedRenderable->m_flAnimTime;		
 
 		if( m_bSourceIsBaseAnimating )
@@ -47,11 +52,26 @@ void C_PortalGhostRenderable::PerFrameUpdate( void )
 			C_BaseAnimating *pSource = (C_BaseAnimating *)m_pGhostedRenderable;
 			SetCycle( pSource->GetCycle() );
 			SetSequence( pSource->GetSequence() );
+			SetModelScale( pSource->GetModelScale() );
 			m_nBody = pSource->m_nBody;
 			m_nSkin = pSource->m_nSkin;
+
+			// We need to make sure our ghost also glows like our animating source does.
+
+			pSource->GetGlowEffectColor(&m_flGlowR, &m_flGlowG, &m_flGlowB);
+
+			bool bGlow = ( pSource->IsGlowEnabled() || pSource->IsClientSideGlowEnabled() );
+
+			SetClientSideGlowEnabled( bGlow );
+
+#ifdef GHOSTBASEFLEX
+			if ( m_bSourceIsBaseFlex )
+			SyncFlexValues();
+#endif
+
 		}
 	}
-
+	
 
 	// Set position and angles relative to the object it's ghosting
 	Vector ptNewOrigin = m_matGhostTransform * m_pGhostedRenderable->GetAbsOrigin();		
@@ -238,11 +258,10 @@ bool C_PortalGhostRenderable::GetAttachmentVelocity( int number, Vector &originV
 int C_PortalGhostRenderable::DrawModel( int flags )
 {
 	if( m_bSourceIsBaseAnimating )
-	{	
-		C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPlayer();
-
-		if( m_bLocalPlayer && pPlayer )
+	{
+		if( m_bLocalPlayer )
 		{
+			C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPlayer();
 
 			if ( !pPlayer->IsAlive() )
 			{
@@ -260,7 +279,10 @@ int C_PortalGhostRenderable::DrawModel( int flags )
 					return 0;
 			}
 		}
-
+#ifdef GHOSTBASEFLEX
+		//if ( m_bSourceIsBaseFlex )
+		//	SyncFlexValues();
+#endif
 		return C_BaseAnimating::DrawModel( flags );
 	}
 	else
@@ -288,11 +310,40 @@ ModelInstanceHandle_t C_PortalGhostRenderable::GetModelInstance()
 	if ( m_pGhostedRenderable )
 		return m_pGhostedRenderable->GetModelInstance();
 
-	return BaseClass::GetModelInstance();
+	return C_BaseAnimating::GetModelInstance();
 }
 
+#ifdef GHOSTBASEFLEX
+// It's too bad that no matter what I do, one of the ghosts will inevitably have terrible flex values, DEPENDENT ON THE FRAMERATE!! WTF!??
+void C_PortalGhostRenderable::SyncFlexValues( void )
+{	
+	C_BaseFlex *pFlex = static_cast<C_BaseFlex*>(m_pGhostedRenderable);
+	
+	for (int i = 0; i < MAXSTUDIOFLEXCTRL; ++i)
+	{
+		m_flexWeight[i] = pFlex->m_flexWeight[i];
+	}
 
+	//m_iv_flexWeight = pFlex->m_iv_flexWeight; // Causes crashes on deletion, don't use it.
+		
+	m_flFlexDelayTime = pFlex->GetFlexDelayTime();
+	//m_flFlexDelayedWeight = pFlex->GetFlexDelayedWeight(); // Causes crashes on deletion, don't use it.
+	m_cFlexDelayedWeight = pFlex->GetcFlexDelayedWeight();
 
+	// Eye stuff
+	m_viewtarget = m_matGhostTransform * pFlex->m_viewtarget;
+	m_blinktoggle = pFlex->m_blinktoggle;
+	m_iBlink = pFlex->GetBlink();
+	m_blinktime = pFlex->GetBlinkTime();
+
+	m_vecLean = pFlex->m_vecLean;
+	m_vecShift = pFlex->m_vecShift;
+
+	m_iEyeUpdown = pFlex->GetEyeUpDown();
+	m_iEyeRightleft = pFlex->GetEyeRightLeft();
+
+}
+#endif
 
 bool C_PortalGhostRenderable::IsTransparent( void )
 {

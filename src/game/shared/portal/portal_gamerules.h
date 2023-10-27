@@ -95,6 +95,8 @@ public:
 	
 	float m_fTimeLastNumSecondsUpdate;
 
+	bool m_bOldAllowPortalCustomization;
+
 #endif
 	int NumPortalsPlaced( void ) const { return m_StatsThisLevel.iNumPortalsPlaced; }
 	int NumStepsTaken( void ) const { return m_StatsThisLevel.iNumStepsTaken; }
@@ -119,8 +121,14 @@ private:
 
 	virtual void			Think( void );
 
+#ifdef GAME_DLL
+	virtual void ClientDisconnected( edict_t *pClient );
+#endif
+
 	virtual bool			ClientCommand( CBaseEntity *pEdict, const CCommand &args );
 	virtual void			PlayerSpawn( CBasePlayer *pPlayer );
+	virtual CBaseEntity *GetPlayerSpawnSpot( CBasePlayer *pPlayer );// Place this player on their spawnspot and face them the proper direction.
+	virtual bool			IsSpawnPointValid( CBaseEntity *pSpot, CBasePlayer *pPlayer );
 
 	virtual void			InitDefaultAIRelationships( void );
 	virtual const char*		AIClassText(int classType);

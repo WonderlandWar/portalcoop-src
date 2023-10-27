@@ -345,7 +345,7 @@ const char *StringAfterPrefix( const char *str, const char *prefix )
 		if ( !*prefix )
 			return str;
 	}
-	while ( FastToLower( *str++ ) == FastToLower( *prefix++ ) );
+ 	while ( FastToLower( *str++ ) == FastToLower( *prefix++ ) );
 	return NULL;
 }
 

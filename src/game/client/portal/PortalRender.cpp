@@ -449,7 +449,7 @@ void CPortalRender::EnteredPortal( CPortalRenderable *pEnteredPortal )
 
 
    
-bool CPortalRender::DrawPortalsUsingStencils( CViewRender *pViewRender, int iLinkageGroupID )
+bool CPortalRender::DrawPortalsUsingStencils( CViewRender *pViewRender )
 {	  
 	VPROF( "CPortalRender::DrawPortalsUsingStencils" );
 
@@ -503,8 +503,8 @@ bool CPortalRender::DrawPortalsUsingStencils( CViewRender *pViewRender, int iLin
 		for( int i = 0; i != iNumRenderablePortals; ++i )
 		{
 			//DRAWPORTAL
-		//	CPortalRenderable *pCurrentPortal = actualActivePortals[i];
-		//	pCurrentPortal->DrawPortal(iLinkageGroupID);
+			CPortalRenderable *pCurrentPortal = actualActivePortals[i];
+			pCurrentPortal->DrawPortal();
 		}
 		return false;
 	}
@@ -724,8 +724,8 @@ bool CPortalRender::DrawPortalsUsingStencils( CViewRender *pViewRender, int iLin
 	for( int i = 0; i != iNumRenderablePortals; ++i )
 	{
 		//DRAWPORTAL
-	//	CPortalRenderable *pCurrentPortal = actualActivePortals[i];
-	//	pCurrentPortal->DrawPortal(iLinkageGroupID);
+		CPortalRenderable *pCurrentPortal = actualActivePortals[i];
+		pCurrentPortal->DrawPortal();
 	}
 
 	return bRebuildDrawListsWhenDone;

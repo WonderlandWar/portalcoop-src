@@ -474,7 +474,7 @@ void CAI_ScriptConditions::EvaluationThink()
 	int iActorsDone = 0;
 
 #ifdef HL2_DLL
-	if( AI_GetSinglePlayer()->GetFlags() & FL_NOTARGET )
+	if( AI_GetSinglePlayer() && AI_GetSinglePlayer()->GetFlags() & FL_NOTARGET )
 	{
 		ScrCondDbgMsg( ("%s WARNING: Player is NOTARGET. This will affect all LOS conditiosn involving the player!\n", GetDebugName()) );
 	}
@@ -735,8 +735,11 @@ bool CAI_ScriptConditions::IsInFOV( CBaseEntity *pViewer, CBaseEntity *pViewed, 
 
 bool CAI_ScriptConditions::PlayerHasLineOfSight( CBaseEntity *pViewer, CBaseEntity *pViewed, bool fNot )
 {
-	CBaseCombatCharacter *pCombatantViewer = pViewer->MyCombatCharacterPointer();
+	if ( !pViewer || !pViewed )
+		return false;
 
+	CBaseCombatCharacter *pCombatantViewer = pViewer->MyCombatCharacterPointer();
+	
 	if( pCombatantViewer )
 	{
 		// We always trace towards the player, so we handle players-in-vehicles

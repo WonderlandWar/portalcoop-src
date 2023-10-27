@@ -20,9 +20,11 @@ bool FitPortalOnSurface( const CProp_Portal *pIgnorePortal, Vector &vOrigin, con
 						 int iRecursions = 0, const CPortalCornerFitData *pPortalCornerFitData = 0, const int *p_piIntersectionIndex = 0, const int *piIntersectionCount = 0 );
 bool IsPortalIntersectingNoPortalVolume( const Vector &vOrigin, const QAngle &qAngles, const Vector &vForward );
 bool IsPortalOverlappingOtherPortals( const CProp_Portal *pIgnorePortal, const Vector &vOrigin, const QAngle &qAngles, bool bFizzle = false, bool bFizzlePartnerPortals = false );
-bool IsPortalOverlappingPartnerPortals(const CProp_Portal *pIgnorePortal, const Vector &vOrigin, const QAngle &qAngles, bool bFizzle = false, bool bFizzlePartnerPortals = false);
+bool IsNoPortalMaterial( const csurface_t &surface );
 float VerifyPortalPlacement( const CProp_Portal *pIgnorePortal, Vector &vOrigin, QAngle &qAngles, int iPlacedBy, bool bTest = false );
 float VerifyPortalPlacementAndFizzleBlockingPortals( const CProp_Portal *pIgnorePortal, Vector &vOrigin, QAngle &qAngles, int iPlacedBy, bool bTest = false );
 
+CProp_Portal *GetOverlappedPartnerPortal( const CProp_Portal *pIgnorePortal, const Vector &vOrigin, const QAngle &qAngles );
+CProp_Portal *GetTheoreticalOverlappedPartnerPortal( int iLinkageGroupID, const Vector &vOrigin, const QAngle &qAngles );
 
 #endif // PORTAL_PLACEMENT_H

@@ -727,7 +727,8 @@ void CBaseCombatWeapon::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_
 		}
 		else
 		{
-			pPlayer->PickupObject( this );
+			if ( m_bAllowPlayerEquip )
+				pPlayer->PickupObject( this );
 		}
 	}
 }

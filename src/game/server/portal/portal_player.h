@@ -24,6 +24,36 @@ class CPortal_Player;
 #include "func_liquidportal.h"
 #include "ai_speech.h"			// For expresser host
 
+
+class CInfoPlayerPortalCoop : public CPointEntity
+{
+public:
+	DECLARE_CLASS(CInfoPlayerPortalCoop, CPointEntity);
+	DECLARE_DATADESC();
+
+	void PlayerSpawned( CBasePlayer *pPlayer );
+
+	bool CanSpawnOnMe( CBasePlayer *pPlayer );
+
+	bool m_bSpawnWithPortalgun;
+	int m_iPortalgunType;
+	int m_iValidPlayerIndex;
+
+	//Outputs
+
+	COutputEvent m_OnPlayerSpawned;
+
+	// Inputs
+	
+	void InputEnablePortalgunSpawn( inputdata_t &inputdata )	{ m_bSpawnWithPortalgun = true; }
+	void InputDisablePortalgunSpawn( inputdata_t &inputdata )	{ m_bSpawnWithPortalgun = false; }
+	
+	void InputSetPortalgunType( inputdata_t &inputdata )		{ m_iPortalgunType = inputdata.value.Int(); }
+	void InputSetPlayer( inputdata_t &inputdata )				{ m_iValidPlayerIndex = inputdata.value.Int(); }
+};
+
+class CWeaponPortalgun;
+
 //=============================================================================
 // >> Portal_Player
 //=============================================================================
@@ -106,7 +136,7 @@ public:
 	CBaseEntity* FindUseEntity( void );
 	CBaseEntity* FindUseEntityThroughPortal( void );
 
-	virtual void PlayerUse( void );
+	virtual bool PlayerUse( void );
 	//virtual bool StartObserverMode( int mode );
 	virtual void GetStepSoundVelocities( float *velwalk, float *velrun );
 	virtual void PlayStepSound( Vector &vecOrigin, surfacedata_t *psurface, float fvol, bool force );
@@ -131,6 +161,10 @@ public:
 	void ResetAnimation( void );
 
 	void SetPlayerModel( void );
+
+	void SetupSkin( void );
+
+	bool PortalColorSetWasDifferent( void );
 	
 	int	GetPlayerConcept( void );
 	void UpdateExpression ( void );
@@ -153,8 +187,8 @@ public:
 	void ToggleHeldObjectOnOppositeSideOfPortal( void ) { m_bHeldObjectOnOppositeSideOfPortal = !m_bHeldObjectOnOppositeSideOfPortal; }
 	void SetHeldObjectOnOppositeSideOfPortal( bool p_bHeldObjectOnOppositeSideOfPortal ) { m_bHeldObjectOnOppositeSideOfPortal = p_bHeldObjectOnOppositeSideOfPortal; }
 	bool IsHeldObjectOnOppositeSideOfPortal( void ) { return m_bHeldObjectOnOppositeSideOfPortal; }
-	CProp_Portal *GetHeldObjectPortal( void ) { return m_pHeldObjectPortal; }
-	void SetHeldObjectPortal( CProp_Portal *pPortal ) { m_pHeldObjectPortal = pPortal; }
+	CProp_Portal *GetHeldObjectPortal( void ) { return m_hHeldObjectPortal; }
+	void SetHeldObjectPortal( CProp_Portal *pPortal ) { m_hHeldObjectPortal = pPortal; }
 
 	void SetStuckOnPortalCollisionObject( void ) { m_bStuckOnPortalCollisionObject = true; }
 
@@ -183,8 +217,21 @@ public:
 	
 	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
 	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
-					
+
+	CWeaponPortalgun *m_pSpawnedPortalgun;
+
+	void SetLookingForUseEntity( bool bLookingForUseEntity ) { m_bLookingForUseEntity = bLookingForUseEntity; }
+	void SetLookForUseEntity( bool bLookForUseEntity ) { m_bLookForUseEntity = bLookForUseEntity; }
+
+	bool m_bGotPortalMessage;
+
+	CNetworkHandle( CProp_Portal, m_hHeldObjectPortal );	// networked entity handle
+
 private:
+	
+	bool m_bLookingForUseEntity;
+	bool m_bLookForUseEntity;
+	float m_flLookForUseEntityTime;
 	
 	virtual CAI_Expresser* CreateExpresser( void );
 
@@ -204,12 +251,10 @@ private:
 
 	CNetworkVar( bool, m_bIsListenServerHost )
 
-	bool m_bHeldObjectOnOppositeSideOfPortal;
-	CProp_Portal *m_pHeldObjectPortal;	// networked entity handle
+	CNetworkVar(bool, m_bHeldObjectOnOppositeSideOfPortal);
 
 	bool m_bIntersectingPortalPlane;
 	bool m_bStuckOnPortalCollisionObject;
-	bool m_bPingHudHint;
 
 
 	float m_fTimeLastHurt;
@@ -219,6 +264,8 @@ private:
 			
 	QAngle						m_qPrePortalledViewAngles;
 	bool						m_bFixEyeAnglesFromPortalling;
+	float						m_flTimeToWaitForPortalMessage;
+	bool						m_bPendingPortalMessage;
 	VMatrix						m_matLastPortalled;
 	CAI_Expresser				*m_pExpresser;
 	string_t					m_iszExpressionScene;
@@ -245,8 +292,9 @@ private:
 	void PostTeleportationCameraFixup( const CProp_Portal *pEnteredPortal );
 
 public:
-
+	
 	CNetworkVar( bool, m_bPitchReorientation );
+
 	CNetworkHandle( CProp_Portal, m_hPortalEnvironment ); //if the player is in a portal environment, this is the associated portal
 	CNetworkHandle( CFunc_LiquidPortal, m_hSurroundingLiquidPortal ); //if the player is standing in a liquid portal, this will point to it
 
@@ -272,7 +320,7 @@ inline CPortal_Player *ToPortalPlayer( CBaseEntity *pEntity )
 	if ( !pEntity || !pEntity->IsPlayer() )
 		return NULL;
 
-	return dynamic_cast<CPortal_Player*>( pEntity );
+	return static_cast<CPortal_Player*>( pEntity );
 }
 
 inline CPortal_Player *GetPortalPlayer( int iPlayerIndex )

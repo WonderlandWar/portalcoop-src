@@ -82,14 +82,12 @@ public:
 	bool Holster( CBaseCombatWeapon *pSwitchingTo = NULL );
 	bool Deploy( void );
 
-	virtual bool IsPortalgun() { return true; }
-
 	bool m_bForceAlwaysUseSetID;
 
 	void SetCanFirePortal1( bool bCanFire = true );
 	void SetCanFirePortal2( bool bCanFire = true );
-	float CanFirePortal1( void ) { return m_bCanFirePortal1; }
-	float CanFirePortal2( void ) { return m_bCanFirePortal2; }
+	bool CanFirePortal1( void ) { return m_bCanFirePortal1; }
+	bool CanFirePortal2(void) { return m_bCanFirePortal2; }
 
 	void PrimaryAttack( void );
 	void SecondaryAttack( void );
@@ -126,6 +124,13 @@ public:
 	void DryFire( void );
 	virtual float GetFireRate( void ) { return 0.7; };
 	void WeaponIdle( void );
+	
+	// Just some specific checks for picking up
+	CNetworkVar(int, m_iValidPlayer);
+	bool CanPlayerPickupMe( CBasePlayer *pOther );
+
+	virtual void DefaultTouch( CBaseEntity *pOther );
+	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
 
 	const char *GetPlacementSuccess(float fPlacementSuccess);
 

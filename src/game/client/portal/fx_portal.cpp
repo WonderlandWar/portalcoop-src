@@ -93,13 +93,12 @@ void C_PortalBlast::Init( bool bIsPortal2, PortalPlacedByType ePlacedBy, const V
 	Msg("qAngles: %f %f %f\n", qAngles[0], qAngles[1], qAngles[2]);
 #endif
 
-	C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
 	C_BasePlayer *pPlayer = dynamic_cast<C_BasePlayer*>(hEntity.Get());
 
 	//Probably unnecessary
 	if (pPlayer)
 	{
-		if (pLocalPlayer && pLocalPlayer == pPlayer)
+		if ( pPlayer->IsLocalPlayer() )
 		{
 			ePlacedBy = PORTAL_PLACED_BY_PLAYER;
 		}

@@ -26,6 +26,8 @@
 #include "c_te_effect_dispatch.h"
 #include "engine/IEngineSound.h"
 #include "vcollide_parse.h"
+#include "collisionutils.h"
+#include "portal_placement.h"
 
 #include "c_portal_player.h"
 #include "prediction.h"
@@ -197,53 +199,6 @@ void EntityPortalledMessageHandler( C_BaseEntity *pEntity, C_Portal_Base2D *pPor
 	}
 }
 #else
-//-----------------------------------------------------------------------------
-// Purpose: Store the local player's angles right before the player is teleported
-//-----------------------------------------------------------------------------
-void __MsgFunc_PrePlayerPortalled(bf_read &msg)
-{
-	long iEncodedEHandle;
-	int iEntity, iSerialNum;
-
-	//grab portal EHANDLE
-	iEncodedEHandle = msg.ReadLong();
-
-	if( iEncodedEHandle == INVALID_NETWORKED_EHANDLE_VALUE )
-		return;
-
-	iEntity = iEncodedEHandle & ((1 << MAX_EDICT_BITS) - 1);
-	iSerialNum = iEncodedEHandle >> MAX_EDICT_BITS;
-
-	EHANDLE hPortal( iEntity, iSerialNum );
-	C_Prop_Portal *pPortal = ( C_Prop_Portal *)(hPortal.Get());
-
-	if( pPortal == NULL )
-		return;
-
-
-
-	//grab other entity's EHANDLE
-
-	iEncodedEHandle = msg.ReadLong();
-
-	if( iEncodedEHandle == INVALID_NETWORKED_EHANDLE_VALUE )
-		return;	
-
-	iEntity = iEncodedEHandle & ((1 << MAX_EDICT_BITS) - 1);
-	iSerialNum = iEncodedEHandle >> MAX_EDICT_BITS;
-
-	EHANDLE hEntity( iEntity, iSerialNum );
-	C_BaseEntity *pEntity = hEntity.Get();
-	if( pEntity == NULL )
-		return;
-	
-	C_Portal_Player *pPlayer = dynamic_cast<C_Portal_Player*>( pEntity );
-	if ( !pPlayer || !pPlayer->IsLocalPlayer() )
-		return;
-	
-	pPlayer->PrePlayerPortalled(  );
-
-}
 void __MsgFunc_EntityPortalled(bf_read &msg)
 {
 	long iEncodedEHandle;
@@ -357,6 +312,8 @@ void __MsgFunc_EntityPortalled(bf_read &msg)
 
 static ConVar portal_demohack( "portal_demohack", "0", FCVAR_ARCHIVE, "Do the demo_legacy_rollback setting to help during demo playback of going through portals." );
 
+extern void __MsgFunc_PrePlayerPortalled(bf_read &msg);
+
 class C_PortalInitHelper : public CAutoGameSystem
 {
 	virtual bool Init()
@@ -375,13 +332,47 @@ class C_PortalInitHelper : public CAutoGameSystem
 };
 static C_PortalInitHelper s_PortalInitHelper;
 
+CProp_Portal *CProp_Portal::FindPortal( unsigned char iLinkageGroupID, bool bPortal2, bool bCreateIfNothingFound /*= false*/ )
+{
+	int iPortalCount = s_PortalLinkageGroups[iLinkageGroupID].Count();
+
+	if( iPortalCount != 0 )
+	{
+		CProp_Portal *pFoundInactive = NULL;
+		CProp_Portal **pPortals = s_PortalLinkageGroups[iLinkageGroupID].Base();
+		for( int i = 0; i != iPortalCount; ++i )
+		{
+			if( pPortals[i]->m_bIsPortal2 == bPortal2 )
+			{
+				if( pPortals[i]->IsActive() )
+					return pPortals[i];
+				else
+					pFoundInactive = pPortals[i];
+			}
+		}
+
+		if( pFoundInactive )
+			return pFoundInactive;
+	}
+
+	if( bCreateIfNothingFound )
+	{
+		CProp_Portal *pPortal = (CProp_Portal *)CreateEntityByName( "prop_portal" );
+		pPortal->m_iLinkageGroupID = iLinkageGroupID;
+		pPortal->m_bIsPortal2 = bPortal2;
+		pPortal->Spawn();
+		return pPortal;
+	}
+
+	return NULL;
+}
 
 
 C_Prop_Portal::C_Prop_Portal( void )
 {	
 	TransformedLighting.m_LightShadowHandle = CLIENTSHADOW_INVALID_HANDLE;
 	CProp_Portal_Shared::AllPortals.AddToTail( this );
-	
+
 	SetPredictionEligible(true);
 }
 
@@ -412,13 +403,14 @@ void C_Prop_Portal::Spawn( void )
 
 	SetThink( &C_Prop_Portal::ClientThink );
 	SetNextClientThink( CLIENT_THINK_ALWAYS );
+	m_bDoRenderThink = true;
 
 	m_matrixThisToLinked.Identity(); //don't accidentally teleport objects to zero space
 	m_hEdgeEffect = NULL;
 	m_hParticleEffect = NULL;
 	BaseClass::Spawn();
 			
-//	m_pAttachedCloningArea = C_PhysicsCloneArea::CreatePhysicsCloneArea( this );
+	m_pAttachedCloningArea = CPhysicsCloneArea::CreatePhysicsCloneArea( this );
 }
 
 
@@ -456,6 +448,8 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem( "portal_2_near" );
 	PrecacheParticleSystem( "portal_1_success" );
 	PrecacheParticleSystem( "portal_2_success" );
+	PrecacheParticleSystem( "portal_1_stolen" );
+	PrecacheParticleSystem( "portal_2_stolen" );
 
 	PrecacheParticleSystem("portal_red_particles");
 	PrecacheParticleSystem("portal_red_edge");
@@ -467,6 +461,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_red_cleanser");
 	PrecacheParticleSystem("portal_red_near");
 	PrecacheParticleSystem("portal_red_success");
+	PrecacheParticleSystem("portal_red_stolen");
 
 	PrecacheParticleSystem("portal_yellow_particles");
 	PrecacheParticleSystem("portal_yellow_edge");
@@ -478,6 +473,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_yellow_cleanser");
 	PrecacheParticleSystem("portal_yellow_near");
 	PrecacheParticleSystem("portal_yellow_success");
+	PrecacheParticleSystem("portal_yellow_stolen");
 
 	PrecacheParticleSystem("portal_lightblue_particles");
 	PrecacheParticleSystem("portal_lightblue_edge");
@@ -489,6 +485,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_lightblue_cleanser");
 	PrecacheParticleSystem("portal_lightblue_near");
 	PrecacheParticleSystem("portal_lightblue_success");
+	PrecacheParticleSystem("portal_lightblue_stolen");
 
 	PrecacheParticleSystem("portal_purple_particles");
 	PrecacheParticleSystem("portal_purple_edge");
@@ -500,6 +497,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_purple_cleanser");
 	PrecacheParticleSystem("portal_purple_near");
 	PrecacheParticleSystem("portal_purple_success");
+	PrecacheParticleSystem("portal_purple_stolen");
 
 	PrecacheParticleSystem("portal_green_particles");
 	PrecacheParticleSystem("portal_green_edge");
@@ -511,6 +509,7 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_green_cleanser");
 	PrecacheParticleSystem("portal_green_near");
 	PrecacheParticleSystem("portal_green_success");
+	PrecacheParticleSystem("portal_green_stolen");
 
 	PrecacheParticleSystem("portal_pink_particles");
 	PrecacheParticleSystem("portal_pink_edge");
@@ -522,16 +521,17 @@ void CProp_Portal::Precache( void )
 	PrecacheParticleSystem("portal_pink_cleanser");
 	PrecacheParticleSystem("portal_pink_near");
 	PrecacheParticleSystem("portal_pink_success");
+	PrecacheParticleSystem("portal_pink_stolen");
 
 	BaseClass::Precache();
 }
 
 void C_Prop_Portal::UpdatePartitionListEntry()
 {
-	::partition->RemoveAndInsert(
+	::partition->RemoveAndInsert( 
 		PARTITION_CLIENT_SOLID_EDICTS | PARTITION_CLIENT_RESPONSIVE_EDICTS | PARTITION_CLIENT_NON_STATIC_EDICTS,  // remove
 		PARTITION_CLIENT_TRIGGER_ENTITIES,  // add
-		CollisionProp()->GetPartitionHandle());
+		CollisionProp()->GetPartitionHandle() );
 }
 
 bool C_Prop_Portal::TestCollision(const Ray_t &ray, unsigned int fContentsMask, trace_t& tr)
@@ -549,13 +549,13 @@ bool C_Prop_Portal::TestCollision(const Ray_t &ray, unsigned int fContentsMask, 
 
 void C_Prop_Portal::Activate( void )
 {
-//	if( m_pAttachedCloningArea == NULL )
-//		m_pAttachedCloningArea = C_PhysicsCloneArea::CreatePhysicsCloneArea( this );
+	if( m_pAttachedCloningArea == NULL )
+		m_pAttachedCloningArea = CPhysicsCloneArea::CreatePhysicsCloneArea( this );
 	
 	if( IsActive() && (m_hLinkedPortal.Get() != NULL) )
 	{
-		Vector ptCenter = GetAbsOrigin();
-		QAngle qAngles = GetAbsAngles();
+		Vector ptCenter = m_ptOrigin;
+		QAngle qAngles = m_qAbsAngle;
 		m_PortalSimulator.MoveTo( ptCenter, qAngles );
 
 		//resimulate everything we're touching
@@ -594,49 +594,112 @@ void C_Prop_Portal::Activate( void )
 
 	BaseClass::Activate();
 }
+#if 1
+void C_Prop_Portal::HandleClientSidedTouching( void )
+{
+	// The way normal client sided teleportation is done is very complicated, when you walk through, your position in space is technically not actually changed which is evident when you try to use
+	// a predicted weapon that shoots bullets, like the shotgun, you'll be able to see that no bullets appear before the client knows that it was teleported by the server.
+	// What really happens is that you walk through it and through clever rendering tricks, it gives the illusion that you walked through, but you are technically just moving beyond the portal plane.
+
+
+	// Copied from c_triggers.cpp
+	C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPortalPlayer();
+
+	if ( !pPlayer || !IsActive() || ( m_hLinkedPortal && !m_hLinkedPortal->IsActive() ) )
+	{
+		//SetNextClientThink(gpGlobals->curtime);
+		return;
+	}
+
+	// We don't use AbsOrigin because CalcPortalView transforms our view origin, not abs origin.
+	Vector vPlayerMins = pPlayer->GetPlayerMins() + MainViewOrigin() - GetViewOffset(); //pPlayer->GetAbsOrigin()
+	Vector vPlayerMaxs = pPlayer->GetPlayerMaxs() + MainViewOrigin() - GetViewOffset(); //pPlayer->GetAbsOrigin()
+
+	Vector vMins; //= CProp_Portal_Shared::vLocalMins + m_ptOrigin;
+	Vector vMaxs; //= CProp_Portal_Shared::vLocalMaxs + m_ptOrigin;
+	
+	CollisionProp()->WorldSpaceAABB( &vMins, &vMaxs );
+	
+	ConVarRef cam_command("cam_command"); // Doing extern ConVar cam_command won't work, for some reason...
+	
+	Vector vViewOrigin = cam_command.GetInt() == 0 ? MainViewOrigin() : GetAbsOrigin() + GetViewOffset();
+
+	if ( IsPointInBox(vViewOrigin, vMins, vMaxs) &&
+		IsActive() &&
+		m_hLinkedPortal.Get() &&
+		m_hLinkedPortal.Get()->IsActive() )
+	{
+		m_bEyePositionIsInPortalEnvironment = true;
+	}
+	else
+	{
+		m_bEyePositionIsInPortalEnvironment = false;
+	}
+	
+	if ( IsPointInBox(pPlayer->GetLocalOrigin(), vMins, vMaxs) && IsActive() && m_hLinkedPortal.Get() && m_hLinkedPortal.Get()->IsActive()  )
+	{
+		m_bPlayerOriginIsInPortalEnvironment = true;
+	}
+	else
+	{
+		m_bPlayerOriginIsInPortalEnvironment = false;
+	}
+}
+#endif
 
 void C_Prop_Portal::ClientThink( void )
 {
-
+	HandleClientSidedTouching();
+	HandleFakeTouch();
+	//HandleFakePhysicsTouch();
+	
 	SetupPortalColorSet();
 
-	bool bDidAnything = false;
-	if( m_fStaticAmount > 0.0f )
-	{
-		m_fStaticAmount -= gpGlobals->absoluteframetime;
-		if( m_fStaticAmount < 0.0f ) 
-			m_fStaticAmount = 0.0f;
+	if (m_pAttachedCloningArea)
+		m_pAttachedCloningArea->ClientThink();
 
-		bDidAnything = true;
+	if (m_bDoRenderThink)
+	{
+		bool bDidAnything = false;
+	
+		if( m_fStaticAmount > 0.0f )
+		{
+			m_fStaticAmount -= gpGlobals->absoluteframetime;
+			if( m_fStaticAmount < 0.0f ) 
+				m_fStaticAmount = 0.0f;
+
+			bDidAnything = true;
+		}
+		if( m_fSecondaryStaticAmount > 0.0f )
+		{
+			m_fSecondaryStaticAmount -= gpGlobals->absoluteframetime;
+			if( m_fSecondaryStaticAmount < 0.0f ) 
+				m_fSecondaryStaticAmount = 0.0f;
+
+			bDidAnything = true;
+		}
+
+		if( m_fOpenAmount < 1.0f )
+		{
+			m_fOpenAmount += gpGlobals->absoluteframetime * 2.0f;
+			if( m_fOpenAmount > 1.0f ) 
+				m_fOpenAmount = 1.0f;
+
+			bDidAnything = true;
+		}
+	
+		if( bDidAnything == false )
+		{
+			m_bDoRenderThink = false;
+			//SetNextClientThink( CLIENT_THINK_NEVER );
+		}
 	}
-	if( m_fSecondaryStaticAmount > 0.0f )
-	{
-		m_fSecondaryStaticAmount -= gpGlobals->absoluteframetime;
-		if( m_fSecondaryStaticAmount < 0.0f ) 
-			m_fSecondaryStaticAmount = 0.0f;
-
-		bDidAnything = true;
-	}
-
-	if( m_fOpenAmount < 1.0f )
-	{
-		m_fOpenAmount += gpGlobals->absoluteframetime * 2.0f;
-		if( m_fOpenAmount > 1.0f ) 
-			m_fOpenAmount = 1.0f;
-
-		bDidAnything = true;
-	}
-
-	if( bDidAnything == false )
-	{
-		SetNextClientThink( CLIENT_THINK_NEVER );
-	}	
 }
 
 void C_Prop_Portal::Simulate()
 {
 	BaseClass::Simulate();
-
+	
 	//clear list of ghosted entities from last frame, and clear the clipping planes we put on them
 	for( int i = m_hGhostingEntities.Count(); --i >= 0; )
 	{
@@ -669,19 +732,24 @@ void C_Prop_Portal::Simulate()
 
 	C_BaseEntity *pEntsNearPortal[1024];
 	int iEntsNearPortal = UTIL_EntitiesInSphere( pEntsNearPortal, 1024, GetNetworkOrigin(), PORTAL_HALF_HEIGHT, 0, PARTITION_CLIENT_NON_STATIC_EDICTS );
-
+		
 	if( iEntsNearPortal != 0 )
 	{
+
 		float fClipPlane[4];
 		fClipPlane[0] = m_plane_Origin.normal.x;
 		fClipPlane[1] = m_plane_Origin.normal.y;
 		fClipPlane[2] = m_plane_Origin.normal.z;
 		fClipPlane[3] = m_plane_Origin.dist - 0.3f;
-
+		
 		for( int i = 0; i != iEntsNearPortal; ++i )
 		{
 			C_BaseEntity *pEntity = pEntsNearPortal[i];
 			Assert( pEntity != NULL );
+
+			// Don't ghost ghosts.
+			//if ( dynamic_cast<C_PortalGhostRenderable*>( pEntity ) != NULL )
+			//	continue;		
 
 			bool bIsMovable = false;
 
@@ -709,7 +777,7 @@ void C_Prop_Portal::Simulate()
 
 			if( pEntity == pLocalPlayerViewModel )
 				continue; //avoid ghosting view models
-
+			
 			bool bActivePlayerWeapon = false;
 
 			C_BaseCombatWeapon *pWeapon = dynamic_cast<C_BaseCombatWeapon*>( pEntity );
@@ -763,6 +831,16 @@ void C_Prop_Portal::Simulate()
 #if 1
 	//now, fix up our list of ghosted renderables.
 	{
+		//The local player doesn't get a ghost renderable for some reason, hack time!
+		if (m_bPlayerIsInPortalEnvironment)
+		{
+			m_hGhostingEntities.AddToTail( pLocalPlayer );
+
+			if ( pLocalPlayer->GetActiveWeapon() )
+				m_hGhostingEntities.AddToTail( pLocalPlayer->GetActiveWeapon() );
+
+		}
+
 		bool *bStillInUse = (bool *)stackalloc( sizeof( bool ) * (m_GhostRenderables.Count() + m_hGhostingEntities.Count()) );
 		memset( bStillInUse, 0, sizeof( bool ) * (m_GhostRenderables.Count() + m_hGhostingEntities.Count()) );
 
@@ -792,6 +870,7 @@ void C_Prop_Portal::Simulate()
 			if ( pWeapon && ToPortalPlayer( pWeapon->GetOwner() ) )
 				bIsHeldWeapon = true;
 
+			
 			C_PortalGhostRenderable *pNewGhost = new C_PortalGhostRenderable( this,
 																				pRenderable, 
 																				pEntity->GetRenderGroup(), 
@@ -799,10 +878,10 @@ void C_Prop_Portal::Simulate()
 																				m_fGhostRenderablesClip,
 																				(pEntity == pLocalPlayer || bIsHeldWeapon) );
 			Assert( pNewGhost );
-
+			
 			bStillInUse[ m_GhostRenderables.AddToTail( pNewGhost ) ] = true;
 			pNewGhost->PerFrameUpdate();
-
+			
 			// HACK - I just copied the CClientTools::OnEntityCreated code here,
 			// since the ghosts aren't really entities - they don't have an entindex,
 			// they're not in the entitylist, and they get created during Simulate(),
@@ -817,6 +896,7 @@ void C_Prop_Portal::Simulate()
 
 				kv->deleteThis();
 			}
+			
 		}
 
 		//remove unused ghosts
@@ -902,13 +982,13 @@ void C_Prop_Portal::UpdateOnRemove( void )
 	g_pPortalRender->RemovePortal( this );
 
 	DestroyAttachedParticles();
-	/*
+	
 	if( m_pAttachedCloningArea )
 	{
-		m_pAttachedCloningArea->Remove();
+		delete m_pAttachedCloningArea;
 		m_pAttachedCloningArea = NULL;
 	}
-	*/
+	
 	C_Prop_Portal *pRemote = m_hLinkedPortal;
 	if (pRemote != NULL)
 	{
@@ -925,8 +1005,8 @@ void C_Prop_Portal::OnRestore( void )
 {
 	BaseClass::OnRestore();
 	
-//	Assert( m_pAttachedCloningArea == NULL );
-//	m_pAttachedCloningArea = C_PhysicsCloneArea::CreatePhysicsCloneArea( this );
+	Assert( m_pAttachedCloningArea == NULL );
+	m_pAttachedCloningArea = CPhysicsCloneArea::CreatePhysicsCloneArea( this );
 
 	if (ShouldCreateAttachedParticles())
 	{
@@ -988,7 +1068,7 @@ void C_Prop_Portal::OnPreDataChanged( DataUpdateType_t updateType )
 //ConVar r_portal_light_outerangle( "r_portal_light_outerangle", "90.0", FCVAR_CLIENTDLL );
 //ConVar r_portal_light_forward( "r_portal_light_forward", "0.0", FCVAR_CLIENTDLL );
 
-void C_Prop_Portal::HandleNetworkChanges( void )
+void C_Prop_Portal::HandleNetworkChanges( bool bForcedChanges )
 {
 	C_Prop_Portal *pRemote = m_hLinkedPortal;
 	m_pLinkedPortal = pRemote;
@@ -1029,7 +1109,7 @@ void C_Prop_Portal::HandleNetworkChanges( void )
 		}
 		g_pPortalRender->AddPortal( this ); //will know if we're already added and avoid adding twice
 		 
-		if (bPortalMoved || bActivityChanged)
+		if ( bPortalMoved || bActivityChanged || bForcedChanges )
 		{			
 			Vector ptForwardOrigin = m_ptOrigin + m_vForward;// * 3.0f;
 			Vector vScaledRight = m_vRight * (PORTAL_HALF_WIDTH * 0.95f);
@@ -1042,21 +1122,23 @@ void C_Prop_Portal::HandleNetworkChanges( void )
 			g_pPortalRender->RemovePortal(this);
 			g_pPortalRender->AddPortal(this); 
 
-//		if( m_pAttachedCloningArea )
-//			m_pAttachedCloningArea->UpdatePosition();
+		if( m_pAttachedCloningArea )
+			m_pAttachedCloningArea->UpdatePosition();
 
 			//update our associated portal environment
 			//CPortal_PhysicsEnvironmentMgr::CreateEnvironment( this );
 
 			m_fOpenAmount = 0.0f;
 			//m_fStaticAmount = 1.0f; // This will cause the portal we are opening to show the static effect
-			SetNextClientThink( CLIENT_THINK_ALWAYS ); //we need this to help open up
+			//SetNextClientThink( CLIENT_THINK_ALWAYS ); //we need this to help open up
+			m_bDoRenderThink = true;
 
 			//add static to the remote
 			if( pRemote )
 			{
 				pRemote->m_fStaticAmount = 1.0f; // This will cause the other portal to show the static effect
-				pRemote->SetNextClientThink( CLIENT_THINK_ALWAYS );
+				//pRemote->SetNextClientThink( CLIENT_THINK_ALWAYS );
+				pRemote->m_bDoRenderThink = true;
 			}
 
 			dlight_t *pFakeLight = NULL;
@@ -1125,23 +1207,23 @@ void C_Prop_Portal::HandleNetworkChanges( void )
 	if( (PreDataChanged.m_hLinkedTo.Get() != m_hLinkedPortal.Get()) && m_hLinkedPortal.Get() )
 		m_PortalSimulator.AttachTo( &m_hLinkedPortal.Get()->m_PortalSimulator );
 
-	if( bNewLinkage || bPortalMoved || bActivityChanged )
+	if( bNewLinkage || bPortalMoved || bActivityChanged || bForcedChanges )
 	{
 		//Warning_SpewCallStack( 10, "C_Portal_Base2D::HandleNetworkChanges( %.2f )\n", gpGlobals->curtime );
 		PortalMoved(); //updates link matrix and internals
 		UpdateOriginPlane();
 
-		if ( bPortalMoved )
+		if ( bPortalMoved || bForcedChanges )
 		{
 			OnPortalMoved();
 		}
 
-		if (bActivityChanged)
+		if ( bActivityChanged || bForcedChanges )
 		{
 			OnActiveStateChanged();
 		}
 
-		if( bNewLinkage )
+		if( bNewLinkage || bForcedChanges )
 		{
 			OnLinkageChanged( PreDataChanged.m_hLinkedTo.Get() );
 		}
@@ -1153,8 +1235,7 @@ void C_Prop_Portal::HandleNetworkChanges( void )
 }
 
 void C_Prop_Portal::OnDataChanged( DataUpdateType_t updateType )
-{
-	
+{	
 	BaseClass::OnDataChanged( updateType );
 	
 	if ( GetPredictable() && !ShouldPredict() )
@@ -1202,22 +1283,23 @@ int C_Prop_Portal::DrawModel( int flags )
 
 	int iRetVal = 0;
 
+	// This should fix all prediction errors, might be costly though.
+	if (IsActivedAndLinked())
+		PortalMoved();
+
 	C_Prop_Portal *pLinkedPortal = m_hLinkedPortal.Get();
 
 	if ( pLinkedPortal == NULL )
 	{
-		SetNextClientThink( CLIENT_THINK_ALWAYS ); // we need this to help fade out
+		//SetNextClientThink( CLIENT_THINK_ALWAYS ); // we need this to help fade out
+		m_bDoRenderThink = true;
 	}
-
-	//g_pPortalRender->m_iLinkageGroupID = m_iLinkageGroupID;
-
+	
 	SetupPortalColorSet();
 	
-	if ( g_pPortalRender->ShouldUseStencilsToRenderPortals() )
-	{
-		g_pPortalRender->SetPropPortal(this);
-				
-		DrawPortal(m_iPortalColorSet);
+	if ( !g_pPortalRender->ShouldUseStencilsToRenderPortals() )
+	{				
+		DrawPortal();
 	}
 
 
@@ -1313,9 +1395,20 @@ bool C_Prop_Portal::IsActivedAndLinked( void ) const
 
 void C_Prop_Portal::Touch(C_BaseEntity *pOther)
 {
-//	if( pOther->IsPlayer() )
-//		return;
-	
+	if ( 
+		//sv_portal_with_gamemovement.GetBool() && // Don't predict, it's a terrible idea
+		pOther->IsPlayer() )
+	{
+		( (CPortal_Player*)pOther )->m_hPortalLastEnvironment = this;
+		return;
+	}
+
+	if ( dynamic_cast< C_BaseCombatWeapon* >( pOther ) != NULL )
+		return;
+
+	BaseClass::Touch( pOther );
+	pOther->Touch( this );
+
 	// Don't do anything on touch if it's not active
 	if( !IsActive() || (m_hLinkedPortal.Get() == NULL) )
 	{
@@ -1365,20 +1458,32 @@ void C_Prop_Portal::Touch(C_BaseEntity *pOther)
 
 	if( ShouldTeleportTouchingEntity( pOther ) )
 		TeleportTouchingEntity( pOther );
-
-	return BaseClass::Touch( pOther );
 }
 
 void C_Prop_Portal::StartTouch(C_BaseEntity *pOther)
 {
-	if( pOther->IsPlayer() )
+	if ( 
+		//sv_portal_with_gamemovement.GetBool() && // Don't predict, it's a terrible idea
+		pOther->IsPlayer()
+		)
+	{
+		if (pOther == C_BasePlayer::GetLocalPlayer())
+			m_bPlayerIsInPortalEnvironment = true;
+		return;
+	}
+	
+	if ( dynamic_cast< C_BaseCombatWeapon* >( pOther ) != NULL )
 		return;
 
-	//Warning( "C_Portal_Base2D::StartTouch(%s)\n", pOther->GetClassname() );
 	BaseClass::StartTouch( pOther );
 
 	// Since prop_portal is a trigger it doesn't send back start touch, so I'm forcing it
 	pOther->StartTouch( this );
+	
+	if( sv_portal_debug_touch.GetBool() )
+	{
+		DevMsg( "(client)Portal %i StartTouch: %s : %f\n", ((m_bIsPortal2)?(2):(1)), pOther->GetClassname(), gpGlobals->curtime );
+	}
 
 	if( (m_hLinkedPortal == NULL) || (IsActive() == false) )
 		return;
@@ -1393,7 +1498,7 @@ void C_Prop_Portal::StartTouch(C_BaseEntity *pOther)
 		if( m_plane_Origin.normal.Dot( ptOtherCenter ) > m_plane_Origin.dist )
 		{
 			//we should be interacting with this object, add it to our environment
-			if( true )//SharedEnvironmentCheck( pOther ) )
+			if( SharedEnvironmentCheck( pOther ) )
 			{
 				Assert( ((m_PortalSimulator.GetLinkedPortalSimulator() == NULL) && (m_hLinkedPortal.Get() == NULL)) || 
 					(m_PortalSimulator.GetLinkedPortalSimulator() == &m_hLinkedPortal->m_PortalSimulator) ); //make sure this entity is linked to the same portal as our simulator
@@ -1410,10 +1515,19 @@ void C_Prop_Portal::StartTouch(C_BaseEntity *pOther)
 
 void C_Prop_Portal::EndTouch(C_BaseEntity *pOther)
 {
-	if( pOther->IsPlayer() )
+	if ( 
+		//sv_portal_with_gamemovement.GetBool() && // Don't predict, it's a terrible idea
+		pOther->IsPlayer()
+		)
+	{
+		if (pOther == C_BasePlayer::GetLocalPlayer())
+			m_bPlayerIsInPortalEnvironment = false;
+		return;
+	}
+	
+	if ( dynamic_cast< C_BaseCombatWeapon* >( pOther ) != NULL )
 		return;
 
-	//Warning( "C_Portal_Base2D::EndTouch(%s)\n", pOther->GetClassname() );
 	BaseClass::EndTouch( pOther );
 
 	// Since prop_portal is a trigger it doesn't send back end touch, so I'm forcing it
@@ -1424,10 +1538,15 @@ void C_Prop_Portal::EndTouch(C_BaseEntity *pOther)
 	{
 		return;
 	}
-
+	
 	if( ShouldTeleportTouchingEntity( pOther ) ) //an object passed through the plane and all the way out of the touch box
-	{
 		TeleportTouchingEntity( pOther );
+	else if( pOther->IsPlayer() && //player
+			(m_PortalSimulator.GetInternalData().Placement.vForward.z < -0.7071f) && //most likely falling out of the portal
+			(m_PortalSimulator.GetInternalData().Placement.PortalPlane.m_Normal.Dot( pOther->WorldSpaceCenter() ) < m_PortalSimulator.GetInternalData().Placement.PortalPlane.m_Dist) && //but behind the portal plane
+			(((CPortal_Player *)pOther)->m_Local.m_bInDuckJump) ) //while ducking
+	{
+		//TeleportTouchingEntity( pOther );
 	}
 	else
 	{
@@ -1453,11 +1572,11 @@ bool C_Prop_Portal::SharedEnvironmentCheck(C_BaseEntity *pEntity)
 
 	/*if( !m_hLinkedPortal->m_PortalSimulator.EntityIsInPortalHole( pEntity ) )
 	{
-	Vector vOtherVelocity;
-	pEntity->GetVelocity( &vOtherVelocity );
+		Vector vOtherVelocity;
+		pEntity->GetVelocity( &vOtherVelocity );
 
-	if( vOtherVelocity.Dot( m_PortalSimulator.GetInternalData().Placement.vForward ) < vOtherVelocity.Dot( m_hLinkedPortal->m_PortalSimulator.GetInternalData().Placement.vForward ) )
-	return true; //entity is going towards this portal more than the other
+		if( vOtherVelocity.Dot( m_PortalSimulator.GetInternalData().Placement.vForward ) < vOtherVelocity.Dot( m_hLinkedPortal->m_PortalSimulator.GetInternalData().Placement.vForward ) )
+			return true; //entity is going towards this portal more than the other
 	}*/
 	return false;
 
@@ -1493,8 +1612,8 @@ bool C_Prop_Portal::ShouldCreateAttachedParticles(void)
 void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 {
 	// Don't fizzle me if I moved from a location another portalgun shot
-	if (m_pPortalReplacingMe)
-		m_pPortalReplacingMe->m_pHitPortal = NULL;
+//	if (m_pPortalReplacingMe)
+//		m_pPortalReplacingMe->m_pHitPortal = NULL;
 	
 	if( IsActive() )
 	{
@@ -1503,12 +1622,15 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 		if( !(pLink && pLink->IsActive()) )
 		{
 			//no old link, or inactive old link
-
+			
 			if( pLink )
 			{
+				Vector vLinkOrigin = pLink->m_ptOrigin;
+				QAngle qLinkAngles = pLink->m_qAbsAngle;
+
 				//we had an old link, must be inactive
 				if( pLink->m_hLinkedPortal.Get() != NULL )
-					pLink->NewLocation(pLink->m_ptOrigin, pLink->m_qAbsAngle);
+					pLink->NewLocation( vLinkOrigin, qLinkAngles );
 
 				pLink = NULL;
 			}
@@ -1525,9 +1647,12 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 						continue;
 					if( pCurrentPortal->IsActive() && pCurrentPortal->m_hLinkedPortal.Get() == NULL )
 					{
+						Vector vCurrentOrigin = pCurrentPortal->m_ptOrigin;
+						QAngle qCurrentAngles = pCurrentPortal->m_qAbsAngle;
+
 						pLink = pCurrentPortal;
 						pCurrentPortal->m_hLinkedPortal = this;
-						pCurrentPortal->NewLocation(pCurrentPortal->m_ptOrigin, pCurrentPortal->m_qAbsAngle);
+						pCurrentPortal->NewLocation( vCurrentOrigin, qCurrentAngles );
 						break;
 					}
 				}
@@ -1564,8 +1689,9 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 		MatrixGetColumn( finalMatrix, 2, m_vUp );
 		m_vRight = -m_vRight;
 
-		m_ptOrigin = vOrigin;
-		m_qAbsAngle = qAngles;
+		//Predicting these is a terrible idea
+		//m_ptOrigin = vOrigin;
+		//m_qAbsAngle = qAngles;
 	}
 
 	AddEffects( EF_NOINTERP );
@@ -1589,8 +1715,8 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 		OnActiveStateChanged();
 	}
 
-	
-	m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
+	//Predicting this is a terrible idea
+	//m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
 
 	m_pLinkedPortal = m_hLinkedPortal;
 
@@ -1607,10 +1733,7 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 }
 
 void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelayedPos /*= true*/ )
-{
-	if( prediction->InPrediction() && !prediction->IsFirstTimePredicted() )
-		return; //early out if we're repeatedly creating particles. Creates way too many particles.
-	
+{	
 	if ( use_server_portal_particles.GetBool() )
 		return;
 
@@ -1688,11 +1811,11 @@ void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDela
 			//DispatchEffect( "PortalFizzleBadVolume", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_badvolume" ) : ( "portal_lightblue_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_badvolume" ) : ( "portal_lightblue_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 2)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_badvolume" ) : ( "portal_yellow_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_badvolume" ) : ( "portal_yellow_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 3)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_badvolume" ) : ( "portal_green_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_badvolume" ) : ( "portal_green_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_badvolume" ) : ( "portal_1_badvolume" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
@@ -1708,7 +1831,7 @@ void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDela
 			else if (m_iPortalColorSet == 3)
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_badsurface" ) : ( "portal_green_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			else
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_badsurface" ) : ( "portal_1_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_badsurface" ) : ( "portal_1_badsurface" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
 			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
 			break;
 			
@@ -1716,11 +1839,11 @@ void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDela
 			//DispatchEffect( "PortalFizzleKilled", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 2)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 3)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_close" ) : ( "portal_1_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = "Portal.fizzle_moved";
@@ -1744,11 +1867,11 @@ void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDela
 			//DispatchEffect( "PortalFizzleKilled", fxData );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_close" ) : ( "portal_lightblue_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 2)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_close" ) : ( "portal_yellow_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 3)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_close" ) : ( "portal_green_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_close" ) : ( "portal_1_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = ( ( m_bIsPortal2 ) ? ( "Portal.close_red" ) : ( "Portal.close_blue" ) );
@@ -1767,11 +1890,11 @@ void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDela
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			
 			if (iLinkageGroupID == 1)
-				DispatchParticleEffect( ( ( "portal_lightblue_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_lightblue_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (iLinkageGroupID == 2)
-				DispatchParticleEffect( ( ( "portal_yellow_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_yellow_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (iLinkageGroupID == 3)
-				DispatchParticleEffect( ( ( "portal_green_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_green_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( "portal_1_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
@@ -1791,11 +1914,11 @@ void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDela
 			AngleVectors( fxData.m_vAngles, &vForward, &vUp, NULL );
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (iLinkageGroupID == 1)
-				DispatchParticleEffect( ( ( "portal_purple_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_purple_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (iLinkageGroupID == 2)
-				DispatchParticleEffect( ( ( "portal_red_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_red_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (iLinkageGroupID == 3)
-				DispatchParticleEffect( ( ( "portal_pink_near" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( "portal_pink_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( "portal_2_near" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
@@ -1805,14 +1928,32 @@ void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDela
 		case PORTAL_FIZZLE_SUCCESS:
 			VectorAngles( vUp, vForward, fxData.m_vAngles );
 			if (m_iPortalColorSet == 1)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_success" ) : ( "portal_lightblue_success" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_success" ) : ( "portal_lightblue_success" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 2)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_success" ) : ( "portal_yellow_success" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_success" ) : ( "portal_yellow_success" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else if (m_iPortalColorSet == 3)
-				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_success" ) : ( "portal_green_success" ) ), fxData.m_vOrigin, fxData.m_vAngles, this );
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_success" ) : ( "portal_green_success" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_success" ) : ( "portal_1_success" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			// Don't make a sound!
+			return;
+			
+		case PORTAL_FIZZLE_STOLEN:
+			//DispatchEffect( "PortalFizzleBadSurface", fxData );
+			VectorAngles( vUp, vForward, fxData.m_vAngles );
+			if (m_iPortalColorSet == 1) // Purple / Light Blue
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_purple_stolen" ) : ( "portal_lightblue_stolen" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+			else if (m_iPortalColorSet == 2) // Red / Yellow
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_red_stolen" ) : ( "portal_yellow_stolen" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+			else if (m_iPortalColorSet == 3) // Pink / Green
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_pink_stolen" ) : ( "portal_green_stolen" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+			else // Default colors
+				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_stolen" ) : ( "portal_1_stolen" ) ), fxData.m_vOrigin, fxData.m_vAngles );
+			ep.m_pSoundName = "Portal.fizzle_invalid_surface";
+			break;
+
+		case PORTAL_FIZZLE_NONE:
+			// Don't do anything!
 			return;
 	}
 	
@@ -1844,18 +1985,9 @@ void C_Prop_Portal::Fizzle( void )
 bool C_Prop_Portal::ShouldPredict( void )
 {
 #if 1
-	{
-		C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer( );
-		if ( pLocalPlayer )
-		{
-			if ( m_hFiredByPlayer == pLocalPlayer )
-				return true;
 
-			CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>( pLocalPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
-			if ( pPortalGun && ((pPortalGun->GetAssociatedPortal( false ) == this) || (pPortalGun->GetAssociatedPortal( true ) == this)) )
-				return true;
-		}
-	}
+	if ( GetPredictionOwner()->IsLocalPlayer() )
+		return true;
 
 	return BaseClass::ShouldPredict();
 #else
@@ -1865,7 +1997,7 @@ bool C_Prop_Portal::ShouldPredict( void )
 
 C_BasePlayer *C_Prop_Portal::GetPredictionOwner( void )
 {
-#if 1
+#if 0 // Old, Portal 2's Method.
 	if ( m_hFiredByPlayer != NULL )
 		return (C_BasePlayer *)m_hFiredByPlayer.Get();
 
@@ -1874,8 +2006,8 @@ C_BasePlayer *C_Prop_Portal::GetPredictionOwner( void )
 
 		if ( pLocalPlayer )
 		{
-			CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>( pLocalPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
-			if ( pPortalGun && ((pPortalGun->GetAssociatedPortal( false ) == this) || (pPortalGun->GetAssociatedPortal( true ) == this)) )
+			CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>( pLocalPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
+			if ( pPortalGun && ((pPortalgun->GetAssociatedPortal( false ) == this) || (pPortalgun->GetAssociatedPortal( true ) == this)) )
 			{
 				m_hFiredByPlayer = pLocalPlayer;	// probably portal_place made this portal don't keep doing this
 				return pLocalPlayer;
@@ -1884,7 +2016,63 @@ C_BasePlayer *C_Prop_Portal::GetPredictionOwner( void )
 	}
 
 	return NULL;
-#else
+#else 
+
+#if 1
+	
+	// This is just in case the owner's linkage ID changes.
+	if (m_pPredictionOwner)
+	{
+		C_WeaponPortalgun *pPortalgun = dynamic_cast<C_WeaponPortalgun*>( m_pPredictionOwner->Weapon_OwnsThisType( "weapon_portalgun" ) );
+		if (pPortalgun)
+		{
+			if ( pPortalgun->m_iPortalLinkageGroupID != m_iLinkageGroupID )
+			{
+				m_pPredictionOwner = NULL;
+				return NULL;
+			}
+		}
+	}
+	
+	// Portal Coop's method.
+	C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer( );
+	if (pLocalPlayer)
+	{
+		C_WeaponPortalgun *pPortalgun = dynamic_cast<C_WeaponPortalgun*>( pLocalPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
+		if (pPortalgun)
+		{
+			if ( pPortalgun->m_iPortalLinkageGroupID == m_iLinkageGroupID )
+			{
+				m_pPredictionOwner = pLocalPlayer;
+				return pLocalPlayer;
+			}
+		}
+	}
+
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	{
+		C_BasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+		if (!pPlayer)
+			continue;
+		
+		C_WeaponPortalgun *pPortalgun = dynamic_cast<C_WeaponPortalgun*>( pPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
+		if (!pPortalgun)
+			continue;
+		
+		if ( pPortalgun->m_iPortalLinkageGroupID == m_iLinkageGroupID )
+		{
+			m_pPredictionOwner = pPlayer;
+			return pPlayer;
+		}
+	}
+
+	m_pPredictionOwner = NULL;
+	return NULL;
+#else // The I give up method.
+
+	return C_BasePlayer::GetLocalPlayer();
+
+#endif
 
 #endif
 }
@@ -1896,14 +2084,16 @@ void C_Prop_Portal::OnPortalMoved( void )
 		if( !GetPredictable() || (prediction->InPrediction() && prediction->IsFirstTimePredicted()) )
 		{
 			m_fOpenAmount = 0.0f;
-			SetNextClientThink( CLIENT_THINK_ALWAYS ); //we need this to help open up
+			//SetNextClientThink( CLIENT_THINK_ALWAYS ); //we need this to help open up
+			m_bDoRenderThink = true;
 				
 			C_Prop_Portal *pRemote = (C_Prop_Portal *)m_hLinkedPortal.Get();
 			//add static to the remote
 			if( pRemote )
 			{
 				pRemote->m_fStaticAmount = 1.0f; // This will cause the other portal to show the static effect
-				pRemote->SetNextClientThink( CLIENT_THINK_ALWAYS );
+				//pRemote->SetNextClientThink( CLIENT_THINK_ALWAYS );
+				pRemote->m_bDoRenderThink = true;
 			}
 		}
 	}
@@ -1913,23 +2103,29 @@ void C_Prop_Portal::OnActiveStateChanged( void )
 {
 	if( IsActive() )
 	{
-
 		CreateAttachedParticles();
+		/*
+		Msg("Portal %i ID: %i is now active.\n", m_bIsPortal2 ? 2 : 1, m_iLinkageGroupID );
+
+		IsPortalOverlappingOtherPortals( this, GetAbsOrigin(), GetAbsAngles(), true );
+		*/
 
 		// UpdateTransformedLighting();
 		if( !GetPredictable() || (prediction->InPrediction() && prediction->IsFirstTimePredicted()) )
 		{
 			m_fOpenAmount = 0.0f;
 			m_fStaticAmount = 1.0f;
-			SetNextClientThink( CLIENT_THINK_ALWAYS ); //we need this to help open up
+			//SetNextClientThink( CLIENT_THINK_ALWAYS ); //we need this to help open up
+			m_bDoRenderThink = true;
 
 			C_Prop_Portal *pRemote = (C_Prop_Portal *)m_hLinkedPortal.Get();
 			//add static to the remote
 			if( pRemote )
 			{
 				pRemote->m_fStaticAmount = 1.0f; // This will cause the other portal to show the static effect
-				pRemote->SetNextClientThink( CLIENT_THINK_ALWAYS );
-			}
+				//pRemote->SetNextClientThink( CLIENT_THINK_ALWAYS );
+				pRemote->m_bDoRenderThink = true;
+			}			
 		}
 	}
 	else
@@ -1987,6 +2183,8 @@ void C_Prop_Portal::OnLinkageChanged( C_Prop_Portal *pOldLinkage )
 void C_Prop_Portal::CreateAttachedParticles( void )
 {
 	DestroyAttachedParticles();
+
+	SetupPortalColorSet();
 
 	if ( use_server_portal_particles.GetBool() )
 		return;

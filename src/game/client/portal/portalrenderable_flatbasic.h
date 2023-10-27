@@ -53,7 +53,7 @@ public:
 	//When we're in a configuration that sees through recursive portal views to a depth of 2, we should be able to cheaply approximate even further depth using pixels from previous frames
 	virtual void	DrawDepthDoublerMesh( float fForwardOffsetModifier = 0.25f ); 
 
-	virtual void	DrawPortal( int iLinkageGroupID = 0 );
+	virtual void	DrawPortal( void );
 
 	virtual void	DrawPreStencilMask( void ); //Draw to wherever you can see through the portal. The mask will later be filled with the portal view.
 	virtual void	DrawStencilMask( void ); //Draw to wherever you can see through the portal. The mask will later be filled with the portal view.
@@ -80,8 +80,6 @@ public:
 	virtual CPortalRenderable *GetLinkedPortal() const { return m_pLinkedPortal; };
 	bool			CalcFrustumThroughPortal( const Vector &ptCurrentViewOrigin, Frustum OutputFrustum );
 	
-	unsigned char	m_iLinkageGroupID; //a group ID specifying which portals this one can possibly link to
-
 protected:
 	
 	void			ClipFixToBoundingAreaAndDraw( PortalMeshPoint_t *pVerts, const IMaterial *pMaterial );
@@ -114,8 +112,6 @@ protected:
 	FlatBasicPortal_InternalData_t m_InternallyMaintainedData;
 
 public:
-
-	inline unsigned char	GetLinkageGroup( void ) const { return m_iLinkageGroupID; };
 
 	CPortalRenderable_FlatBasic	*m_pLinkedPortal;
 	Vector			m_ptOrigin;

@@ -16,7 +16,7 @@
 #include "view_shared.h"
 #include "viewrender.h"
 
-//In Portal: Cooperative, you can theoretically have an infinite number of recursive views, these value needs to be lowered from 11 to 4
+//In Portal: Cooperative, you can theoretically have an infinite number of recursive views since max players can be 32, this value needs to be lowered from 11 to 4
 
 #define MAX_PORTAL_RECURSIVE_VIEWS 11 //maximum number of recursions we allow when drawing views through portals. Seeing as how 5 is extremely choppy under best conditions and is barely visible, 10 is a safe limit. Adding one because 0 tends to be the primary view in most arrays of this size
 
@@ -70,7 +70,7 @@ public:
 	virtual CPortalRenderable* GetLinkedPortal() const { return NULL; };
 	const VMatrix&	MatrixThisToLinked() const;
 	virtual bool	ShouldUpdateDepthDoublerTexture( const CViewSetup &viewSetup ) { return false; };
-	virtual void	DrawPortal( int iLinkageGroupID = 0 ) { }; //sort of like what you'd expect to happen in C_BaseAnimating::DrawModel() if portals were fully compatible with models
+	virtual void	DrawPortal( void ) { }; //sort of like what you'd expect to happen in C_BaseAnimating::DrawModel() if portals were fully compatible with models
 
 	virtual C_BaseEntity *PortalRenderable_GetPairedEntity( void ) { return NULL; }; //Pairing a portal with an entity is common but not required. Accessing that entity allows the CPortalRender system to better optimize.
 	VMatrix			m_matrixThisToLinked; //Always going to need a matrix
@@ -82,6 +82,12 @@ public:
 	bool			m_bIsPlaybackPortal;
 	virtual void	GetToolRecordingState( bool bActive, KeyValues *msg ) { };
 	virtual void	HandlePortalPlaybackMessage( KeyValues *pKeyValues ) { };
+
+
+	//-----------------------------------------------------------------------------
+	//prop_portal stuff
+	//-----------------------------------------------------------------------------
+	virtual C_Prop_Portal *GetPropPortal() { return NULL; };
 
 protected:
 	//-----------------------------------------------------------------------------
@@ -146,9 +152,6 @@ struct PortalViewIDNode_t
 	float fScreenFilledByPortalSurfaceLastFrame_Normalized;
 };
 
-
-class C_Prop_Portal;
-
 //-----------------------------------------------------------------------------
 // Portal rendering management class
 //-----------------------------------------------------------------------------
@@ -198,7 +201,7 @@ public:
 	void WaterRenderingHandler_PostRefraction() const;
 
 	// return value indicates that something was done, and render lists should be rebuilt afterwards
-	virtual bool DrawPortalsUsingStencils(CViewRender *pViewRender, int iLinkageGroupID );
+	virtual bool DrawPortalsUsingStencils( CViewRender *pViewRender );
 	
 	void DrawPortalsToTextures( CViewRender *pViewRender, const CViewSetup &cameraView ); //updates portal textures
 	void OverlayPortalRenderTargets( float w, float h );
@@ -223,14 +226,9 @@ public:
 	void AddPortalCreationFunc( const char *szPortalType, PortalRenderableCreationFunc creationFunc );
 
 	CViewSetup m_RecursiveViewSetups[MAX_PORTAL_RECURSIVE_VIEWS]; //before we recurse into a view, we backup the view setup here for reference
-
-	unsigned char			m_iLinkageGroupID; //a group ID specifying which portals this one can possibly link to
-
+	
 	// tests if the parameter ID is being used by portal pixel vis queries
 	bool IsPortalViewID( view_id_t id );
-
-	void SetPropPortal(C_Prop_Portal *pPortal) { m_pPropPortal = pPortal; }
-	C_Prop_Portal *GetPropPortal() { return m_pPropPortal; };
 	
 private:
 	struct RecordedPortalInfo_t
@@ -253,8 +251,6 @@ private:
 	CPortalRenderable* FindRecordedPortal( int nPortalId );
 
 	CUtlVector<PortalRenderableCreationFunction_t> m_PortalRenderableCreators; //for SFM compatibility
-
-	C_Prop_Portal *m_pPropPortal;
 
 private:
 	PortalRenderingMaterials_t	m_Materials;

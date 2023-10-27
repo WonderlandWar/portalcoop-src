@@ -2802,6 +2802,7 @@ void CViewRender::ViewDrawScene_PortalStencil( const CViewSetup &viewIn, ViewCus
 	// This doesn't fix it, not yet at least, it's way too messy to fix and I've perfected it to the best of my ability, perhaps someone else could fix it for me.
 	// NOTE: If you intend to fix this, move this function elsewhere because depth is only taken into account for the main view, portal view
 	// To elaborate, holding a box in front of you will block the glow effect, but holding a box in front of you while the box is on the other side of the portal will not block it, like normal.
+	// Glow effects should NEVER be blocked by anything unless that object is also glowing.
 	//GetClientModeNormal()->DoPostScreenSpaceEffects(&view, true);
 
 	// Draw rain..
@@ -4342,15 +4343,8 @@ void CRendering3dView::DrawTranslucentRenderables( bool bInSkybox, bool bShadowD
 	if( ShouldDrawPortals() ) //no recursive stencil views during skybox rendering (although we might be drawing a skybox while already in a recursive stencil view)
 	{
 		int iDrawFlagsBackup = m_DrawFlags;
-
-		int iLinkageGroupID = 0;
-
-		if ( g_pPortalRender && g_pPortalRender->GetPropPortal() )
-		{
-			iLinkageGroupID = g_pPortalRender->GetPropPortal()->GetLinkageGroup();
-		}
-
-		if( g_pPortalRender && g_pPortalRender->DrawPortalsUsingStencils( (CViewRender *)m_pMainView, iLinkageGroupID ) )// @MULTICORE (toml 8/10/2006): remove this hack cast
+		
+		if( g_pPortalRender && g_pPortalRender->DrawPortalsUsingStencils( (CViewRender *)m_pMainView ) )// @MULTICORE (toml 8/10/2006): remove this hack cast
 		{
 			m_DrawFlags = iDrawFlagsBackup;
 

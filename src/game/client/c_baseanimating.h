@@ -457,6 +457,12 @@ public:
 	virtual bool					IsViewModel() const;
 	virtual void					UpdateOnRemove( void );
 	
+	
+#ifdef GLOWS_ENABLE
+	void				SetClientSideGlowEnabled( bool bEnabled ){ m_bClientSideGlowEnabled = bEnabled; UpdateGlowEffect(); }
+	bool				IsClientSideGlowEnabled( void ){ return m_bClientSideGlowEnabled; }
+	bool				IsGlowEnabled( void ){ return m_bGlowEnabled; }
+#endif // GLOWS_ENABLE
 
 #ifdef GLOWS_ENABLE	
 	virtual void		UpdateGlowEffect( void );
