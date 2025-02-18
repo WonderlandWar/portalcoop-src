@@ -20,6 +20,8 @@
 #include <vgui_controls/Controls.h>
 #include <vgui_controls/Panel.h>
 
+#include "ienginevgui.h"
+
 #include "filesystem.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -104,7 +106,7 @@ bool CVGuiSystemModuleLoader::InitializeAllModules(CreateInterfaceFn *factorylis
 			Error("Platform Error: module failed to initialize\n");
 		}
 		
-		m_Modules[i].moduleInterface->SetParent(GetGameUIBasePanel());
+		m_Modules[i].moduleInterface->SetParent( enginevgui->GetPanel(PANEL_GAMEUIDLL) );
 	}
 
 	m_bModulesInitialized = true;

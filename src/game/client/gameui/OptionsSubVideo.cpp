@@ -9,12 +9,10 @@
 #include "OptionsSubVideo.h"
 #include "..\common\GameUI\cvarslider.h"
 #include "EngineInterface.h"
-#include "BasePanel_Simplified.h"
 #include "IGameUIFuncs.h"
 #include "modes.h"
 #include "materialsystem/materialsystem_config.h"
 #include "filesystem.h"
-#include "GameUI_Interface_Simplified.h"
 #include "vgui_controls/CheckButton.h"
 #include "vgui_controls/ComboBox.h"
 #include "vgui_controls/Frame.h"
@@ -47,6 +45,40 @@ extern COptionsDialog *OptionsDialog();
 #include "tier0/memdbgon.h"
 
 using namespace vgui;
+
+//-----------------------------------------------------------------------------
+// Purpose: returns true if we're currently playing the game
+//-----------------------------------------------------------------------------
+bool IsInLevel()
+{
+	const char *levelName = engine->GetLevelName();
+	if (levelName && levelName[0] && !engine->IsLevelMainMenuBackground())
+	{
+		return true;
+	}
+	return false;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: returns true if we're at the main menu and a background level is loaded
+//-----------------------------------------------------------------------------
+bool IsInBackgroundLevel()
+{
+	const char *levelName = engine->GetLevelName();
+	if (levelName && levelName[0] && engine->IsLevelMainMenuBackground())
+	{
+		return true;
+	}
+	return false;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: returns true if we're in a multiplayer game
+//-----------------------------------------------------------------------------
+bool IsInMultiplayer()
+{
+	return (IsInLevel() && engine->GetMaxClients() > 1);
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: aspect ratio mappings (for normal/widescreen combo)
@@ -969,11 +1001,11 @@ public:
 
 	bool RequiresRestart()
 	{
-		if ( GameUI().IsInLevel() )
+		if ( IsInLevel() )
 		{
-			if ( GameUI().IsInBackgroundLevel() )
+			if ( IsInBackgroundLevel() )
 				return false;
-			if ( !GameUI().IsInMultiplayer() )
+			if ( !IsInMultiplayer() )
 				return false;
 
 			ConVarRef mat_dxlevel( "mat_dxlevel" );
@@ -1754,7 +1786,7 @@ void COptionsSubVideo::OpenGammaDialog()
 //-----------------------------------------------------------------------------
 void COptionsSubVideo::LaunchBenchmark()
 {
-	BasePanel()->OnOpenBenchmarkDialog();
+	engine->ClientCmd_Unrestricted( "OpenBenchmarkDialog" );
 }
 
 //-----------------------------------------------------------------------------

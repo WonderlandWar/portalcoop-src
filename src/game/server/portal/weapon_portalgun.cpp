@@ -177,16 +177,21 @@ void CWeaponPortalgun::Drop(const Vector &vecVelocity)
 
 void CWeaponPortalgun::FizzleOwnedPortals()
 {
-
 	for (int i = 0; i <= 1; ++i)
 	{
 		if (i >= 2)
 			break;
 
 		bool bPortal2 = i == 1;
+
+		if ( bPortal2 && CanFirePortal2() )
+			continue;
+
+		if ( !bPortal2 && CanFirePortal1() )
+			continue;
 		
 		CProp_Portal *pPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, bPortal2 );
-		if (pPortal)
+		if ( pPortal )
 		{
 			pPortal->Fizzle();
 

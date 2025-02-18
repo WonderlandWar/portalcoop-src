@@ -36,15 +36,12 @@
 #include "ModInfo.h"
 #include "ienginevgui.h"
 
-extern CBasePanel	*g_pBasePanel;
 static COptionsDialog	*g_pOptionsDialog = NULL;
 
 using namespace vgui;
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include <tier0/memdbgon.h>
-
-extern CBasePanel *BasePanel();
 
 //-----------------------------------------------------------------------------
 // Purpose: singleton accessor

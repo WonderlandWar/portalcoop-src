@@ -25,8 +25,6 @@
 #include "TGAImagePanel.h"
 #include "MouseMessageForwardingPanel.h"
 
-#include "BasePanel_Simplified.h"
-
 #include "cdll_client_int.h"
 #include "ienginevgui.h"
 

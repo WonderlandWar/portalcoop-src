@@ -509,9 +509,6 @@
     <ClInclude Include="game_controls\vguitextwindow.h">
       <Filter>game_controls Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="gameui\BasePanel_Simplified.h">
-      <Filter>GameUI</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\game\shared\gameui\BonusMapsDatabase.h">
       <Filter>GameUI</Filter>
     </ClInclude>
@@ -519,12 +516,6 @@
       <Filter>GameUI</Filter>
     </ClInclude>
     <ClInclude Include="gameui\GameUI.h">
-      <Filter>GameUI</Filter>
-    </ClInclude>
-    <ClInclude Include="gameui\GameUI_Interface_Simplified.h">
-      <Filter>GameUI</Filter>
-    </ClInclude>
-    <ClInclude Include="gameui\gameui_util.h">
       <Filter>GameUI</Filter>
     </ClInclude>
     <ClInclude Include="gameui\GameUIPanel.h">
@@ -2203,16 +2194,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="gameui\BasePanel_Simplified.cpp">
-      <Filter>GameUI</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\game\shared\gameui\BonusMapsDatabase.cpp">
-      <Filter>GameUI</Filter>
-    </ClCompile>
-    <ClCompile Include="gameui\GameUI_Interface_Simplified.cpp">
-      <Filter>GameUI</Filter>
-    </ClCompile>
-    <ClCompile Include="gameui\gameui_util.cpp">
       <Filter>GameUI</Filter>
     </ClCompile>
     <ClCompile Include="..\..\common\imageutils.cpp">

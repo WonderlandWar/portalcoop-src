@@ -47,7 +47,7 @@ CBasePanel::CBasePanel( vgui::Panel *pParent, const char *panelName, int x, int 
 	m_nTextureSize[ 0 ] = 0;
 	m_nTextureSize[ 1 ] = 0;
 }
-/*
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -59,7 +59,6 @@ CBasePanel::~CBasePanel( void )
 		m_nBackgroundMaterial = -1;
 	}
 }
-*/
 
 //-----------------------------------------------------------------------------
 // Purpose: 
