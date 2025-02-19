@@ -16,7 +16,6 @@
 #include "tier0/memdbgon.h"
 
 IMPLEMENT_SERVERCLASS_ST( CHLMachineGun, DT_HLMachineGun )
-	SendPropInt(SENDINFO(m_nShotsFired)),
 END_SEND_TABLE()
 
 //=========================================================

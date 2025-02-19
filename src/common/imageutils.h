@@ -64,7 +64,7 @@ ConversionErrorType ImgUtl_StretchRGBAImage( const unsigned char *srcBuf, const 
 ConversionErrorType ImgUtl_PadRGBAImage( const unsigned char *srcBuf, const int srcWidth, const int srcHeight, unsigned char *destBuf, const int destWidth, const int destHeight );
 ConversionErrorType ImgUtl_ConvertTGAToVTF( const char *tgaPath, int nMaxWidth = -1, int nMaxHeight = -1 );
 ConversionErrorType ImgUtl_WriteGenericVMT( const char *vtfPath, const char *pMaterialsSubDir );
-ConversionErrorType ImgUtl_WriteRGBAAsPNGToBuffer( const unsigned char *pRGBAData, int nWidth, int nHeight, CUtlBuffer &bufOutData, int nStride = 0 );
+ConversionErrorType ImgUtl_WriteRGBAAsPNGToBuffer( const unsigned char *pRGBAData, int nWidth, int nHeight, CUtlBuffer &bufOutData, bool bIncludesAlpha = true );
 ConversionErrorType ImgUtl_WriteRGBAAsJPEGToBuffer( const unsigned char *pRGBAData, int nWidth, int nHeight, CUtlBuffer &bufOutData, int nStride = 0 );
 
 //
@@ -89,6 +89,9 @@ ConversionErrorType ImgUtl_SaveBitmapToBuffer( CUtlBuffer &fileData, const Bitma
 
 /// Load a PNG direct from memory buffer
 ConversionErrorType ImgUtl_LoadPNGBitmapFromBuffer( CUtlBuffer &fileData, Bitmap_t &bitmap );
+
+/// Get the size of a PNG from a buffer
+ConversionErrorType ImgUtl_GetPNGSize( CUtlBuffer &fileData, uint32_t &uWidth, uint32_t &uHeight );
 
 /// Save a bitmap in PNG format to memory buffer
 ConversionErrorType ImgUtl_SavePNGBitmapToBuffer( CUtlBuffer &fileData, const Bitmap_t &bitmap );

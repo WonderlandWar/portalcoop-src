@@ -1,0 +1,15 @@
+[vpc crc file version 3]
+_.HOST_WIN64.HOST_WINDOWS.SOURCESDK.VS2022.WINDOWS_/vpcgame:portal_
+PROJECT.vgui_controls.GAME..PLATFORM.win64
+478d8b51 vgui_controls.vpc
+64885018 ..\..\vpc_scripts\source_lib_base.vpc
+8ef6e028 ..\..\vpc_scripts\platform_dirs.vpc
+a75746b9 ..\..\vpc_scripts\source_base.vpc
+ef326a62 ..\..\vpc_scripts\definitions\win32_2010.def
+95656b18 ..\..\vpc_scripts\source_lib_win32_base.vpc
+0218a46e ..\..\vpc_scripts\version.vpc
+6d955e57 ..\..\vpc_scripts\source_lib_win32_debug.vpc
+90e4e754 ..\..\vpc_scripts\source_lib_win32_release.vpc
+0cebedfb ..\..\vpc_scripts\source_win32_base.vpc
+10b424ea ..\..\vpc_scripts\source_video_base.vpc
+b7a46bf5 ..\..\vpc_scripts\protobuf_builder.vpc

@@ -17,6 +17,7 @@
 #include "engine/IEngineTrace.h"
 #include "engine/IStaticPropMgr.h"
 #include "shared_classnames.h"
+#include "steam/steamuniverse.h"
 
 #ifdef CLIENT_DLL
 #include "cdll_client_int.h"
@@ -35,10 +36,6 @@ typedef CGameTrace trace_t;
 
 extern ConVar developer;	// developer mode
 
-#define CON_COMMAND( name, description ) \
-   static void name( const CCommand &args ); \
-   static ConCommand name##_command( #name, name, description ); \
-   static void name( const CCommand &args )
 
 //-----------------------------------------------------------------------------
 // Language IDs.
@@ -103,16 +100,10 @@ inline CBaseEntity *EntityFromEntityHandle( IHandleEntity *pHandleEntity )
 	IClientUnknown *pUnk = (IClientUnknown*)pHandleEntity;
 	return pUnk->GetBaseEntity();
 #else
-#ifndef _GAMECONSOLE
 	if ( staticpropmgr->IsStaticProp( pHandleEntity ) )
 		return NULL;
-#else
-	if ( !pHandleEntity || pHandleEntity->m_bIsStaticProp )
-		return NULL;
-#endif
 
 	IServerUnknown *pUnk = (IServerUnknown*)pHandleEntity;
-	Assert( !pUnk || pUnk->GetBaseEntity() );
 	return pUnk->GetBaseEntity();
 #endif
 }
@@ -253,67 +244,6 @@ private:
 // helper
 void DebugDrawLine( const Vector& vecAbsStart, const Vector& vecAbsEnd, int r, int g, int b, bool test, float duration );
 
-// Might be expensive for this to be inline...
-inline void UTIL_DrawDebugBox( Vector vMins, Vector vMaxs, float flTime = -1.0f )
-{	
-	Vector vCenter = vMins - vMaxs;
-
-	// Mins Height
-	Vector vert1;
-	vert1.x = vMaxs.x;
-	vert1.y = vMins.y;
-	vert1.z = vMins.z;
-
-	Vector vert2;
-	vert2.x = vMins.x;
-	vert2.y = vMaxs.y;
-	vert2.z = vMins.z;
-
-	Vector vert3;
-	vert3.x = vMaxs.x;
-	vert3.y = vMaxs.y;
-	vert3.z = vMins.z;
-
-	Vector vert4 = vMins;
-
-	// Maxs Height
-	Vector vert5;
-	vert5.x = vMins.x;
-	vert5.y = vMaxs.y;
-	vert5.z = vMaxs.z;
-
-	Vector vert6;
-	vert6.x = vMaxs.x;
-	vert6.y = vMins.y;
-	vert6.z = vMaxs.z;
-
-	Vector vert7;
-	vert7.x = vMins.x;
-	vert7.y = vMins.y;
-	vert7.z = vMaxs.z;
-
-	Vector vert8 = vMaxs;
-
-
-	// Top lines
-	DebugDrawLine( vert1, vert3, 255, 0, 0, true, flTime );
-	DebugDrawLine( vert3, vert2, 255, 0, 0, true, flTime );
-	DebugDrawLine( vert2, vert4, 255, 0, 0, true, flTime );
-	DebugDrawLine( vert4, vert1, 255, 0, 0, true, flTime );
-
-	// Bottom Lines
-	DebugDrawLine( vert5, vert7, 255, 0, 0, true, flTime );
-	DebugDrawLine( vert7, vert6, 255, 0, 0, true, flTime );
-	DebugDrawLine( vert6, vert8, 255, 0, 0, true, flTime );
-	DebugDrawLine( vert8, vert5, 255, 0, 0, true, flTime );
-
-	// In between
-	DebugDrawLine( vert1, vert6, 255, 0, 0, true, flTime );
-	DebugDrawLine( vert2, vert5, 255, 0, 0, true, flTime );
-	DebugDrawLine( vert3, vert8, 255, 0, 0, true, flTime );
-	DebugDrawLine( vert4, vert7, 255, 0, 0, true, flTime );
-}
-
 extern ConVar r_visualizetraces;
 
 inline void UTIL_TraceLine( const Vector& vecAbsStart, const Vector& vecAbsEnd, unsigned int mask, 
@@ -378,7 +308,7 @@ inline void UTIL_TraceHull( const Vector &vecAbsStart, const Vector &vecAbsEnd, 
 inline void UTIL_TraceRay( const Ray_t &ray, unsigned int mask, 
 						  const IHandleEntity *ignore, int collisionGroup, trace_t *ptr, ShouldHitFunc_t pExtraShouldHitCheckFn = NULL )
 {
-	CTraceFilterSimple traceFilter( ignore, collisionGroup );
+	CTraceFilterSimple traceFilter( ignore, collisionGroup, pExtraShouldHitCheckFn );
 
 	enginetrace->TraceRay( ray, mask, &traceFilter, ptr );
 	
@@ -414,9 +344,7 @@ void		UTIL_ParticleTracer( const char *pszTracerEffectName, const Vector &vecSta
 
 // Old style, non-particle system, tracers
 void		UTIL_Tracer( const Vector &vecStart, const Vector &vecEnd, int iEntIndex = 0, int iAttachment = TRACER_DONT_USE_ATTACHMENT, float flVelocity = 0, bool bWhiz = false, const char *pCustomTracerName = NULL, int iParticleID = 0 );
-#ifdef CLIENT_DLL
-void		UTIL_ClearTrace(trace_t &trace);
-#endif
+
 bool		UTIL_IsLowViolence( void );
 bool		UTIL_ShouldShowBlood( int bloodColor );
 void		UTIL_BloodDrips( const Vector &origin, const Vector &direction, int color, int amount );
@@ -432,46 +360,36 @@ void		UTIL_StringToFloatArray( float *pVector, int count, const char *pString );
 void		UTIL_StringToColor32( color32 *color, const char *pString );
 
 CBasePlayer *UTIL_PlayerByIndex( int entindex );
+// Helper for use with console commands and the like.
+// Returns NULL if not found or if the provided arg would match multiple players.
+// Currently accepts, in descending priority:
+//  - Formatted SteamID ([U:1:1234])
+//  - SteamID64 (76561123412341234)
+//  - Legacy SteamID (STEAM_0:1:1234)
+//  - UserID preceded by a pound (#4)
+//  - Partial name match (if unique)
+//  - UserID not preceded by a pound*
+//
+// *Does not count as ambiguous with higher priority items
+CBasePlayer* UTIL_PlayerByCommandArg( const char *arg );
 
-//=============================================================================
-// HPE_BEGIN:
-// [menglish] Added UTIL function for events in client win_panel which transmit the player as a user ID
-//=============================================================================
-CBasePlayer *UTIL_PlayerByUserId( int userID );
-//=============================================================================
-// HPE_END
-//=============================================================================
+CBasePlayer* UTIL_PlayerByUserId( int userID );
+CBasePlayer* UTIL_PlayerByName( const char *name ); // not case sensitive
+// Finds a player who has this non-ambiguous substring.  Also not case sensitive.
+CBasePlayer* UTIL_PlayerByPartialName( const char *name );
+
+// Get the name of a player for display, filtered for profanity and slurs
+char *UTIL_GetFilteredPlayerName( int iPlayerIndex, char *pszName );
+char *UTIL_GetFilteredPlayerName( const CSteamID &steamID, char *pszName );
+wchar_t *UTIL_GetFilteredPlayerNameAsWChar( int iPlayerIndex, const char *pszName, wchar_t *pwszName );
+wchar_t *UTIL_GetFilteredPlayerNameAsWChar( const CSteamID &steamID, const char *pszName, wchar_t *pwszName );
+
+// Get chat text filtered for profanity and slurs
+char *UTIL_GetFilteredChatText( int iPlayerIndex, char *pszText, int nTextBufferSize );
 
 // decodes a buffer using a 64bit ICE key (inplace)
 void		UTIL_DecodeICE( unsigned char * buffer, int size, const unsigned char *key);
 
-//assumes the object is already in a mostly passable space
-#define FL_AXIS_DIRECTION_NONE	( 0 )
-#define FL_AXIS_DIRECTION_X		( 1 << 0 )
-#define FL_AXIS_DIRECTION_NX	( 1 << 1 )
-#define FL_AXIS_DIRECTION_Y		( 1 << 2 )
-#define FL_AXIS_DIRECTION_NY	( 1 << 3 )
-#define FL_AXIS_DIRECTION_Z		( 1 << 4 )
-#define FL_AXIS_DIRECTION_NZ	( 1 << 5 )
-
-struct FindClosestPassableSpace_TraceAdapter_t;
-typedef void (*FN_RayTraceAdapterFunc)( const Ray_t &ray, trace_t *pResult, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter );
-typedef bool (*FN_PointIsOutsideWorld)( const Vector &vTest, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter );
-
-//derive from this to tack on additional data to your adapted functions
-struct FindClosestPassableSpace_TraceAdapter_t
-{
-	FN_RayTraceAdapterFunc pTraceFunc;
-	FN_PointIsOutsideWorld pPointOutsideWorldFunc;
-
-	ITraceFilter *pTraceFilter;
-	unsigned int fMask;
-};
-
-bool		UTIL_FindClosestPassableSpace( const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, unsigned int iIterations, Vector &vCenterOut, int nAxisRestrictionFlags, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter );
-bool		UTIL_FindClosestPassableSpace( const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, ITraceFilter *pTraceFilter, unsigned int fMask, unsigned int iIterations, Vector &vCenterOut, int nAxisRestrictionFlags = FL_AXIS_DIRECTION_NONE );
-bool		UTIL_FindClosestPassableSpace( CBaseEntity *pEntity, const Vector &vIndecisivePush, unsigned int fMask, unsigned int iIterations, Vector &vOriginOut, Vector *pStartingPosition = NULL, int nAxisRestrictionFlags = FL_AXIS_DIRECTION_NONE );
-bool		UTIL_FindClosestPassableSpace( CBaseEntity *pEntity, const Vector &vIndecisivePush, unsigned int fMask, Vector *pStartingPosition = NULL, int nAxisRestrictionFlags = FL_AXIS_DIRECTION_NONE );
 
 //--------------------------------------------------------------------------------------------------------------
 /**
@@ -565,19 +483,36 @@ inline float DistanceToRay( const Vector &pos, const Vector &rayStart, const Vec
 	}
 
 //--------------------------------------------------------------------------------------------------------------
-// This would do the same thing without requiring casts all over the place. Yes, it's a template, but 
-// DECLARE_AUTO_LIST requires a CUtlVector<T> anyway. TODO ask about replacing the macros with this.
-//template<class T>
-//class AutoList {
-//public:
-//	typedef CUtlVector<T*> AutoListType;
-//	static AutoListType& All() { return m_autolist; }
-//protected:
-//	AutoList() { m_autolist.AddToTail(static_cast<T*>(this)); }
-//	virtual ~AutoList() { m_autolist.FindAndFastRemove(static_cast<T*>(this)); }
-//private:
-//	static AutoListType m_autolist;
-//};
+// You can use this if you need an autolist without an extra interface type involved.
+// To use this, just inherit (class Mine : public TAutoList<Mine> {)
+template< class T >
+class TAutoList
+{
+public:
+	typedef CUtlVector< T* > AutoListType;
+
+	static AutoListType &GetAutoList()
+	{
+		return m_autolist;
+	}
+
+protected:
+	TAutoList()
+	{
+		m_autolist.AddToTail( static_cast< T* >( this ) );
+	}
+
+	virtual ~TAutoList()
+	{
+		m_autolist.FindAndFastRemove( static_cast< T* >( this ) );
+	}
+
+private:
+	static AutoListType m_autolist;
+};
+
+template< class T >
+CUtlVector< T* > TAutoList< T >::m_autolist;
 
 //--------------------------------------------------------------------------------------------------------------
 /**
@@ -707,9 +642,6 @@ class RealTimeCountdownTimer : public CountdownTimer
 char* ReadAndAllocStringValue( KeyValues *pSub, const char *pName, const char *pFilename = NULL );
 
 int UTIL_StringFieldToInt( const char *szValue, const char **pValueStrings, int iNumStrings );
-// From MapBase
-int UTIL_CountNumBitsSet( unsigned int nVar );
-int UTIL_CountNumBitsSet( uint64 nVar );
 
 //-----------------------------------------------------------------------------
 // Holidays
@@ -725,5 +657,40 @@ bool				UTIL_IsHolidayActive( /*EHoliday*/ int eHoliday );
 // holidays overlapping, the list order will act as priority.
 const char		   *UTIL_GetActiveHolidayString();
 
+const char *UTIL_GetRandomSoundFromEntry( const char* pszEntryName );
+
+/// Clamp and round float vals to int.  The values are in the 0...255 range.
+Color FloatRGBAToColor( float r, float g, float b, float a );
+float LerpFloat( float x0, float x1, float t );
+Color LerpColor( const Color &c0, const Color &c1, float t );
+
+// Global econ-level helper functionality.
+EUniverse GetUniverse();
+
+CSteamID SteamIDFromDecimalString( const char *pszUint64InDecimal );
+
+//-----------------------------------------------------------------------------
+// Try to parse an un-ambiguous steamID from a string
+//
+//  Accepts
+//  - Formatted SteamID ([U:1:1234])
+//  - SteamID64 (76561123412341234)
+//  - Legacy SteamID (STEAM_0:1:1234) (if bAllowSteam2)
+//-----------------------------------------------------------------------------
+CSteamID UTIL_SteamIDFromProperString( const char *pszInputRaw, bool bAllowSteam2 = true );
+
+//-----------------------------------------------------------------------------
+// Try to parse a string referring to a steam account to a CSteamID.
+//
+//   This is intended for fuzzy user input -- NOT guaranteed to find a unique
+//   or un-ambiugous result
+//-----------------------------------------------------------------------------
+CSteamID UTIL_GuessSteamIDFromFuzzyInput( const char *pszInputRaw, bool bCurrentUniverseOnly = true );
+
+// This will return the first active operation string it can find. In the case of multiple
+// operations overlapping, the list order will act as priority.
+const char		   *UTIL_GetActiveOperationString();
+
+const char *GetCleanMapName( const char *pszUnCleanMapName, char (&pszTmp)[256] );
 
 #endif // UTIL_SHARED_H

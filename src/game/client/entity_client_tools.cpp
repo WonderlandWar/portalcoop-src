@@ -562,9 +562,6 @@ void CClientTools::OnEntityDeleted( CBaseEntity *pEntity )
 		kv->deleteThis();
 	}
 
-	//This was pretty stupid to have lol - Wonderland_War / Mandrew
-	//CClientTools::OnEntityDeleted(pEntity);
-
 	DetachFromEntity( pEntity );
 }
 

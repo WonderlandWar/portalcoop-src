@@ -118,8 +118,6 @@ public:
 	int		OnTakeDamage( const CTakeDamageInfo &inputInfo );
 
 	virtual bool CanBeAnEnemyOf( CBaseEntity *pEnemy );
-	
-	const char *GetTracerType( void ) { return "AR2Tracer"; }
 
 	Class_T	Classify( void ) 
 	{
@@ -269,7 +267,7 @@ void CNPC_CeilingTurret::Precache( void )
 	PrecacheScriptSound( "NPC_CeilingTurret.Ping" );
 	PrecacheScriptSound( "NPC_CeilingTurret.Die" );
 
-	PrecacheScriptSound( "NPC_CeilingTurret.DryFire" );
+	PrecacheScriptSound( "NPC_FloorTurret.DryFire" );
 	
 	BaseClass::Precache();
 }
@@ -289,8 +287,7 @@ void CNPC_CeilingTurret::Spawn( void )
 	SetViewOffset( EyeOffset( ACT_IDLE ) );
 	m_flFieldOfView	= 0.0f;
 	m_takedamage	= DAMAGE_YES;
-	if (m_iHealth == 0)
-		m_iHealth = 1000;
+	m_iHealth		= 1000;
 	m_bloodColor	= BLOOD_COLOR_MECH;
 	
 	SetSolid( SOLID_BBOX );
@@ -299,7 +296,7 @@ void CNPC_CeilingTurret::Spawn( void )
 	SetHeight( CEILING_TURRET_RETRACT_HEIGHT );
 
 	AddFlag( FL_AIMTARGET );
-	AddEFlags( EFL_NO_DISSOLVE | EFL_NO_MEGAPHYSCANNON_RAGDOLL );
+	AddEFlags( EFL_NO_DISSOLVE );
 
 	SetPoseParameter( m_poseAim_Yaw, 0 );
 	SetPoseParameter( m_poseAim_Pitch, 0 );
@@ -674,7 +671,6 @@ void CNPC_CeilingTurret::ActiveThink( void )
 		//Fire the gun
 		if ( DotProduct( vecDirToEnemy, vecMuzzleDir ) >= 0.9848 ) // 10 degree slop
 		{
-			ResetActivity();
 			if ( m_spawnflags & SF_CEILING_TURRET_OUT_OF_AMMO )
 			{
 				SetActivity( (Activity) ACT_CEILING_TURRET_DRYFIRE );
@@ -814,7 +810,7 @@ void CNPC_CeilingTurret::Shoot( const Vector &vecSrc, const Vector &vecDirToEnem
 {
 	if ( m_spawnflags & SF_CEILING_TURRET_OUT_OF_AMMO )
 	{
-		EmitSound( "NPC_CeilingTurret.DryFire");
+		EmitSound( "NPC_FloorTurret.DryFire");
 		EmitSound( "NPC_CeilingTurret.Activate" );
 
   		if ( RandomFloat( 0, 1 ) > 0.7 )

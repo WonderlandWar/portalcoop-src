@@ -170,7 +170,7 @@ private:
 #ifndef HL2_EPISODIC
 	CBaseEntity *GetActor()		{ return m_hActor.Get();			}
 #endif
-	CBasePlayer *GetPlayer()	{ return AI_GetSinglePlayer();	}
+	CBasePlayer *GetPlayer()	{ return UTIL_GetLocalPlayer();	}
 
 	//---------------------------------
 

@@ -39,7 +39,7 @@ public:
 	// Player's network name
 	string_t	netname;
 	// 0:nothing, 1:force view angles, 2:add avelocity
-	FixAngleType_t	fixangle;
+	int			fixangle;
 	// delta angle for fixangle == FIXANGLE_RELATIVE
 	QAngle		anglechange;
 	// flag to single the HLTV/Replay fake client, not transmitted

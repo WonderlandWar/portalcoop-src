@@ -10,10 +10,12 @@
 #include "tier0/vprof.h"
 #include "KeyValues.h"
 #include "iachievementmgr.h"
+#include "gamestringpool.h"
 
 #ifdef CLIENT_DLL
 
 	#include "usermessages.h"
+	#include "c_user_message_register.h"
 
 #else
 
@@ -42,10 +44,6 @@ ConVar log_verbose_enable( "log_verbose_enable", "0", FCVAR_GAMEDLL, "Set to 1 t
 ConVar log_verbose_interval( "log_verbose_interval", "3.0", FCVAR_GAMEDLL, "Determines the interval (in seconds) for the verbose server log." );
 #endif // CLIENT_DLL
 
-ConVar sv_bonus_challenge( "sv_bonus_challenge", "0", FCVAR_REPLICATED, "Set to values other than 0 to select a bonus map challenge type." );
-ConVar sv_current_bonus_challenge( "sv_current_bonus_challenge", "0", FCVAR_REPLICATED | FCVAR_HIDDEN, "The current bonus challenge" );
-ConVar sv_bonus_progress( "sv_bonus_progress", "0", FCVAR_REPLICATED | FCVAR_HIDDEN, "The current bonus progress" );
-
 static CViewVectors g_DefaultViewVectors(
 	Vector( 0, 0, 64 ),			//VEC_VIEW (m_vView)
 								
@@ -73,9 +71,6 @@ IMPLEMENT_NETWORKCLASS_ALIASED( GameRulesProxy, DT_GameRulesProxy )
 
 // Don't send any of the CBaseEntity stuff..
 BEGIN_NETWORK_TABLE_NOBASE( CGameRulesProxy, DT_GameRulesProxy )
-
-
-
 END_NETWORK_TABLE()
 
 
@@ -121,51 +116,6 @@ void CGameRulesProxy::NotifyNetworkStateChanged()
 
 ConVar	old_radius_damage( "old_radiusdamage", "0.0", FCVAR_REPLICATED );
 
-BEGIN_NETWORK_TABLE_NOBASE( CGameRules, DT_GameRules )
-END_NETWORK_TABLE();
-
-BEGIN_SIMPLE_DATADESC( CGameRules )
-
-#ifdef GAME_DLL
-	DEFINE_FIELD( m_bPauseBonusProgress, FIELD_BOOLEAN ),
-#endif
-
-END_DATADESC()
-
-#ifdef GAME_DLL
-void CGameRules::PauseBonusProgress( bool bPause )
-{
-	m_bPauseBonusProgress = bPause;
-}
-
-void CGameRules::SetBonusProgress( int iBonusProgress )
-{
-
-	//Msg("iBonusProgress: %i\n", iBonusProgress);
-
-	if ( !m_bPauseBonusProgress )
-		sv_bonus_progress.SetValue( iBonusProgress );
-}
-
-void CGameRules::SetBonusChallenge( int iBonusChallenge )
-{
-	//Msg("iBonusChallenge: %i\n", iBonusChallenge);
-	//m_iBonusChallenge = iBonusChallenge;
-	sv_current_bonus_challenge.SetValue(iBonusChallenge);
-	//Msg("m_iBonusChallenge: %i\n", m_iBonusChallenge);
-}
-#endif
-
-int CGameRules::GetBonusProgress() const
-{
-	return sv_bonus_progress.GetInt();
-}
-
-int CGameRules::GetBonusChallenge() const
-{
-	return sv_current_bonus_challenge.GetInt();
-}
-
 #ifdef CLIENT_DLL //{
 
 bool CGameRules::IsBonusChallengeTimeBased( void )
@@ -206,11 +156,6 @@ CGameRules::CGameRules() : CAutoGameSystemPerFrame( "CGameRules" )
 	ClearMultiDamage();
 
 	m_flNextVerboseLogOutput = 0.0f;
-	
-	SetBonusChallenge(sv_bonus_challenge.GetInt());
-	sv_bonus_challenge.SetValue( 0 );
-
-	m_bPauseBonusProgress = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -705,8 +650,17 @@ void CGameRules::MarkAchievement( IRecipientFilter& filter, char const *pchAchie
 
 CGameRules::~CGameRules()
 {
+	RevertSavedConvars();
+
 	Assert( g_pGameRules == this );
 	g_pGameRules = NULL;
+}
+
+void CGameRules::LevelShutdownPostEntity()
+{
+#ifdef CLIENT_DLL
+	RevertSavedConvars();
+#endif
 }
 
 bool CGameRules::SwitchToNextBestWeapon( CBaseCombatCharacter *pPlayer, CBaseCombatWeapon *pCurrentWeapon )
@@ -934,4 +888,73 @@ CTacticalMissionManager *CGameRules::TacticalMissionManagerFactory( void )
 	return new CTacticalMissionManager;
 }
 
+#endif
+
+void CGameRules::SaveConvar( const ConVarRef & cvar )
+{
+	Assert( cvar.IsValid() );
+
+	const string_t cvarName = AllocPooledString( cvar.GetName() );
+	if ( HasSavedConvar( cvarName ) )
+		return;
+
+#ifdef GAME_DLL
+	// Send saved replicated convars to the client so that it can reset them if the player disconnects during the mission.
+	if ( cvar.IsFlagSet( FCVAR_REPLICATED ) )
+	{
+		CReliableBroadcastRecipientFilter filter;
+		UserMessageBegin( filter, "SavedConvar" );
+		WRITE_STRING( cvar.GetName() );
+		MessageEnd();
+	}
+#endif
+	m_SavedConvars.AddToTail( cvarName );
+}
+
+void CGameRules::RevertSavedConvars()
+{
+	// revert saved convars
+	FOR_EACH_VEC( m_SavedConvars, iter )
+	{
+		const char *pszName = STRING( m_SavedConvars[ iter ] );
+		ConVarRef cvar( pszName );
+		if ( cvar.IsValid() )
+		{
+			//Msg( ">>> [%s] Revert %s: %s -> %s\n", (IsServerDll()?"SV":"CL"), cvar.GetName(), cvar.GetString(), cvar.GetDefault() );
+			cvar.SetValue( cvar.GetDefault() );
+		}
+	}
+	m_SavedConvars.Purge();
+}
+
+bool CGameRules::HasSavedConvar( const string_t cvarName )
+{
+	int idx = m_SavedConvars.Find( cvarName );
+	return idx != m_SavedConvars.InvalidIndex();
+}
+
+#ifdef CLIENT_DLL
+void __MsgFunc_SavedConvar( bf_read &msg )
+{
+	Assert( GameRules() );
+	if ( !GameRules() )
+	{
+		return;
+	}
+
+	char szKey[ 2048 ];
+	bool bReadKey = msg.ReadString( szKey, sizeof( szKey ) );
+	Assert( bReadKey );
+	if ( bReadKey )
+	{
+		ConVarRef cvar( szKey );
+		Assert( cvar.IsValid() );
+		Assert( cvar.IsFlagSet( FCVAR_REPLICATED ) );
+		if ( cvar.IsValid() && cvar.IsFlagSet( FCVAR_REPLICATED ) )
+		{
+			GameRules()->SaveConvar( cvar );
+		}
+	}
+}
+USER_MESSAGE_REGISTER( SavedConvar );
 #endif

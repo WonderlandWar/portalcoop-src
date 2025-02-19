@@ -51,13 +51,6 @@ enum stepsoundtimes_t
 	STEPSOUNDTIME_WATER_FOOT,
 };
 
-enum
-{
-	VPHYS_WALK = 0,
-	VPHYS_CROUCH,
-	VPHYS_NOCLIP,
-};
-
 void CopySoundNameWithModifierToken( char *pchDest, const char *pchSource, int nMaxLenInChars, const char *pchToken );
 
 // Shared header file for players

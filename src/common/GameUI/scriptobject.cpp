@@ -7,7 +7,6 @@
 //===========================================================================//
 // CScriptObject and CDescription class definitions
 // 
-#include "cbase.h"
 #include "scriptobject.h"
 #include <time.h>
 #include <stdio.h>
@@ -16,6 +15,7 @@
 #include "filesystem.h"
 #include "tier1/convar.h"
 #include "cdll_int.h"
+#include "vgui/IVGui.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -64,6 +64,7 @@ objtypedesc_t objtypes[] =
 	{ O_OBSOLETE  , "OBSOLETE" }, 
 	{ O_SLIDER , "SLIDER" }, 
 	{ O_CATEGORY, "CATEGORY" }, 
+	{ O_BUTTON, "BUTTON" }, 
 };
 
 mpcontrol_t::mpcontrol_t( Panel *parent, char const *panelName )
@@ -279,7 +280,7 @@ void CScriptObject::WriteToScriptFile( FileHandle_t fp )
 	{
 	case O_BOOL:
 		g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", prompt );
-		if ( tooltip && tooltip[0] )
+		if ( tooltip[0] )
 		{
 			g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", tooltip );
 		}
@@ -288,7 +289,7 @@ void CScriptObject::WriteToScriptFile( FileHandle_t fp )
 		break;
 	case O_NUMBER:
 		g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", prompt );
-		if ( tooltip && tooltip[0] )
+		if ( tooltip[0] )
 		{
 			g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", tooltip );
 		}
@@ -297,7 +298,7 @@ void CScriptObject::WriteToScriptFile( FileHandle_t fp )
 		break;
 	case O_STRING:
 		g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", prompt );
-		if ( tooltip && tooltip[0] )
+		if ( tooltip[0] )
 		{
 			g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", tooltip );
 		}
@@ -307,7 +308,7 @@ void CScriptObject::WriteToScriptFile( FileHandle_t fp )
 		break;
 	case O_LIST:
 		g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", prompt );
-		if ( tooltip && tooltip[0] )
+		if ( tooltip[0] )
 		{
 			g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", tooltip );
 		}
@@ -329,7 +330,7 @@ void CScriptObject::WriteToScriptFile( FileHandle_t fp )
 		break;
 	case O_SLIDER:
 		g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", prompt );
-		if ( tooltip && tooltip[0] )
+		if ( tooltip[0] )
 		{
 			g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", tooltip );
 		}
@@ -338,11 +339,21 @@ void CScriptObject::WriteToScriptFile( FileHandle_t fp )
 		break;
 	case O_CATEGORY:
 		g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", prompt );
-		if ( tooltip && tooltip[0] )
+		if ( tooltip[0] )
 		{
 			g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", tooltip );
 		}
 		g_pFullFileSystem->FPrintf( fp, "\t\t{ CATEGORY }\r\n" );
+		break;
+	case O_BUTTON:
+		g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", prompt );
+		if ( tooltip[ 0 ] )
+		{
+			g_pFullFileSystem->FPrintf( fp, "\t\t\"%s\"\r\n", tooltip );
+		}
+		g_pFullFileSystem->FPrintf( fp, "\t\t{ BUTTON }\r\n" );
+		FixupString( curValue, sizeof( curValue ) );
+		g_pFullFileSystem->FPrintf( fp, "\t\t{ \"%s\" }\r\n", curValue );
 		break;
 	}
 
@@ -354,7 +365,7 @@ void CScriptObject::WriteToScriptFile( FileHandle_t fp )
 
 void CScriptObject::WriteToFile( FileHandle_t fp )
 {
-	if ( type == O_OBSOLETE || type == O_CATEGORY )
+	if ( type == O_OBSOLETE || type == O_CATEGORY || type == O_BUTTON )
 		return;
 
 	FixupString( cvarname, sizeof( cvarname ) );
@@ -406,7 +417,7 @@ void CScriptObject::WriteToFile( FileHandle_t fp )
 
 void CScriptObject::WriteToConfig( void )
 {
-	if ( type == O_OBSOLETE || type == O_CATEGORY )
+	if ( type == O_OBSOLETE || type == O_CATEGORY || type == O_BUTTON )
 		return;
 
 	char *pszKey;
@@ -589,6 +600,8 @@ bool CScriptObject::ReadFromBuffer( const char **pBuffer, bool isNewObject )
 	{
 	case O_OBSOLETE:
 	case O_BOOL:
+	case O_STRING:
+	case O_BUTTON:
 		// Parse the next {
 		*pBuffer = engine->ParseFile( *pBuffer, token, sizeof( token ) );
 		if ( strlen( token ) <= 0 )
@@ -622,18 +635,6 @@ bool CScriptObject::ReadFromBuffer( const char **pBuffer, bool isNewObject )
 			fMax = (float)atof( token );
 		}
 
-		// Parse the next {
-		*pBuffer = engine->ParseFile( *pBuffer, token, sizeof( token ) );
-		if ( strlen( token ) <= 0 )
-			return false;
-
-		if ( strcmp( token, "}" ) )
-		{
-			Msg( "Expecting '{', got '%s'", token );
-			return false;
-		}
-		break;
-	case O_STRING:
 		// Parse the next {
 		*pBuffer = engine->ParseFile( *pBuffer, token, sizeof( token ) );
 		if ( strlen( token ) <= 0 )
@@ -1036,10 +1037,10 @@ void CDescription::TransferCurrentValues( const char *pszConfigFile )
 		}
 		*/
 
-		ConVarRef var( pObj->cvarname, true );
+		UIConVarRef var( g_pVGui->GetVGUIEngine(), pObj->cvarname, true );
 		if ( !var.IsValid() )
 		{
-			if ( pObj->type != O_CATEGORY )
+			if ( pObj->type != O_CATEGORY && pObj->type != O_BUTTON )
 			{
 				DevMsg( "Could not find '%s'\n", pObj->cvarname );
 			}

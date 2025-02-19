@@ -253,7 +253,7 @@ public:
 	virtual void ApplySettings( KeyValues *inResourceData );
 	virtual void ApplySchemeSettings( vgui::IScheme *pScheme );
 
-	//void	UpdateDetailsForItem( const CEconItemDefinition *pDef );
+	void	UpdateDetailsForItem( const CEconItemDefinition *pDef );
 
 	void	AllowItemSetLinks( bool bAllow )	{ m_bAllowItemSetLinks = bAllow; }
 
@@ -262,7 +262,6 @@ public:
 private:
 	void	InsertItemLink( const wchar_t *pwzItemName, int nItemIndex, Color *pColorOverride = NULL );
 	void	AddDataText( const char *pszText, bool bAddPostLines = true, const wchar_t *wpszArg = NULL, const wchar_t *wpszArg2 = NULL, const int *pItemDefIndex = NULL );
-	/*
 	void	DataText_AppendStoreFlags( const CEconItemDefinition *pDef );
 	void	DataText_AppendItemData( const CEconItemDefinition *pDef );
 	void	DataText_AppendBundleData( const CEconItemDefinition *pDef );
@@ -270,7 +269,6 @@ private:
 	void	DataText_AppendAttributeData( const CEconItemDefinition *pDef );
 	void	DataText_AppendSetData( const CEconItemDefinition *pDef );
 	void	DataText_AppendToolUsage( const CEconItemDefinition *pDef );
-	*/
 	void	UpdateToolList( void );
 
 private:
@@ -279,8 +277,7 @@ private:
 	Color	m_colLink;
 	bool	m_bAllowItemSetLinks;
 	vgui::HFont	m_hLinkFont;
-
-//	CUtlVector<item_definition_index_t>	m_ToolList;
+	CUtlVector<item_definition_index_t>	m_ToolList;
 
 	bool	m_bLimitedItem;
 };
@@ -340,11 +337,13 @@ public:
 	const char	*GetNextExplanation( void ) { return m_szNextExplanation; }
 	void	SetPrevExplanation( const char *pszPrev );
 
+	virtual void ApplySchemeSettings( vgui::IScheme *pScheme ) OVERRIDE;
 	virtual void ApplySettings( KeyValues *inResourceData );
 	virtual void OnCommand( const char *command );
 	virtual void OnTick( void );
 	virtual void OnKeyCodeTyped( vgui::KeyCode code );
 	virtual void OnKeyCodePressed( vgui::KeyCode code );
+	virtual void OnSizeChanged( int newWide, int newTall ) OVERRIDE;
 
 	void	PositionCallout( float flElapsed );
 	virtual void	FireGameEvent( IGameEvent *event );
@@ -360,7 +359,11 @@ private:
 	int		m_iTotalInChain;
 	bool	m_bFinishedPopup;
 
+	CUtlString m_strTitle;
+	CUtlString m_strBody;
+
 	CPanelAnimationVar( bool, m_bForceClose, "force_close", "0" );
+	CPanelAnimationVar( bool, m_bUseResFileForControls, "res_file_controls", "0" );
 
 	CPanelAnimationVarAliasType( int, m_iCalloutInParentsX, "callout_inparents_x", "0", "proportional_xpos" );
 	CPanelAnimationVarAliasType( int, m_iCalloutInParentsY, "callout_inparents_y", "0", "proportional_ypos" );

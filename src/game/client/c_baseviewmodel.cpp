@@ -100,6 +100,12 @@ void C_BaseViewModel::FormatViewModelAttachment( int nAttachment, matrix3x4_t &a
 	PositionMatrix( vecOrigin, attachmentToWorld );
 }
 
+
+bool C_BaseViewModel::IsViewModel() const
+{
+	return true;
+}
+
 void C_BaseViewModel::UncorrectViewModelAttachment( Vector &vOrigin )
 {
 	// Unformat the attachment.
@@ -299,6 +305,17 @@ int C_BaseViewModel::DrawModel( int flags )
 		
 	C_BasePlayer *pPlayer = C_BasePlayer::GetLocalPlayer();
 	C_BaseCombatWeapon *pWeapon = GetOwningWeapon();
+
+#ifdef TF_CLIENT_DLL
+	CTFWeaponBase* pTFWeapon = dynamic_cast<CTFWeaponBase*>( pWeapon );
+	if ( ( flags & STUDIO_RENDER ) && pTFWeapon && pTFWeapon->m_viewmodelStatTrakAddon )
+	{
+		pTFWeapon->m_viewmodelStatTrakAddon->RemoveEffects( EF_NODRAW );
+		pTFWeapon->m_viewmodelStatTrakAddon->DrawModel( flags );
+		pTFWeapon->m_viewmodelStatTrakAddon->AddEffects( EF_NODRAW );
+	}
+#endif
+
 	int ret;
 	// If the local player's overriding the viewmodel rendering, let him do it
 	if ( pPlayer && pPlayer->IsOverridingViewmodel() )
@@ -327,16 +344,6 @@ int C_BaseViewModel::DrawModel( int flags )
 			pWeapon->ViewModelDrawn( this );
 		}
 	}
-
-#ifdef TF_CLIENT_DLL
-	CTFWeaponBase* pTFWeapon = dynamic_cast<CTFWeaponBase*>( pWeapon );
-	if ( ( flags & STUDIO_RENDER ) && pTFWeapon && pTFWeapon->m_viewmodelStatTrakAddon )
-	{
-		pTFWeapon->m_viewmodelStatTrakAddon->RemoveEffects( EF_NODRAW );
-		pTFWeapon->m_viewmodelStatTrakAddon->DrawModel( flags );
-		pTFWeapon->m_viewmodelStatTrakAddon->AddEffects( EF_NODRAW );
-	}
-#endif
 
 	return ret;
 }

@@ -7,10 +7,6 @@
 #include "gamemovement.h"
 #include "func_ladder.h"
 
-#ifdef WIN32
-#pragma once
-#endif
-
 #if defined( CLIENT_DLL )
 
 #include "c_basehlplayer.h"
@@ -41,12 +37,17 @@ public:
 	CHL2GameMovement();
 
 // Overrides
+	virtual void ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMove ) OVERRIDE;
+	virtual void CheckParameters( void ) OVERRIDE;
+	virtual void ReduceTimers( void ) OVERRIDE;
 	virtual void FullLadderMove();
 	virtual bool LadderMove( void );
 	virtual bool OnLadder( trace_t &trace );
 	virtual int GetCheckInterval( IntervalType_t type );
 	virtual void	SetGroundEntity( trace_t *pm );
 	virtual bool CanAccelerate( void );
+
+	virtual float MaxSpeed();
 
 private:
 
@@ -119,8 +120,16 @@ inline void CHL2GameMovement::SetLadder( CFuncLadder *ladder )
 		oldLadder->PlayerGotOff( GetHL2Player() );
 	}
 
-
 	GetHL2Player()->m_HL2Local.m_hLadder.Set( ladder );
+
+#ifdef CLIENT_DLL
+	// misyl: Look for ladder dismount points when we get one one on the client.
+	// (Matches ::Activate behaviour on the server... as best we can!)
+	if ( ladder )
+	{
+		ladder->SearchForDismountPoints();
+	}
+#endif
 }
 
 //-----------------------------------------------------------------------------

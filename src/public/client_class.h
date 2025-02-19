@@ -55,7 +55,6 @@ public:
 		m_pCreateFn		= createFn;
 		m_pCreateEventFn= createEventFn;
 		m_pRecvTable	= pRecvTable;
-		m_pMapClassname = NULL;
 		
 		// Link it in
 		m_pNext				= g_pClientClassHead;
@@ -74,14 +73,19 @@ public:
 	RecvTable				*m_pRecvTable;
 	ClientClass				*m_pNext;
 	int						m_ClassID;	// Managed by the engine.
-	const char				*m_pMapClassname;
 };
 
-#define DECLARE_CLIENTCLASS() \
-	virtual int YouForgotToImplementOrDeclareClientClass();\
-	virtual ClientClass* GetClientClass();\
-	static RecvTable *m_pClassRecvTable; \
+#define DECLARE_CLIENTCLASS_IMPL( MAYBE_OVERRIDE )                         \
+	virtual int YouForgotToImplementOrDeclareClientClass() MAYBE_OVERRIDE; \
+	virtual ClientClass* GetClientClass() MAYBE_OVERRIDE;                  \
+	static RecvTable *m_pClassRecvTable;                                   \
 	DECLARE_CLIENTCLASS_NOBASE()
+#define DECLARE_CLIENTCLASS() \
+	DECLARE_CLIENTCLASS_IMPL( /* override */; )
+// With warnings set to inconsistent-override, marking this properly as override would create warnings in all old files.
+// Instead, as files are converted to use override, just upgrade to this
+#define DECLARE_CLIENTCLASS_OVERRIDE() \
+	DECLARE_CLIENTCLASS_IMPL( OVERRIDE )
 
 
 // This can be used to give all datatables access to protected and private members of the class.

@@ -298,40 +298,6 @@ END_DATADESC()
 
 
 // ###################################################################
-//	> FilterClass
-// ###################################################################
-class CFilterPlayerIndex: public CBaseFilter
-{
-	DECLARE_CLASS( CFilterPlayerIndex, CBaseFilter );
-	DECLARE_DATADESC();
-
-public:
-	int m_iPlayerIndex;
-
-	bool PassesFilterImpl( CBaseEntity *pCaller, CBaseEntity *pEntity )
-	{
-
-		if ( !pEntity->IsPlayer() )
-			return false;
-
-		if ( pEntity->entindex() == m_iPlayerIndex )
-			return true;
-
-		return false;
-	}
-};
-
-LINK_ENTITY_TO_CLASS( filter_activator_playerindex, CFilterPlayerIndex );
-
-BEGIN_DATADESC( CFilterPlayerIndex )
-
-	// Keyfields
-	DEFINE_KEYFIELD( m_iPlayerIndex,	FIELD_INTEGER,	"PlayerIndex" ),
-
-END_DATADESC()
-
-
-// ###################################################################
 //	> FilterTeam
 // ###################################################################
 class FilterTeam : public CBaseFilter

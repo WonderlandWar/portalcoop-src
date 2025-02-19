@@ -542,7 +542,7 @@ void CNPC_RollerMine::Spawn( void )
 
 	BaseClass::Spawn();
 
-	AddEFlags( EFL_NO_DISSOLVE | EFL_NO_MEGAPHYSCANNON_RAGDOLL );
+	AddEFlags( EFL_NO_DISSOLVE );
 
 	CapabilitiesClear();
 	CapabilitiesAdd( bits_CAP_MOVE_GROUND | bits_CAP_INNATE_RANGE_ATTACK1 | bits_CAP_SQUAD );
@@ -933,8 +933,7 @@ int CNPC_RollerMine::GetHackedIdleSchedule( void )
 		return SCHED_NONE;
 
 	// Are we near the player?
-	//CBaseEntity *pPlayer = gEntList.FindEntityByName( NULL, "!player" );
-	CBaseEntity *pPlayer = UTIL_GetNearestPlayer(this, true);
+	CBaseEntity *pPlayer = gEntList.FindEntityByName( NULL, "!player" );
 	if ( !pPlayer )
 		return SCHED_NONE;
 
@@ -1558,8 +1557,7 @@ void CNPC_RollerMine::RunTask( const Task_t *pTask )
 				return;
 			}
 
-		//	CBaseEntity *pPlayer = gEntList.FindEntityByName( NULL, "!player" );
-			CBaseEntity *pPlayer = UTIL_GetNearestPlayer(this, true);
+			CBaseEntity *pPlayer = gEntList.FindEntityByName( NULL, "!player" );
 			if ( !pPlayer || m_bHeld || m_hVehicleStuckTo )
 			{
 				TaskFail( FAIL_NO_TARGET );

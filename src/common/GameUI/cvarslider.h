@@ -44,9 +44,8 @@ public:
 private:
 	MESSAGE_FUNC( OnSliderMoved, "SliderMoved" );
 	MESSAGE_FUNC( OnSliderDragEnd, "SliderDragEnd" );
-	
-	CPanelAnimationVar( bool, m_bUseConVarMin, "use_convar_min", "0" );
-	CPanelAnimationVar( bool, m_bUseConVarMax, "use_convar_max", "0" );
+
+	CPanelAnimationVar( bool, m_bUseConVarMinMax, "use_convar_minmax", "0" );
 
     bool        m_bAllowOutOfRange;
     bool        m_bModifiedOnce;

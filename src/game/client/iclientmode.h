@@ -29,6 +29,7 @@ enum
 	MM_NONE = 0,
 	MM_SAY,
 	MM_SAY_TEAM,
+	MM_SAY_PARTY,
 };
 
 abstract_class IClientMode
@@ -128,7 +129,7 @@ public:
 	// HPE_END
 	//=============================================================================
 
-	virtual bool	DoPostScreenSpaceEffects( const CViewSetup *pSetup, bool bIsPortalView = false ) = 0;
+	virtual bool	DoPostScreenSpaceEffects( const CViewSetup *pSetup ) = 0;
 
 	virtual void	DisplayReplayMessage( const char *pLocalizeName, float flDuration, bool bUrgent,
 										  const char *pSound, bool bDlg ) = 0;
@@ -148,6 +149,9 @@ public:
 	virtual bool	IsInfoPanelAllowed() = 0;
 	virtual void	InfoPanelDisplayed() = 0;
 	virtual bool	IsHTMLInfoPanelAllowed() = 0;
+
+	virtual void	OnDemoRecordStart( char const* pDemoBaseName ) = 0;
+	virtual void	OnDemoRecordStop() = 0;
 };	
 
 extern IClientMode *g_pClientMode;

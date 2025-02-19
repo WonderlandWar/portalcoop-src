@@ -118,7 +118,7 @@ void TE_PlayerDecal( IRecipientFilter& filter, float delay,
 	g_TEPlayerDecal.m_vecOrigin		= *pos;
 	g_TEPlayerDecal.m_nPlayer		= player;
 	g_TEPlayerDecal.m_nEntity		= entity;	
-	
+
 	// Send it over the wire
 	g_TEPlayerDecal.Create( filter, delay );
 }

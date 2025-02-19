@@ -5,8 +5,6 @@
 // $NoKeywords: $
 //=============================================================================//
 
-//#define GAMEUI_EXPORTS
-
 #ifndef CBASE_H
 #define CBASE_H
 #ifdef _WIN32

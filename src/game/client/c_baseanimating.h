@@ -27,10 +27,6 @@
 #include "tier0/threadtools.h"
 #include "datacache/idatacache.h"
 
-#ifdef GLOWS_ENABLE
-#include "glow_outline_effect.h"
-#endif // GLOWS_ENABLE
-
 #define LIPSYNC_POSEPARAM_NAME "mouth"
 #define NUM_HITBOX_FIRES	10
 
@@ -146,22 +142,19 @@ public:
 	virtual void ApplyBoneMatrixTransform( matrix3x4_t& transform );
  	virtual int	VPhysicsGetObjectList( IPhysicsObject **pList, int listMax );
 
-#ifdef GLOWS_ENABLE
-	CGlowObject			*GetGlowObject(void){ return m_pGlowEffect; }
-	virtual void		GetGlowEffectColor(float *r, float *g, float *b);
-	//	void				EnableGlowEffect( float r, float g, float b );
-#endif // GLOWS_ENABLE
-
 	// model specific
 	virtual bool SetupBones( matrix3x4_t *pBoneToWorldOut, int nMaxBones, int boneMask, float currentTime );
 	virtual void UpdateIKLocks( float currentTime );
 	virtual void CalculateIKLocks( float currentTime );
 	virtual bool ShouldDraw();
+	virtual void UpdateVisibility() OVERRIDE;
 	virtual int DrawModel( int flags );
 	virtual int	InternalDrawModel( int flags );
 	virtual bool OnInternalDrawModel( ClientModelRenderInfo_t *pInfo );
 	virtual bool OnPostInternalDrawModel( ClientModelRenderInfo_t *pInfo );
 	void		DoInternalDrawModel( ClientModelRenderInfo_t *pInfo, DrawModelState_t *pState, matrix3x4_t *pBoneToWorldArray = NULL );
+
+	virtual IMaterial* GetEconWeaponMaterialOverride( int iTeam ) { return NULL; }
 
 	//
 	virtual CMouthInfo *GetMouth();
@@ -456,20 +449,6 @@ public:
 
 	virtual bool					IsViewModel() const;
 	virtual void					UpdateOnRemove( void );
-	
-	
-#ifdef GLOWS_ENABLE
-	void				SetClientSideGlowEnabled( bool bEnabled ){ m_bClientSideGlowEnabled = bEnabled; UpdateGlowEffect(); }
-	bool				IsClientSideGlowEnabled( void ){ return m_bClientSideGlowEnabled; }
-	bool				IsGlowEnabled( void ){ return m_bGlowEnabled; }
-#endif // GLOWS_ENABLE
-
-#ifdef GLOWS_ENABLE	
-	virtual void		UpdateGlowEffect( void );
-	virtual void		DestroyGlowEffect( void );
-#endif // GLOWS_ENABLE
-
-	bool IsDissolving() { return ((GetFlags() & FL_DISSOLVING) != 0); }
 
 protected:
 	// View models scale their attachment positions to account for FOV. To get the unmodified
@@ -483,21 +462,13 @@ protected:
 
 	// Models used in a ModelPanel say yes to this
 	virtual bool					IsMenuModel() const;
-	
-#ifdef GLOWS_ENABLE
-	bool				m_bClientSideGlowEnabled;	// client-side only value used for spectator
-	float				m_flGlowR;
-	float				m_flGlowG;
-	float				m_flGlowB;
-	bool				m_bGlowEnabled;				// networked value
-	bool				m_bOldGlowEnabled;
-	CGlowObject			*m_pGlowEffect;
-#endif // GLOWS_ENABLE
 
 	// Allow studio models to tell C_BaseEntity what their m_nBody value is
 	virtual int						GetStudioBody( void ) { return m_nBody; }
 
 	virtual bool					CalcAttachments();
+
+	virtual bool					ShouldFlipViewModel();
 
 private:
 	// This method should return true if the bones have changed + SetupBones needs to be called
@@ -651,6 +622,7 @@ private:
 	unsigned char m_nOldMuzzleFlashParity;
 
 	bool							m_bInitModelEffects;
+	bool							m_bDelayInitModelEffects;
 
 	// Dynamic models
 	bool							m_bDynamicModelAllowed;
@@ -669,6 +641,7 @@ private:
 	mutable CStudioHdr				*m_pStudioHdr;
 	mutable MDLHandle_t				m_hStudioHdr;
 	CThreadFastMutex				m_StudioHdrInitLock;
+	bool							m_bHasAttachedParticles;
 };
 
 enum 

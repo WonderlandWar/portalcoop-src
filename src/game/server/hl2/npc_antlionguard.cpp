@@ -1583,7 +1583,6 @@ public:
 			{
 				// Otherwise just damage passive objects in our way
 				pEntity->TakeDamage( info );
-				
 				Pickup_ForcePlayerToDropThisObject( pEntity );
 			}
 		}
@@ -2787,7 +2786,7 @@ bool CNPC_AntlionGuard::HandleChargeImpact( Vector vecImpact, CBaseEntity *pEnti
 
 	else
 	{
-		// If we hit a physics prop, smack the crap out of it. (large rocks)
+		// If we hit a physics prop, smack the heck out of it. (large rocks)
 		// Factor the object mass into it, because we want to move it no matter how heavy it is.
 		if ( pEntity->GetMoveType() == MOVETYPE_VPHYSICS )
 		{

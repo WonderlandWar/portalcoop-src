@@ -47,8 +47,6 @@ IMPLEMENT_CLIENTCLASS_DT( C_RollerMine, DT_RollerMine, CNPC_RollerMine )
 	RecvPropInt( RECVINFO( m_bPowerDown ) ),
 END_RECV_TABLE()
 
-LINK_ENTITY_TO_CLASS(npc_rollermine, C_RollerMine)
-
 #define	NUM_ATTACHMENTS	11
 
 //-----------------------------------------------------------------------------

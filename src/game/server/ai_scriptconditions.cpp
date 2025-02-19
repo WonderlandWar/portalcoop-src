@@ -401,7 +401,7 @@ bool CAI_ScriptConditions::EvalPlayerInVehicle( const EvalArgs_t &args )
 		return false;
 
 	// Desired states must match
-	return ( !!args.pPlayer->IsInAVehicle() == m_fPlayerInVehicle );
+	return args.pPlayer->IsInAVehicle() == ( m_fPlayerInVehicle == TRS_TRUE );
 }
 
 //-----------------------------------------------------------------------------
@@ -421,7 +421,7 @@ bool CAI_ScriptConditions::EvalActorInVehicle( const EvalArgs_t &args )
 		return false;
 
 	// Desired states must match
-	return ( !!pBCC->IsInAVehicle() == m_fActorInVehicle );
+	return pBCC->IsInAVehicle() == ( m_fActorInVehicle == TRS_TRUE );
 }
 
 //-----------------------------------------------------------------------------
@@ -474,7 +474,7 @@ void CAI_ScriptConditions::EvaluationThink()
 	int iActorsDone = 0;
 
 #ifdef HL2_DLL
-	if( AI_GetSinglePlayer() && AI_GetSinglePlayer()->GetFlags() & FL_NOTARGET )
+	if( AI_GetSinglePlayer()->GetFlags() & FL_NOTARGET )
 	{
 		ScrCondDbgMsg( ("%s WARNING: Player is NOTARGET. This will affect all LOS conditiosn involving the player!\n", GetDebugName()) );
 	}
@@ -735,11 +735,8 @@ bool CAI_ScriptConditions::IsInFOV( CBaseEntity *pViewer, CBaseEntity *pViewed, 
 
 bool CAI_ScriptConditions::PlayerHasLineOfSight( CBaseEntity *pViewer, CBaseEntity *pViewed, bool fNot )
 {
-	if ( !pViewer || !pViewed )
-		return false;
-
 	CBaseCombatCharacter *pCombatantViewer = pViewer->MyCombatCharacterPointer();
-	
+
 	if( pCombatantViewer )
 	{
 		// We always trace towards the player, so we handle players-in-vehicles

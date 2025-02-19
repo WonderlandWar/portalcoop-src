@@ -117,15 +117,15 @@ public:
 	//=============================================================================
 	 
 	virtual wchar_t* GetServerName() { return NULL; }
-	virtual void SetServerName(wchar_t* name) {};
+	virtual void SetServerName(wchar_t* name) {}
 	virtual wchar_t* GetMapName() { return NULL; }
-	virtual void SetMapName(wchar_t* name) {};
+	virtual void SetMapName(wchar_t* name) {}
 	 
 	//=============================================================================
 	// HPE_END
 	//=============================================================================
 
-	virtual bool	DoPostScreenSpaceEffects( const CViewSetup *pSetup, bool bIsPortalView = false );
+	virtual bool	DoPostScreenSpaceEffects( const CViewSetup *pSetup );
 
 	virtual void	DisplayReplayMessage( const char *pLocalizeName, float flDuration, bool bUrgent,
 										  const char *pSound, bool bDlg );
@@ -134,12 +134,19 @@ public:
 	virtual void	InfoPanelDisplayed() OVERRIDE { }
 	virtual bool	IsHTMLInfoPanelAllowed() OVERRIDE { return true; }
 
+	bool	IsAnyPanelVisibleExceptScores() { return m_pViewport->IsAnyPanelVisibleExceptScores(); }
+	bool	IsPanelVisible( const char* panel ) { return m_pViewport->IsPanelVisible( panel ); }
+
+	virtual void			OnDemoRecordStart( char const* pDemoBaseName ) OVERRIDE {}
+	virtual void			OnDemoRecordStop() OVERRIDE {}
+
 protected:
 	CBaseViewport			*m_pViewport;
 
 	void			DisplayReplayReminder();
 
 private:
+	virtual bool	BCanSendPartyChatMessages() const { return false; }
 	virtual void	UpdateReplayMessages();
 
 	void			ClearReplayMessageList();

@@ -44,54 +44,20 @@ struct ShaderStencilState_t
 		m_nTestMask = m_nWriteMask = 0xFFFFFFFF;
 	}
 
-	void SetStencilState( CMatRenderContextPtr &pRenderContext, bool bIsPortalView )
+	void SetStencilState( CMatRenderContextPtr &pRenderContext  )
 	{
-		if (bIsPortalView)
-		{
-
-			// These are the original values taken from CPortalRender
-			/*
-			pRenderContext->SetStencilEnable( true );
-			pRenderContext->SetStencilCompareFunction( STENCILCOMPARISONFUNCTION_ALWAYS );
-			pRenderContext->SetStencilPassOperation( STENCILOPERATION_REPLACE );
-			pRenderContext->SetStencilFailOperation( STENCILOPERATION_KEEP );
-			pRenderContext->SetStencilZFailOperation( STENCILOPERATION_KEEP );
-			pRenderContext->SetStencilTestMask( 0xFF );
-			pRenderContext->SetStencilWriteMask( 0xFF );
-			pRenderContext->SetStencilReferenceValue( 0 );
-			*/
-
-// TODO: Does this actually do anything?
-#if 1
-		//	pRenderContext->SetStencilEnable( m_bEnable ); // Don't use this for sure
-			pRenderContext->SetStencilCompareFunction( m_CompareFunc );
-			pRenderContext->SetStencilPassOperation( m_PassOp );
-			pRenderContext->SetStencilFailOperation( m_FailOp );
-			pRenderContext->SetStencilTestMask( m_nTestMask );
-			pRenderContext->SetStencilWriteMask( m_nWriteMask );
-#endif
-			//If we set this #if to 0, the glow renders through portals just fine but the glow effect looks very ugly, however if we keep it,
-			//the effect glow looks fine but renders only in a strange way so that it will render when you aren't looking through the portal view.
-#if 0
-			pRenderContext->SetStencilZFailOperation( m_ZFailOp ); 
-			pRenderContext->SetStencilReferenceValue( m_nReferenceValue );
-#endif		
-		}
-		else
-		{
-			pRenderContext->SetStencilEnable( m_bEnable );
-			pRenderContext->SetStencilCompareFunction( m_CompareFunc );
-			pRenderContext->SetStencilPassOperation( m_PassOp );
-			pRenderContext->SetStencilFailOperation( m_FailOp );
-			pRenderContext->SetStencilZFailOperation( m_ZFailOp );
-			pRenderContext->SetStencilTestMask( m_nTestMask );
-			pRenderContext->SetStencilWriteMask( m_nWriteMask );
-			pRenderContext->SetStencilReferenceValue( m_nReferenceValue );
-		}
+		pRenderContext->SetStencilEnable( m_bEnable );
+		pRenderContext->SetStencilFailOperation( m_FailOp );
+		pRenderContext->SetStencilZFailOperation( m_ZFailOp );
+		pRenderContext->SetStencilPassOperation( m_PassOp );
+		pRenderContext->SetStencilCompareFunction( m_CompareFunc );
+		pRenderContext->SetStencilReferenceValue( m_nReferenceValue );
+		pRenderContext->SetStencilTestMask( m_nTestMask );
+		pRenderContext->SetStencilWriteMask( m_nWriteMask );
 	}
 };
 
-void CGlowObjectManager::RenderGlowEffects( const CViewSetup *pSetup, int nSplitScreenSlot, bool bIsPortalView )
+void CGlowObjectManager::RenderGlowEffects( const CViewSetup *pSetup, int nSplitScreenSlot )
 {
 	if ( g_pMaterialSystemHardwareConfig->SupportsPixelShaders_2_0() )
 	{
@@ -103,7 +69,7 @@ void CGlowObjectManager::RenderGlowEffects( const CViewSetup *pSetup, int nSplit
 			pRenderContext->GetViewport( nX, nY, nWidth, nHeight );
 
 			PIXEvent _pixEvent( pRenderContext, "EntityGlowEffects" );
-			ApplyEntityGlowEffects( pSetup, nSplitScreenSlot, pRenderContext, glow_outline_effect_width.GetFloat(), nX, nY, nWidth, nHeight, bIsPortalView );
+			ApplyEntityGlowEffects( pSetup, nSplitScreenSlot, pRenderContext, glow_outline_effect_width.GetFloat(), nX, nY, nWidth, nHeight );
 		}
 	}
 }
@@ -115,9 +81,7 @@ static void SetRenderTargetAndViewPort( ITexture *rt, int w, int h )
 	pRenderContext->Viewport(0,0,w,h);
 }
 
-extern ConVar g_debug_gloweeffect;
-
-void CGlowObjectManager::RenderGlowModels( const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext, bool bIsPortalView )
+void CGlowObjectManager::RenderGlowModels( const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext )
 {
 	//==========================================================================================//
 	// This renders solid pixels with the correct coloring for each object that needs the glow.	//
@@ -155,7 +119,7 @@ void CGlowObjectManager::RenderGlowModels( const CViewSetup *pSetup, int nSplitS
 	stencilState.m_FailOp = STENCILOPERATION_KEEP;
 	stencilState.m_ZFailOp = STENCILOPERATION_KEEP;
 
-	stencilState.SetStencilState( pRenderContext, bIsPortalView );
+	stencilState.SetStencilState( pRenderContext );
 
 	//==================//
 	// Draw the objects //
@@ -167,20 +131,7 @@ void CGlowObjectManager::RenderGlowModels( const CViewSetup *pSetup, int nSplitS
 
 		render->SetBlend( m_GlowObjectDefinitions[i].m_flGlowAlpha );
 		Vector vGlowColor = m_GlowObjectDefinitions[i].m_vGlowColor * m_GlowObjectDefinitions[i].m_flGlowAlpha;
-		/*
-		float fGlowX = vGlowColor.x;
-		float fGlowY = vGlowColor.y;
-		float fGlowZ = vGlowColor.z;
-
-		int iGlowX = fGlowX;
-		int iGlowY = fGlowY;
-		int iGlowZ = fGlowZ;
-		*/
-
 		render->SetColorModulation( &vGlowColor[0] ); // This only sets rgb, not alpha
-		
-		if (g_debug_gloweeffect.GetBool())
-			Msg("vGlowColor: %f %f %f\n", vGlowColor.x, vGlowColor.y, vGlowColor.z);
 
 		m_GlowObjectDefinitions[i].DrawModel();
 	}	
@@ -196,40 +147,30 @@ void CGlowObjectManager::RenderGlowModels( const CViewSetup *pSetup, int nSplitS
 	
 	ShaderStencilState_t stencilStateDisable;
 	stencilStateDisable.m_bEnable = false;
-	stencilStateDisable.SetStencilState( pRenderContext, bIsPortalView );
+	stencilStateDisable.SetStencilState( pRenderContext );
 
 	pRenderContext->PopRenderTargetAndViewport();
 }
 
-void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext, float flBloomScale, int x, int y, int w, int h, bool bIsPortalView )
+void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext, float flBloomScale, int x, int y, int w, int h )
 {
-
 	//=======================================================//
 	// Render objects into stencil buffer					 //
 	//=======================================================//
 	// Set override shader to the same simple shader we use to render the glow models
 	IMaterial *pMatGlowColor = materials->FindMaterial( "dev/glow_color", TEXTURE_GROUP_OTHER, true );
 	g_pStudioRender->ForcedMaterialOverride( pMatGlowColor );
-	
+
 	ShaderStencilState_t stencilStateDisable;
 	stencilStateDisable.m_bEnable = false;
 	float flSavedBlend = render->GetBlend();
-	
-#if 0
-	if (bIsPortalView)
-	{
-		pRenderContext->OverrideDepthEnable(false, false);
-		render->SetBlend(flSavedBlend);
-		g_pStudioRender->ForcedMaterialOverride(NULL);
-		return;
-	}
-#endif
+
 	// Set alpha to 0 so we don't touch any color pixels
 	render->SetBlend( 0.0f );
 	pRenderContext->OverrideDepthEnable( true, false );
-		
+
 	int iNumGlowObjects = 0;
-	
+
 	for ( int i = 0; i < m_GlowObjectDefinitions.Count(); ++ i )
 	{
 		if ( m_GlowObjectDefinitions[i].IsUnused() || !m_GlowObjectDefinitions[i].ShouldDraw( nSplitScreenSlot ) )
@@ -247,7 +188,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 				stencilState.m_FailOp = STENCILOPERATION_KEEP;
 				stencilState.m_ZFailOp = STENCILOPERATION_REPLACE;
 
-				stencilState.SetStencilState( pRenderContext, bIsPortalView );
+				stencilState.SetStencilState( pRenderContext );
 
 				m_GlowObjectDefinitions[i].DrawModel();
 			}
@@ -261,7 +202,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 				stencilState.m_FailOp = STENCILOPERATION_KEEP;
 				stencilState.m_ZFailOp = STENCILOPERATION_REPLACE;
 
-				stencilState.SetStencilState( pRenderContext, bIsPortalView );
+				stencilState.SetStencilState( pRenderContext );
 
 				m_GlowObjectDefinitions[i].DrawModel();
 			}
@@ -277,7 +218,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 				stencilState.m_FailOp = STENCILOPERATION_KEEP;
 				stencilState.m_ZFailOp = STENCILOPERATION_REPLACE;
 
-				stencilState.SetStencilState( pRenderContext, bIsPortalView );
+				stencilState.SetStencilState( pRenderContext );
 
 				m_GlowObjectDefinitions[i].DrawModel();
 			}
@@ -301,7 +242,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 			stencilState.m_PassOp = STENCILOPERATION_REPLACE;
 			stencilState.m_FailOp = STENCILOPERATION_KEEP;
 			stencilState.m_ZFailOp = STENCILOPERATION_KEEP;
-			stencilState.SetStencilState( pRenderContext, bIsPortalView );
+			stencilState.SetStencilState( pRenderContext );
 
 			m_GlowObjectDefinitions[i].DrawModel();
 		}
@@ -309,8 +250,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 
 	pRenderContext->OverrideDepthEnable( false, false );
 	render->SetBlend( flSavedBlend );
-//	if (!bIsPortalView)
-	stencilStateDisable.SetStencilState( pRenderContext, bIsPortalView );
+	stencilStateDisable.SetStencilState( pRenderContext );
 	g_pStudioRender->ForcedMaterialOverride( NULL );
 
 	// If there aren't any objects to glow, don't do all this other stuff
@@ -324,7 +264,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 	//=============================================
 	{
 		PIXEvent pixEvent( pRenderContext, "RenderGlowModels" );
-		RenderGlowModels( pSetup, nSplitScreenSlot, pRenderContext, bIsPortalView );
+		RenderGlowModels( pSetup, nSplitScreenSlot, pRenderContext );
 	}
 	
 	// Get viewport
@@ -358,7 +298,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 		stencilState.m_PassOp = STENCILOPERATION_KEEP;
 		stencilState.m_FailOp = STENCILOPERATION_KEEP;
 		stencilState.m_ZFailOp = STENCILOPERATION_KEEP;
-		stencilState.SetStencilState( pRenderContext , bIsPortalView );
+		stencilState.SetStencilState( pRenderContext );
 
 		// Draw quad
 		pRenderContext->DrawScreenSpaceRectangle( pMatHaloAddToScreen, 0, 0, nViewportWidth, nViewportHeight,
@@ -366,7 +306,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects( const CViewSetup *pSetup, int n
 			pRtQuarterSize1->GetActualWidth(),
 			pRtQuarterSize1->GetActualHeight() );
 
-		stencilStateDisable.SetStencilState( pRenderContext, bIsPortalView );
+		stencilStateDisable.SetStencilState( pRenderContext );
 	}
 }
 

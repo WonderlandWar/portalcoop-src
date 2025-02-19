@@ -66,7 +66,9 @@ enum PlayerAnimEvent_t
 	PLAYERANIMEVENT_PASSTIME_THROW_BEGIN,
 	PLAYERANIMEVENT_PASSTIME_THROW_MIDDLE,
 	PLAYERANIMEVENT_PASSTIME_THROW_END,
-	PLAYERANIMEVENT_PASSTIME_THROW_CANCEL,
+	PLAYERANIMEVENT_CYOAPDA_BEGIN,
+	PLAYERANIMEVENT_CYOAPDA_MIDDLE,
+	PLAYERANIMEVENT_CYOAPDA_END,
 
 	PLAYERANIMEVENT_ATTACK_PRIMARY_SUPER,
 
@@ -293,10 +295,6 @@ protected:
 	CBasePlayer	*m_pPlayer;
 
 	QAngle				m_angRender;
-	
-#if defined( PORTAL ) && defined( CLIENT_DLL )
-	QAngle				m_angRender_InterpHistory; //discontinuous space handling
-#endif
 
 	// Pose parameters.
 	bool						m_bPoseParameterInit;

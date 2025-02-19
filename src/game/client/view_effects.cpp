@@ -155,8 +155,6 @@ void __MsgFunc_Shake( bf_read &msg )
 	g_ViewEffects.Shake( shake );
 }
 
-extern ConVar building_cubemaps;
-
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : *pszName - 
@@ -166,10 +164,6 @@ extern ConVar building_cubemaps;
 //-----------------------------------------------------------------------------
 void __MsgFunc_Fade( bf_read &msg )
 {
-
-	if (building_cubemaps.GetBool())
-		return;
-
 	ScreenFade_t fade;
 
 	fade.duration = msg.ReadShort(); // fade lasts this long

@@ -22,7 +22,6 @@
 #include "gamestats.h"
 #include "ai_basenpc.h"
 #include "Sprite.h"
-#include "CommentarySystem.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -60,6 +59,82 @@ bool IsInCommentaryMode( void )
 	return g_bInCommentaryMode;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: An entity that marks a spot for a piece of commentary
+//-----------------------------------------------------------------------------
+class CPointCommentaryNode : public CBaseAnimating
+{
+	DECLARE_CLASS( CPointCommentaryNode, CBaseAnimating );
+public:
+	DECLARE_DATADESC();
+	DECLARE_SERVERCLASS();
+
+	void Spawn( void );
+	void Precache( void );
+	void Activate( void );
+	void SpinThink( void );
+	void StartCommentary( void );
+	void FinishCommentary( bool bBlendOut = true );
+	void CleanupPostCommentary( void );
+	void UpdateViewThink( void );
+	void UpdateViewPostThink( void );
+	bool TestCollision( const Ray_t &ray, unsigned int mask, trace_t& trace );
+	bool HasViewTarget( void ) { return (m_hViewTarget != NULL || m_hViewPosition.Get() != NULL); }
+	bool PreventsMovement( void );
+	bool CannotBeStopped( void ) { return (m_bUnstoppable || m_bPreventChangesWhileMoving); }
+	int  UpdateTransmitState( void );
+	void SetTransmit( CCheckTransmitInfo *pInfo, bool bAlways );
+	void SetDisabled( bool bDisabled );
+	void SetNodeNumber( int iCount ) { m_iNodeNumber = iCount; }
+
+	// Called to tell the node when it's moved under/not-under the player's crosshair
+	void SetUnderCrosshair( bool bUnderCrosshair );
+
+	// Called when the player attempts to activate the node
+	void PlayerActivated( void );
+	void StopPlaying( void );
+	void AbortPlaying( void );
+	void TeleportTo( CBasePlayer *pPlayer );
+	bool CanTeleportTo( void );
+
+	// Inputs
+	void InputStartCommentary( inputdata_t &inputdata );
+	void InputStartUnstoppableCommentary( inputdata_t &inputdata );
+	void InputEnable( inputdata_t &inputdata );
+	void InputDisable( inputdata_t &inputdata );
+
+private:
+	string_t	m_iszPreCommands;
+	string_t	m_iszPostCommands;
+	CNetworkVar( string_t, m_iszCommentaryFile );
+	CNetworkVar( string_t, m_iszCommentaryFileNoHDR );
+	string_t	m_iszViewTarget;
+	EHANDLE		m_hViewTarget;
+	EHANDLE		m_hViewTargetAngles;		// Entity used to blend view angles to look at the target
+	string_t	m_iszViewPosition;
+	CNetworkVar( EHANDLE, m_hViewPosition );
+	EHANDLE		m_hViewPositionMover;		// Entity used to blend the view to the viewposition entity
+	bool		m_bPreventMovement;
+	bool		m_bUnderCrosshair;
+	bool		m_bUnstoppable;
+	float		m_flFinishedTime;
+	Vector		m_vecFinishOrigin;
+	QAngle		m_vecOriginalAngles;
+	QAngle		m_vecFinishAngles;
+	bool		m_bPreventChangesWhileMoving;
+	bool		m_bDisabled;
+	Vector		m_vecTeleportOrigin;
+
+	COutputEvent	m_pOnCommentaryStarted;
+	COutputEvent	m_pOnCommentaryStopped;
+
+	CNetworkVar( bool, m_bActive );
+	CNetworkVar( float, m_flStartTime );
+	CNetworkVar( string_t, m_iszSpeakers );
+	CNetworkVar( int, m_iNodeNumber );
+	CNetworkVar( int, m_iNodeNumberMax );
+};
+
 BEGIN_DATADESC( CPointCommentaryNode )
 	DEFINE_KEYFIELD( m_iszPreCommands,	FIELD_STRING,	"precommands" ),
 	DEFINE_KEYFIELD( m_iszPostCommands,	FIELD_STRING,	"postcommands" ),
@@ -96,7 +171,6 @@ BEGIN_DATADESC( CPointCommentaryNode )
 	DEFINE_INPUTFUNC( FIELD_VOID, "StartUnstoppableCommentary", InputStartUnstoppableCommentary ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Enable", InputEnable ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Disable", InputDisable ),
-	DEFINE_INPUTFUNC( FIELD_VOID, "Use", InputUse ),
 
 	// Functions
 	DEFINE_THINKFUNC( SpinThink ),
@@ -148,12 +222,23 @@ LINK_ENTITY_TO_CLASS( point_commentary_viewpoint, CCommentaryViewPosition );
 //-----------------------------------------------------------------------------
 // Purpose: In multiplayer, always return player 1
 //-----------------------------------------------------------------------------
-/*
 CBasePlayer *GetCommentaryPlayer( void )
 {
-	return UTIL_PlayerByIndex(1);
+	CBasePlayer *pPlayer;
+
+	if ( gpGlobals->maxClients <= 1 )
+	{
+		pPlayer = UTIL_GetLocalPlayer();
+	}
+	else
+	{
+		// only respond to the first player
+		pPlayer = UTIL_PlayerByIndex(1);
+	}
+
+	return pPlayer;
 }
-*/
+
 //===========================================================================================================
 // COMMENTARY GAME SYSTEM
 //===========================================================================================================
@@ -267,51 +352,42 @@ public:
 		InitCommentary();
 
 		IGameEvent *event = gameeventmanager->CreateEvent( "playing_commentary" );
-		gameeventmanager->FireEventClientSide( event );
+		if ( event )
+		{
+			gameeventmanager->FireEventClientSide( event );
+		}
 	}
 
 	CPointCommentaryNode *GetNodeUnderCrosshair()
 	{
+		CBasePlayer *pPlayer = GetCommentaryPlayer();
+		if ( !pPlayer )
+			return NULL;
 
-		for (int i = 1; i <= gpGlobals->maxClients; ++i)
-		{
-			CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-			//CBasePlayer *pPlayer = GetCommentaryPlayer();
-			if (!pPlayer)
-				continue;
+		// See if the player's looking at a commentary node
+		trace_t tr;
+		Vector vecSrc = pPlayer->EyePosition();
+		Vector vecForward = pPlayer->GetAutoaimVector( AUTOAIM_SCALE_DIRECT_ONLY );	
 
-			// See if the player's looking at a commentary node
-			trace_t tr;
-			Vector vecSrc = pPlayer->EyePosition();
-			Vector vecForward = pPlayer->GetAutoaimVector(AUTOAIM_SCALE_DIRECT_ONLY);
+		g_bTracingVsCommentaryNodes = true;
+		UTIL_TraceLine( vecSrc, vecSrc + vecForward * MAX_TRACE_LENGTH, MASK_SOLID, pPlayer, COLLISION_GROUP_NONE, &tr );
+		g_bTracingVsCommentaryNodes = false;
 
-			g_bTracingVsCommentaryNodes = true;
-			UTIL_TraceLine(vecSrc, vecSrc + vecForward * MAX_TRACE_LENGTH, MASK_SOLID, pPlayer, COLLISION_GROUP_NONE, &tr);
-			g_bTracingVsCommentaryNodes = false;
+		if ( !tr.m_pEnt )
+			return NULL;
 
-			if (!tr.m_pEnt)
-				return NULL;
-
-			return dynamic_cast<CPointCommentaryNode*>(tr.m_pEnt);
-		}
-		return NULL;
+		return dynamic_cast<CPointCommentaryNode*>(tr.m_pEnt);
 	}
 
 	void PrePlayerRunCommand( CBasePlayer *pPlayer, CUserCmd *pUserCmds )
 	{
-
 		if ( !IsInCommentaryMode() )
 			return;
-//Testing with bots is easier than testing with real players
-#if 0
+
 		if ( pPlayer->IsFakeClient() )
 			return;
-#endif
 
-		//This works terribly in multiplayer
-#if 0
-		CPointCommentaryNode *pCurrentNode = dynamic_cast<CPointCommentaryNode*>(pPlayer->GetNodeUnderCrosshair());
-		//CPointCommentaryNode *pCurrentNode = GetNodeUnderCrosshair();
+		CPointCommentaryNode *pCurrentNode = GetNodeUnderCrosshair();
 
 		// Changed nodes?
  		if ( m_hCurrentNode != pCurrentNode )
@@ -331,16 +407,9 @@ public:
 			m_hCurrentNode = pCurrentNode;
 		}
 
-
 		// Check for commentary node activations
 		if ( pPlayer )
 		{
-		//	CUserCmd lastCmd = pPlayer->m_LastCmd;
-		//	CUserCmd *pCurCmd = pPlayer->m_pCurrentCommand;
-
-		//	if (!pCurCmd)
-		//		return;
-
 			// Has the player pressed down an attack button?
 			int buttonsChanged = m_afPlayersLastButtons ^ pUserCmds->buttons;
 			int buttonsPressed = buttonsChanged & pUserCmds->buttons;
@@ -377,7 +446,7 @@ public:
 								GetActiveNode()->StopPlaying();
  							}
 
-							m_hCurrentNode->PlayerActivated( pPlayer );
+							m_hCurrentNode->PlayerActivated();
 						}
 
 						// Prevent weapon firing when toggling nodes
@@ -400,7 +469,7 @@ public:
 
 			if ( GetActiveNode() && GetActiveNode()->PreventsMovement() )
 			{
-				pUserCmds->buttons &= ~(IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT | IN_JUMP | IN_DUCK);
+ 				pUserCmds->buttons &= ~(IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT | IN_JUMP | IN_DUCK );
 				pUserCmds->upmove = 0;
 				pUserCmds->sidemove = 0;
 				pUserCmds->forwardmove = 0;
@@ -444,7 +513,6 @@ public:
 				}
 			}
 		}
-#endif
 	}
 
 	CPointCommentaryNode *GetActiveNode( void )
@@ -806,11 +874,6 @@ bool IsListeningToCommentary( void )
 	return ( g_CommentarySystem.GetActiveNode() != NULL );
 }
 
-CPointCommentaryNode *GetPlayingNode(void)
-{
-	return g_CommentarySystem.GetActiveNode();
-}
-
 //===========================================================================================================
 // COMMENTARY NODES
 //===========================================================================================================
@@ -905,10 +968,6 @@ void CPointCommentaryNode::SetUnderCrosshair( bool bUnderCrosshair )
 {
 	if ( bUnderCrosshair )
 	{
-		//This is necessary because otherwise the node won't rotate.
-		if (m_bUnderCrosshair)
-			return;
-
 		// Start animating
 		m_bUnderCrosshair = true;
 	
@@ -944,22 +1003,6 @@ void CPointCommentaryNode::SpinThink( void )
 {
 	// Rotate if we're active, or under the crosshair. Don't rotate if we're
 	// under the crosshair, but we've already been listened to.
-
-	bool bFoundValidNode = false;
-	
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-		if (!pPlayer)
-			continue;
-
-		CPointCommentaryNode *pNode = pPlayer->GetNodeUnderCrosshair();
-
-		bFoundValidNode = (pNode == this);
-	}
-
-	SetUnderCrosshair(bFoundValidNode);
-
 	if ( m_bActive || (m_bUnderCrosshair && m_nSkin == 0) )
 	{
 		if ( m_bActive )
@@ -980,25 +1023,9 @@ void CPointCommentaryNode::SpinThink( void )
 //------------------------------------------------------------------------------
 // Purpose:
 //------------------------------------------------------------------------------
-void CPointCommentaryNode::PlayerActivated( CBasePlayer *pPlayer )
+void CPointCommentaryNode::PlayerActivated( void )
 {
 	gamestats->Event_Commentary();
-
-	if (GetPlayingNode())
-	{
-		
-		// Ignore input while an unstoppable node is playing
-		if (!GetPlayingNode() || !GetPlayingNode()->CannotBeStopped())
-		{
-			// If we have an active node already, stop it
-			if ( GetPlayingNode() && GetPlayingNode() != this )
-			{
-				GetPlayingNode()->StopPlaying();
- 			}
-							
-			//StartCommentary( pPlayer );
-		}
-	}
 
 	if ( m_bActive )
 	{
@@ -1006,7 +1033,7 @@ void CPointCommentaryNode::PlayerActivated( CBasePlayer *pPlayer )
 	}
 	else
 	{
-		StartCommentary( pPlayer );
+		StartCommentary();
 		g_CommentarySystem.SetActiveNode( this );
 	}
 }
@@ -1077,45 +1104,42 @@ void CPointCommentaryNode::TeleportTo( CBasePlayer *pPlayer )
 //------------------------------------------------------------------------------
 // Purpose:
 //------------------------------------------------------------------------------
-void CPointCommentaryNode::StartCommentary( CBasePlayer *pPlayer )
+void CPointCommentaryNode::StartCommentary( void )
 {
-	//for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	CBasePlayer *pPlayer = GetCommentaryPlayer();
+
+	if ( !pPlayer )
+		return;
+
+	m_bActive = true;
+
+	m_flAnimTime = gpGlobals->curtime;
+	m_flPrevAnimTime = gpGlobals->curtime;
+
+	// Switch to the greyed out skin 
+	m_nSkin = 1;
+
+	m_pOnCommentaryStarted.FireOutput( this, this );
+
+	// Fire off our precommands
+	if ( m_iszPreCommands != NULL_STRING )
 	{
-
-		m_bActive = true;
-
-		m_flAnimTime = gpGlobals->curtime;
-		m_flPrevAnimTime = gpGlobals->curtime;
-
-		// Switch to the greyed out skin 
-		m_nSkin = 1;
-
-		m_pOnCommentaryStarted.FireOutput( this, this );
-
-		// Fire off our precommands
-		if ( m_iszPreCommands != NULL_STRING )
-		{
-			g_CommentarySystem.SetCommentaryConvarsChanging(true);
-			
-			engine->ClientCommand(pPlayer->edict(), STRING(m_iszPreCommands));
-			engine->ClientCommand(pPlayer->edict(), "commentary_cvarsnotchanging\n");
-			
-		}
-	
-
-		// Start the commentary
-		m_flStartTime = gpGlobals->curtime;
-
-		// If we have a view target, start blending towards it
-		if ( m_hViewTarget || m_hViewPosition.Get() )
-		{
-			m_vecOriginalAngles = pPlayer->EyeAngles();
-			
- 			SetContextThink( &CPointCommentaryNode::UpdateViewThink, gpGlobals->curtime, s_pCommentaryUpdateViewThink );
-		}
+		g_CommentarySystem.SetCommentaryConvarsChanging( true );
+		engine->ClientCommand( pPlayer->edict(), STRING(m_iszPreCommands) );
+		engine->ClientCommand( pPlayer->edict(), "commentary_cvarsnotchanging\n" );
 	}
-		//SetContextThink( &CPointCommentaryNode::FinishCommentary, gpGlobals->curtime + flDuration, s_pFinishCommentaryThink );
 
+	// Start the commentary
+	m_flStartTime = gpGlobals->curtime;
+
+	// If we have a view target, start blending towards it
+	if ( m_hViewTarget || m_hViewPosition.Get() )
+	{
+		m_vecOriginalAngles = pPlayer->EyeAngles();
+ 		SetContextThink( &CPointCommentaryNode::UpdateViewThink, gpGlobals->curtime, s_pCommentaryUpdateViewThink );
+	}
+
+	//SetContextThink( &CPointCommentaryNode::FinishCommentary, gpGlobals->curtime + flDuration, s_pFinishCommentaryThink );
 }
 
 //-----------------------------------------------------------------------------
@@ -1138,103 +1162,99 @@ void CPointCommentaryNode::UpdateViewThink( void )
 {
 	if ( !m_bActive )
 		return;
+	CBasePlayer *pPlayer = GetCommentaryPlayer();
+	if ( !pPlayer )
+		return;
 
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	// Swing the view towards the target
+	if ( m_hViewTarget )
 	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-		if ( !pPlayer )
-			continue;
-
-		// Swing the view towards the target
-		if ( m_hViewTarget )
+		if ( !m_hViewTargetAngles && !m_hViewPositionMover )
 		{
-			if ( !m_hViewTargetAngles && !m_hViewPositionMover )
-			{
-				// Make an invisible entity to attach view angles to
-				m_hViewTargetAngles = CreateEntityByName( "point_commentary_viewpoint" );
-				m_hViewTargetAngles->SetAbsOrigin( pPlayer->EyePosition() );
-				m_hViewTargetAngles->SetAbsAngles( pPlayer->EyeAngles() );
-				pPlayer->SetViewEntity( m_hViewTargetAngles );
+			// Make an invisible entity to attach view angles to
+			m_hViewTargetAngles = CreateEntityByName( "point_commentary_viewpoint" );
+			m_hViewTargetAngles->SetAbsOrigin( pPlayer->EyePosition() );
+			m_hViewTargetAngles->SetAbsAngles( pPlayer->EyeAngles() );
+			pPlayer->SetViewEntity( m_hViewTargetAngles );
 
-				if ( pPlayer->GetActiveWeapon() )
-				{
-					pPlayer->GetActiveWeapon()->Holster();
-				}
-			}
-
- 			QAngle angGoal;
- 			QAngle angCurrent;
-			if ( m_hViewPositionMover )
-			{
-				angCurrent = m_hViewPositionMover->GetAbsAngles();
-				VectorAngles( m_hViewTarget->WorldSpaceCenter() - m_hViewPositionMover->GetAbsOrigin(), angGoal );
-			}
-			else if ( m_hViewTargetAngles )
-			{
-				angCurrent = m_hViewTargetAngles->GetAbsAngles();
-				m_hViewTargetAngles->SetAbsOrigin( pPlayer->EyePosition() );
-				VectorAngles( m_hViewTarget->WorldSpaceCenter() - m_hViewTargetAngles->GetAbsOrigin(), angGoal );
-			}
-			else
-			{
-				angCurrent = pPlayer->EyeAngles();
-      			VectorAngles( m_hViewTarget->WorldSpaceCenter() - pPlayer->EyePosition(), angGoal );
-			}
-
-			// Accelerate towards the target goal angles
-  			float dx = AngleDiff( angGoal.x, angCurrent.x );
-  			float dy = AngleDiff( angGoal.y, angCurrent.y );
-			float mod = 1.0 - ExponentialDecay( 0.5, 0.3, gpGlobals->frametime );
-   			float dxmod = dx * mod;
-			float dymod = dy * mod;
-
- 			angCurrent.x = AngleNormalize( angCurrent.x + dxmod );
- 			angCurrent.y = AngleNormalize( angCurrent.y + dymod );
-
-			if ( m_hViewPositionMover )
-			{
-				m_hViewPositionMover->SetAbsAngles( angCurrent );
-			}
-			else if ( m_hViewTargetAngles )
-			{
-				m_hViewTargetAngles->SetAbsAngles( angCurrent );
-				pPlayer->SnapEyeAngles( angCurrent );
-			}
-			else
-			{
-				pPlayer->SnapEyeAngles( angCurrent );
-			}
-
-			SetNextThink( gpGlobals->curtime, s_pCommentaryUpdateViewThink );
-		}
-
- 		if ( m_hViewPosition.Get() )
-		{
 			if ( pPlayer->GetActiveWeapon() )
 			{
 				pPlayer->GetActiveWeapon()->Holster();
 			}
-
- 			if ( !m_hViewPositionMover )
-			{
-				// Make an invisible info target entity for us to attach the view to, 
-				// and move it to the desired view position.
-				m_hViewPositionMover = CreateEntityByName( "point_commentary_viewpoint" );
-				m_hViewPositionMover->SetAbsAngles( pPlayer->EyeAngles() );
-				pPlayer->SetViewEntity( m_hViewPositionMover );
-			}
-
-			// Blend to the target position over time. 
- 			float flCurTime = (gpGlobals->curtime - m_flStartTime);
- 			float flBlendPerc = clamp( flCurTime * 0.5f, 0.f, 1.f );
-
-			// Figure out the current view position
-			Vector vecCurEye;
-			VectorLerp( pPlayer->EyePosition(), m_hViewPosition.Get()->GetAbsOrigin(), flBlendPerc, vecCurEye );
-			m_hViewPositionMover->SetAbsOrigin( vecCurEye ); 
-
-			SetNextThink( gpGlobals->curtime, s_pCommentaryUpdateViewThink );
 		}
+
+ 		QAngle angGoal;
+ 		QAngle angCurrent;
+		if ( m_hViewPositionMover )
+		{
+			angCurrent = m_hViewPositionMover->GetAbsAngles();
+			VectorAngles( m_hViewTarget->WorldSpaceCenter() - m_hViewPositionMover->GetAbsOrigin(), angGoal );
+		}
+		else if ( m_hViewTargetAngles )
+		{
+			angCurrent = m_hViewTargetAngles->GetAbsAngles();
+			m_hViewTargetAngles->SetAbsOrigin( pPlayer->EyePosition() );
+			VectorAngles( m_hViewTarget->WorldSpaceCenter() - m_hViewTargetAngles->GetAbsOrigin(), angGoal );
+		}
+		else
+		{
+			angCurrent = pPlayer->EyeAngles();
+      		VectorAngles( m_hViewTarget->WorldSpaceCenter() - pPlayer->EyePosition(), angGoal );
+		}
+
+		// Accelerate towards the target goal angles
+  		float dx = AngleDiff( angGoal.x, angCurrent.x );
+  		float dy = AngleDiff( angGoal.y, angCurrent.y );
+		float mod = 1.0 - ExponentialDecay( 0.5, 0.3, gpGlobals->frametime );
+   		float dxmod = dx * mod;
+		float dymod = dy * mod;
+
+ 		angCurrent.x = AngleNormalize( angCurrent.x + dxmod );
+ 		angCurrent.y = AngleNormalize( angCurrent.y + dymod );
+
+		if ( m_hViewPositionMover )
+		{
+			m_hViewPositionMover->SetAbsAngles( angCurrent );
+		}
+		else if ( m_hViewTargetAngles )
+		{
+			m_hViewTargetAngles->SetAbsAngles( angCurrent );
+			pPlayer->SnapEyeAngles( angCurrent );
+		}
+		else
+		{
+			pPlayer->SnapEyeAngles( angCurrent );
+		}
+
+		SetNextThink( gpGlobals->curtime, s_pCommentaryUpdateViewThink );
+	}
+
+ 	if ( m_hViewPosition.Get() )
+	{
+		if ( pPlayer->GetActiveWeapon() )
+		{
+			pPlayer->GetActiveWeapon()->Holster();
+		}
+
+ 		if ( !m_hViewPositionMover )
+		{
+			// Make an invisible info target entity for us to attach the view to, 
+			// and move it to the desired view position.
+			m_hViewPositionMover = CreateEntityByName( "point_commentary_viewpoint" );
+			m_hViewPositionMover->SetAbsAngles( pPlayer->EyeAngles() );
+			pPlayer->SetViewEntity( m_hViewPositionMover );
+		}
+
+		// Blend to the target position over time. 
+ 		float flCurTime = (gpGlobals->curtime - m_flStartTime);
+ 		float flBlendPerc = clamp( flCurTime * 0.5f, 0.f, 1.f );
+
+		// Figure out the current view position
+		Vector vecCurEye;
+		VectorLerp( pPlayer->EyePosition(), m_hViewPosition.Get()->GetAbsOrigin(), flBlendPerc, vecCurEye );
+		m_hViewPositionMover->SetAbsOrigin( vecCurEye ); 
+
+		SetNextThink( gpGlobals->curtime, s_pCommentaryUpdateViewThink );
 	}
 }
 
@@ -1243,50 +1263,48 @@ void CPointCommentaryNode::UpdateViewThink( void )
 //-----------------------------------------------------------------------------
 void CPointCommentaryNode::UpdateViewPostThink( void )
 {
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	CBasePlayer *pPlayer = GetCommentaryPlayer();
+	if ( !pPlayer )
+		return;
+
+ 	if ( m_hViewPosition.Get() && m_hViewPositionMover )
 	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-		if ( !pPlayer )
-			continue;
+ 		// Blend back to the player's position over time.
+   		float flCurTime = (gpGlobals->curtime - m_flFinishedTime);
+		float flTimeToBlend = MIN( 2.0, m_flFinishedTime - m_flStartTime ); 
+ 		float flBlendPerc = 1.0f - clamp( flCurTime / flTimeToBlend, 0.f, 1.f );
 
- 		if ( m_hViewPosition.Get() && m_hViewPositionMover )
+		//Msg("OUT: CurTime %.2f, BlendTime: %.2f, Blend: %.3f\n", flCurTime, flTimeToBlend, flBlendPerc );
+
+		// Only do this while we're still moving
+		if ( flBlendPerc > 0 )
 		{
- 			// Blend back to the player's position over time.
-   			float flCurTime = (gpGlobals->curtime - m_flFinishedTime);
-			float flTimeToBlend = MIN( 2.0, m_flFinishedTime - m_flStartTime ); 
- 			float flBlendPerc = 1.0f - clamp( flCurTime / flTimeToBlend, 0.f, 1.f );
+			// Figure out the current view position
+			Vector vecPlayerPos = pPlayer->EyePosition();
+			Vector vecToPosition = (m_vecFinishOrigin - vecPlayerPos); 
+			Vector vecCurEye = pPlayer->EyePosition() + (vecToPosition * flBlendPerc);
+			m_hViewPositionMover->SetAbsOrigin( vecCurEye ); 
 
-			//Msg("OUT: CurTime %.2f, BlendTime: %.2f, Blend: %.3f\n", flCurTime, flTimeToBlend, flBlendPerc );
-
-			// Only do this while we're still moving
-			if ( flBlendPerc > 0 )
+			if ( m_hViewTarget )
 			{
-				// Figure out the current view position
-				Vector vecPlayerPos = pPlayer->EyePosition();
-				Vector vecToPosition = (m_vecFinishOrigin - vecPlayerPos); 
-				Vector vecCurEye = pPlayer->EyePosition() + (vecToPosition * flBlendPerc);
-				m_hViewPositionMover->SetAbsOrigin( vecCurEye ); 
-
-				if ( m_hViewTarget )
-				{
-					Quaternion quatFinish;
-					Quaternion quatOriginal;
-					Quaternion quatCurrent;
-					AngleQuaternion( m_vecOriginalAngles, quatOriginal );
-					AngleQuaternion( m_vecFinishAngles, quatFinish );
-					QuaternionSlerp( quatFinish, quatOriginal, 1.0 - flBlendPerc, quatCurrent );
-					QAngle angCurrent;
-					QuaternionAngles( quatCurrent, angCurrent );
-					m_hViewPositionMover->SetAbsAngles( angCurrent );
-				}
-
-				SetNextThink( gpGlobals->curtime, s_pCommentaryUpdateViewThink );
-				return;
+				Quaternion quatFinish;
+				Quaternion quatOriginal;
+				Quaternion quatCurrent;
+				AngleQuaternion( m_vecOriginalAngles, quatOriginal );
+				AngleQuaternion( m_vecFinishAngles, quatFinish );
+				QuaternionSlerp( quatFinish, quatOriginal, 1.0 - flBlendPerc, quatCurrent );
+				QAngle angCurrent;
+				QuaternionAngles( quatCurrent, angCurrent );
+				m_hViewPositionMover->SetAbsAngles( angCurrent );
 			}
 
-			pPlayer->SnapEyeAngles( m_hViewPositionMover->GetAbsAngles() );
+			SetNextThink( gpGlobals->curtime, s_pCommentaryUpdateViewThink );
+			return;
 		}
+
+		pPlayer->SnapEyeAngles( m_hViewPositionMover->GetAbsAngles() );
 	}
+
 	// We're done
 	CleanupPostCommentary();
 
@@ -1298,37 +1316,35 @@ void CPointCommentaryNode::UpdateViewPostThink( void )
 //------------------------------------------------------------------------------
 void CPointCommentaryNode::FinishCommentary( bool bBlendOut )
 {
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-		if ( !pPlayer )
-			continue;
+	CBasePlayer *pPlayer = GetCommentaryPlayer();
+	if ( !pPlayer )
+		return;
 
-		// Fire off our postcommands
-		if ( m_iszPostCommands != NULL_STRING )
-		{
-			g_CommentarySystem.SetCommentaryConvarsChanging( true );
-			engine->ClientCommand( pPlayer->edict(), STRING(m_iszPostCommands) );
-			engine->ClientCommand( pPlayer->edict(), "commentary_cvarsnotchanging\n" );
-		}
+	// Fire off our postcommands
+	if ( m_iszPostCommands != NULL_STRING )
+	{
+		g_CommentarySystem.SetCommentaryConvarsChanging( true );
+		engine->ClientCommand( pPlayer->edict(), STRING(m_iszPostCommands) );
+		engine->ClientCommand( pPlayer->edict(), "commentary_cvarsnotchanging\n" );
 	}
 
-		// Stop the commentary
-		m_flFinishedTime = gpGlobals->curtime;
+	// Stop the commentary
+	m_flFinishedTime = gpGlobals->curtime;
 
-		if ( bBlendOut && m_hViewPositionMover )
-		{
- 			m_bActive = false;
-			m_flPlaybackRate = 1.0;
-			m_vecFinishOrigin = m_hViewPositionMover->GetAbsOrigin();
-			m_vecFinishAngles = m_hViewPositionMover->GetAbsAngles();
+	if ( bBlendOut && m_hViewPositionMover )
+	{
+ 		m_bActive = false;
+		m_flPlaybackRate = 1.0;
+		m_vecFinishOrigin = m_hViewPositionMover->GetAbsOrigin();
+		m_vecFinishAngles = m_hViewPositionMover->GetAbsAngles();
 
-			m_bPreventChangesWhileMoving = true;
+		m_bPreventChangesWhileMoving = true;
 
-			// We've moved away from the player's position. Move back to it before ending
-			SetContextThink( &CPointCommentaryNode::UpdateViewPostThink, gpGlobals->curtime, s_pCommentaryUpdateViewThink );
-			return;
-		}
+		// We've moved away from the player's position. Move back to it before ending
+		SetContextThink( &CPointCommentaryNode::UpdateViewPostThink, gpGlobals->curtime, s_pCommentaryUpdateViewThink );
+		return;
+	}
+
 	CleanupPostCommentary();
 }
 
@@ -1337,27 +1353,24 @@ void CPointCommentaryNode::FinishCommentary( bool bBlendOut )
 //-----------------------------------------------------------------------------
 void CPointCommentaryNode::CleanupPostCommentary( void )
 {
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	CBasePlayer *pPlayer = GetCommentaryPlayer();
+	if ( !pPlayer )
+		return;
+
+	if ( ( m_hViewPositionMover || m_hViewTargetAngles ) && pPlayer->GetActiveWeapon() )
 	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-		if (!pPlayer)
-			continue;
+		pPlayer->GetActiveWeapon()->Deploy();
+	}
 
-		if ( ( m_hViewPositionMover || m_hViewTargetAngles ) && pPlayer->GetActiveWeapon() )
-		{
-			pPlayer->GetActiveWeapon()->Deploy();
-		}
+	if ( m_hViewTargetAngles && pPlayer->GetViewEntity() == m_hViewTargetAngles )
+	{
+		pPlayer->SetViewEntity( NULL );
+	}
+	UTIL_Remove( m_hViewTargetAngles );
 
-		if ( m_hViewTargetAngles && pPlayer->GetViewEntity() == m_hViewTargetAngles )
-		{
-			pPlayer->SetViewEntity( NULL );
-		}
-		UTIL_Remove( m_hViewTargetAngles );
-
-		if ( m_hViewPositionMover && pPlayer->GetViewEntity() == m_hViewPositionMover )
-		{
-			pPlayer->SetViewEntity( NULL );
-		}
+	if ( m_hViewPositionMover && pPlayer->GetViewEntity() == m_hViewPositionMover )
+	{
+		pPlayer->SetViewEntity( NULL );
 	}
 	UTIL_Remove( m_hViewPositionMover );
 
@@ -1387,16 +1400,7 @@ void CPointCommentaryNode::InputStartCommentary( inputdata_t &inputdata )
 			g_CommentarySystem.GetActiveNode()->StopPlaying();
 		}
 
-		CBasePlayer *pPlayer = dynamic_cast<CBasePlayer*>(inputdata.pActivator);
-
-		if (pPlayer)
-			PlayerActivated(pPlayer);
-		else
-		{
-			//Last Resort
-			pPlayer = UTIL_PlayerByIndex(1);
-			PlayerActivated(pPlayer);
-		}
+		PlayerActivated();
 	}	
 }
 
@@ -1426,21 +1430,6 @@ void CPointCommentaryNode::InputEnable( inputdata_t &inputdata )
 void CPointCommentaryNode::InputDisable( inputdata_t &inputdata )
 {
 	SetDisabled( true );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CPointCommentaryNode::InputUse( inputdata_t &inputdata )
-{
-	CBasePlayer *pPlayer = ToBasePlayer(inputdata.pActivator);
-
-	if (!pPlayer)
-		return;
-
-	PlayerActivated(pPlayer);
-
-	BaseClass::InputUse( inputdata );
 }
 
 //-----------------------------------------------------------------------------
@@ -1663,21 +1652,3 @@ bool IsInCommentaryMode( void )
 }
 
 #endif
-
-
-CPointCommentaryNode *CBasePlayer::GetNodeUnderCrosshair()
-{
-	// See if the player's looking at a commentary node
-	trace_t tr;
-	Vector vecSrc = EyePosition();
-	Vector vecForward = GetAutoaimVector(AUTOAIM_SCALE_DIRECT_ONLY);
-	
-	g_bTracingVsCommentaryNodes = true;
-		
-	UTIL_TraceLine(vecSrc, vecSrc + vecForward * MAX_TRACE_LENGTH, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr);
-
-	g_bTracingVsCommentaryNodes = false;
-
-	return dynamic_cast<CPointCommentaryNode*>(tr.m_pEnt);
-
-}

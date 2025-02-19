@@ -52,17 +52,15 @@
 #endif
 
 #ifdef PORTAL
-#include "portal_player_shared.h"
-#include "weapon_portalgun.h"
+#include "portal_player.h"
 #endif // PORTAL
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-ConVar hl2_walkspeed("hl2_walkspeed", "150", FCVAR_REPLICATED);
-ConVar hl2_normspeed("hl2_normspeed", "190", FCVAR_REPLICATED);
-ConVar hl2_sprintspeed("hl2_sprintspeed", "320", FCVAR_REPLICATED);
-
+// misyl: Can be set to Msg if you want some info for debugging prediction
+#define MsgPredTest(...)
+#define MsgPredTest2(...)
 
 extern ConVar weapon_showproficiency;
 extern ConVar autoaim_max_dist;
@@ -85,17 +83,15 @@ extern int gEvilImpulse101;
 
 ConVar sv_autojump( "sv_autojump", "0" );
 
-ConVar hl2_darkness_flashlight_factor ( "hl2_darkness_flashlight_factor", "1" );
+ConVar hl2_walkspeed( "hl2_walkspeed", "150", FCVAR_REPLICATED );
+ConVar hl2_normspeed( "hl2_normspeed", "190", FCVAR_REPLICATED );
+ConVar hl2_sprintspeed( "hl2_sprintspeed", "320", FCVAR_REPLICATED );
 
-#ifdef HL2MP
-	#define	HL2_WALK_SPEED 150
-	#define	HL2_NORM_SPEED 190
-	#define	HL2_SPRINT_SPEED 320
-#else
-	#define	HL2_WALK_SPEED hl2_walkspeed.GetFloat()
-	#define	HL2_NORM_SPEED hl2_normspeed.GetFloat()
-	#define	HL2_SPRINT_SPEED hl2_sprintspeed.GetFloat()
-#endif
+#define	HL2_WALK_SPEED hl2_walkspeed.GetFloat()
+#define	HL2_NORM_SPEED hl2_normspeed.GetFloat()
+#define	HL2_SPRINT_SPEED hl2_sprintspeed.GetFloat()
+
+ConVar hl2_darkness_flashlight_factor ( "hl2_darkness_flashlight_factor", "1" );
 
 ConVar player_showpredictedposition( "player_showpredictedposition", "0" );
 ConVar player_showpredictedposition_timestep( "player_showpredictedposition_timestep", "1.0" );
@@ -103,7 +99,7 @@ ConVar player_showpredictedposition_timestep( "player_showpredictedposition_time
 ConVar player_squad_transient_commands( "player_squad_transient_commands", "1", FCVAR_REPLICATED );
 ConVar player_squad_double_tap_time( "player_squad_double_tap_time", "0.25" );
 
-ConVar sv_infinite_aux_power( "sv_infinite_aux_power", "0", FCVAR_REPLICATED );
+ConVar sv_infinite_aux_power( "sv_infinite_aux_power", "0", FCVAR_CHEAT );
 
 ConVar autoaim_unlock_target( "autoaim_unlock_target", "0.8666" );
 
@@ -199,9 +195,6 @@ public:
 	COutputEvent m_PlayerHasNoAmmo;
 	COutputEvent m_PlayerDied;
 	COutputEvent m_PlayerMissedAR2AltFire; // Player fired a combine ball which did not dissolve any enemies. 
-#ifdef PORTAL
-	COutputEvent m_OnCoopPing; // Player fired a combine ball which did not dissolve any enemies. 
-#endif
 
 	COutputInt m_RequestedPlayerHealth;
 
@@ -216,18 +209,13 @@ public:
 	void InputSetLocatorTargetEntity( inputdata_t &inputdata );
 #ifdef PORTAL
 	void InputSuppressCrosshair( inputdata_t &inputdata );
-	void InputUnSuppressCrosshair( inputdata_t &inputdata );
-	void InputSetPortalgunColor( inputdata_t &inputdata );
-	void InputSetPortalgunLinkageID( inputdata_t &inputdata );
-#endif // PORTAL
+#endif // PORTAL2
 
 	void Activate ( void );
 
 	bool PassesDamageFilter( const CTakeDamageInfo &info );
 
-	bool m_bUseActivator;
-
-//	EHANDLE m_hPlayer; // Not needed
+	EHANDLE m_hPlayer;
 };
 
 
@@ -329,7 +317,6 @@ BEGIN_DATADESC( CHL2_Player )
 	DEFINE_EMBEDDED( m_HL2Local ),
 
 	DEFINE_FIELD( m_bSprintEnabled, FIELD_BOOLEAN ),
-	DEFINE_FIELD( m_flTimeAllSuitDevicesOff, FIELD_TIME ),
 	DEFINE_FIELD( m_fIsSprinting, FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_fIsWalking, FIELD_BOOLEAN ),
 
@@ -353,9 +340,6 @@ BEGIN_DATADESC( CHL2_Player )
 
 	DEFINE_FIELD( m_flTimeIgnoreFallDamage, FIELD_TIME ),
 	DEFINE_FIELD( m_bIgnoreFallDamageResetAfterImpact, FIELD_BOOLEAN ),
-
-	// Suit power fields
-	DEFINE_FIELD( m_flSuitPowerLoad, FIELD_FLOAT ),
 
 	DEFINE_FIELD( m_flIdleTime, FIELD_TIME ),
 	DEFINE_FIELD( m_flMoveTime, FIELD_TIME ),
@@ -431,6 +415,17 @@ IMPLEMENT_SERVERCLASS_ST(CHL2_Player, DT_HL2_Player)
 	SendPropBool( SENDINFO(m_fIsSprinting) ),
 END_SEND_TABLE()
 
+BEGIN_SEND_TABLE_NOBASE( LadderMove_t, DT_LadderMove )
+	SendPropBool( SENDINFO( m_bForceLadderMove ) ),
+	SendPropBool( SENDINFO( m_bForceMount ) ),
+	SendPropFloat( SENDINFO( m_flStartTime ) ),
+	SendPropFloat( SENDINFO( m_flArrivalTime ) ),
+	SendPropVector( SENDINFO( m_vecGoalPosition ) ),
+	SendPropVector( SENDINFO( m_vecStartPosition ) ),
+END_SEND_TABLE()
+
+BEGIN_ENT_SCRIPTDESC( CHL2_Player, CBasePlayer, "Half-Life 2 Player" )
+END_SCRIPTDESC();
 
 void CHL2_Player::Precache( void )
 {
@@ -488,64 +483,111 @@ void CHL2_Player::RemoveSuit( void )
 	m_HL2Local.m_bDisplayReticle = false;
 }
 
-void CHL2_Player::HandleSpeedChanges( void )
+void CHL2_Player::StartSprinting( void )
 {
-	int buttonsChanged = m_afButtonPressed | m_afButtonReleased;
 
-	bool bCanSprint = CanSprint();
-	bool bIsSprinting = IsSprinting();
-	bool bWantSprint = ( bCanSprint && IsSuitEquipped() && (m_nButtons & IN_SPEED) );
-	if ( bIsSprinting != bWantSprint && (buttonsChanged & IN_SPEED) )
+}
+
+void CHL2_Player::StopSprinting( void )
+{
+
+}
+
+extern ConVar sv_maxspeed;
+
+void CHL2_Player::HandleSpeedChanges( CMoveData *mv )
+{
+	int nChangedButtons = mv->m_nButtons ^ mv->m_nOldButtons;
+
+	bool bJustPressedSpeed = !!( nChangedButtons & IN_SPEED );
+
+	const bool bWantSprint = ( CanSprint() && IsSuitEquipped() && ( mv->m_nButtons & IN_SPEED ) );
+	const bool bWantsToChangeSprinting = ( m_HL2Local.m_bNewSprinting != bWantSprint ) && ( nChangedButtons & IN_SPEED ) != 0;
+
+	bool bSprinting = m_HL2Local.m_bNewSprinting;
+	if ( bWantsToChangeSprinting )
 	{
-		// If someone wants to sprint, make sure they've pressed the button to do so. We want to prevent the
-		// case where a player can hold down the sprint key and burn tiny bursts of sprint as the suit recharges
-		// We want a full debounce of the key to resume sprinting after the suit is completely drained
 		if ( bWantSprint )
 		{
-			if ( sv_stickysprint.GetBool() )
+			if ( m_HL2Local.m_flSuitPower < 10.0f )
 			{
-				StartAutoSprint();
+				if ( bJustPressedSpeed )
+				{
+					CPASAttenuationFilter filter( this );
+					filter.UsePredictionRules();
+					EmitSound( filter, entindex(), "HL2Player.SprintNoPower" );
+				}
 			}
 			else
 			{
-				StartSprinting();
+				bSprinting = true;
 			}
 		}
 		else
 		{
-			if ( !sv_stickysprint.GetBool() )
-			{
-				StopSprinting();
-			}
-			// Reset key, so it will be activated post whatever is suppressing it.
-			m_nButtons &= ~IN_SPEED;
+			bSprinting = false;
 		}
 	}
 
-	bool bIsWalking = IsWalking();
-	// have suit, pressing button, not sprinting or ducking
-	bool bWantWalking;
-	
-	if( IsSuitEquipped() )
+	if ( m_HL2Local.m_flSuitPower < 0.01 )
 	{
-		bWantWalking = (m_nButtons & IN_WALK) && !IsSprinting() && !(m_nButtons & IN_DUCK);
+		bSprinting = false;
+	}
+
+	bool bWantWalking;
+
+	if ( IsSuitEquipped() )
+	{
+		bWantWalking = ( mv->m_nButtons & IN_WALK ) && !bSprinting && !( mv->m_nButtons & IN_DUCK );
 	}
 	else
 	{
 		bWantWalking = true;
 	}
-	
-	if( bIsWalking != bWantWalking )
+
+	if ( bWantWalking )
 	{
-		if ( bWantWalking )
-		{
-			StartWalking();
-		}
-		else
-		{
-			StopWalking();
-		}
+		bSprinting = false;
 	}
+
+	m_HL2Local.m_bNewSprinting = bSprinting;
+
+	if ( bSprinting )
+	{
+		if ( bJustPressedSpeed )
+		{
+			CPASAttenuationFilter filter( this );
+			filter.UsePredictionRules();
+			EmitSound( filter, entindex(), "HL2Player.SprintStart" );
+		}
+		mv->m_flClientMaxSpeed = HL2_SPRINT_SPEED;
+	}
+	else if ( bWantWalking )
+	{
+		mv->m_flClientMaxSpeed = HL2_WALK_SPEED;
+	}
+	else
+	{
+		mv->m_flClientMaxSpeed = HL2_NORM_SPEED;
+	}
+
+	mv->m_flMaxSpeed = sv_maxspeed.GetFloat();
+}
+
+void CHL2_Player::ReduceTimers( CMoveData *mv )
+{
+	bool bSprinting = mv->m_flClientMaxSpeed == HL2_SPRINT_SPEED;
+
+	if ( bSprinting )
+	{
+		SuitPower_AddDevice( SuitDeviceSprint );
+	}
+	else
+	{
+		SuitPower_RemoveDevice( SuitDeviceSprint );
+	}
+
+	SuitPower_Update();
 }
 
 //-----------------------------------------------------------------------------
@@ -602,7 +644,6 @@ void CHL2_Player::PreThink(void)
 		CheckTimeBasedDamage();
 
 		// Allow the suit to recharge when in the vehicle.
-		SuitPower_Update();
 		CheckSuitUpdate();
 		CheckSuitZoom();
 
@@ -654,7 +695,7 @@ void CHL2_Player::PreThink(void)
 	}
 
 	VPROF_SCOPE_BEGIN( "CHL2_Player::PreThink-Speed" );
-	HandleSpeedChanges();
+
 #ifdef HL2_EPISODIC
 	HandleArmorReduction();
 #endif
@@ -714,7 +755,7 @@ void CHL2_Player::PreThink(void)
 
 	// Operate suit accessories and manage power consumption/charge
 	VPROF_SCOPE_BEGIN( "CHL2_Player::PreThink-SuitPower_Update" );
-	SuitPower_Update();
+	//SuitPower_Update();
 	VPROF_SCOPE_END();
 
 	// checks if new client data (for HUD and view control) needs to be sent to the client
@@ -736,6 +777,9 @@ void CHL2_Player::PreThink(void)
 
 	if (m_lifeState >= LIFE_DYING)
 	{
+#ifdef HL2MP
+		UpdateLastKnownArea();
+#endif
 		PlayerDeathThink();
 		return;
 	}
@@ -902,6 +946,10 @@ void CHL2_Player::PreThink(void)
 			m_nButtons &= ~(IN_ATTACK|IN_ATTACK2);
 		}
 	}
+
+#ifdef HL2MP
+	UpdateLastKnownArea();
+#endif
 }
 
 void CHL2_Player::PostThink( void )
@@ -1108,7 +1156,7 @@ void CHL2_Player::PlayerRunCommand(CUserCmd *ucmd, IMoveHelper *moveHelper)
 		}
 	}
 
-	//Msg("Player time: [ACTIVE: %f]\t[IDLE: %f]\n", m_flMoveTime, m_flIdleTime );
+	//MsgPredTest("Player time: [ACTIVE: %f]\t[IDLE: %f]\n", m_flMoveTime, m_flIdleTime );
 
 	BaseClass::PlayerRunCommand( ucmd, moveHelper );
 }
@@ -1152,6 +1200,10 @@ void CHL2_Player::Spawn(void)
 	GetPlayerProxy();
 
 	SetFlashlightPowerDrainScale( 1.0f );
+
+#ifdef HL2MP
+	UpdateLastKnownArea();
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -1177,7 +1229,6 @@ void CHL2_Player::InitSprinting( void )
 bool CHL2_Player::CanSprint()
 {
 	return ( m_bSprintEnabled &&										// Only if sprint is enabled 
-			!IsWalking() &&												// Not if we're walking
 			!( m_Local.m_bDucked && !m_Local.m_bDucking ) &&			// Nor if we're ducking
 			(GetWaterLevel() != 3) &&									// Certainly not underwater
 			(GlobalEntity_GetState("suit_no_sprint") != GLOBAL_ON) );	// Out of the question without the sprint module
@@ -1198,71 +1249,6 @@ void CHL2_Player::StartAutoSprint()
 		m_fAutoSprintMinTime = gpGlobals->curtime + 1.5f;
 	}
 }
-
-bool CHL2_Player::GetSprintDevice(void)
-{
-	m_bHasSprintDevice = SuitPower_AddDevice(SuitDeviceSprint);
-	return m_bHasSprintDevice;
-}
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-void CHL2_Player::StartSprinting( void )
-{
-	if( m_HL2Local.m_flSuitPower < 10 )
-	{
-		// Don't sprint unless there's a reasonable
-		// amount of suit power.
-		
-		// debounce the button for sound playing
-		if ( m_afButtonPressed & IN_SPEED )
-		{
-			CPASAttenuationFilter filter( this );
-			filter.UsePredictionRules();
-			EmitSound( filter, entindex(), "HL2Player.SprintNoPower" );
-		}
-		return;
-	}
-
-	if (!GetSprintDevice())
-		return;
-
-	CPASAttenuationFilter filter( this );
-	filter.UsePredictionRules();
-	EmitSound( filter, entindex(), "HL2Player.SprintStart" );
-
-	SetMaxSpeed( HL2_SPRINT_SPEED );
-	m_fIsSprinting = true;
-}
-
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-void CHL2_Player::StopSprinting( void )
-{
-	if ( m_HL2Local.m_bitsActiveDevices & SuitDeviceSprint.GetDeviceID() )
-	{
-		SuitPower_RemoveDevice( SuitDeviceSprint );
-	}
-
-	if( IsSuitEquipped() )
-	{
-		SetMaxSpeed( HL2_NORM_SPEED );
-	}
-	else
-	{
-		SetMaxSpeed( HL2_WALK_SPEED );
-	}
-
-	m_fIsSprinting = false;
-
-	if ( sv_stickysprint.GetBool() )
-	{
-		m_bIsAutoSprinting = false;
-		m_fAutoSprintMinTime = 0.0f;
-	}
-}
-
 
 //-----------------------------------------------------------------------------
 // Purpose: Called to disable and enable sprint due to temporary circumstances:
@@ -1718,14 +1704,19 @@ void CHL2_Player::CommanderMode()
 //-----------------------------------------------------------------------------
 void CHL2_Player::CheatImpulseCommands( int iImpulse )
 {
-	switch( iImpulse )
-	{
-	case 50:
+	if (50 == iImpulse)
 	{
 		CommanderMode();
-		break;
+		return;
 	}
 
+	if (!sv_cheats->GetBool())
+	{
+		return;
+	}
+
+	switch( iImpulse )
+	{	
 	case 51:
 	{
 		// Cheat to create a dynamic resupply item
@@ -1806,17 +1797,24 @@ void CHL2_Player::SuitPower_Update( void )
 	}
 	else if( m_HL2Local.m_bitsActiveDevices )
 	{
-		float flPowerLoad = m_flSuitPowerLoad;
+		float flPowerLoad = m_HL2Local.m_flSuitPowerLoad;
 
 		//Since stickysprint quickly shuts off sprint if it isn't being used, this isn't an issue.
 		if ( !sv_stickysprint.GetBool() )
 		{
 			if( SuitPower_IsDeviceActive(SuitDeviceSprint) )
 			{
-				if( !fabs(GetAbsVelocity().x) && !fabs(GetAbsVelocity().y) )
+				if ( CloseEnough( fabs( GetAbsVelocity().x ), 0.0f ) && CloseEnough( fabs( GetAbsVelocity().y ), 0.0f ) )
 				{
-					// If player's not moving, don't drain sprint juice.
-					flPowerLoad -= SuitDeviceSprint.GetDeviceDrainRate();
+					if ( CloseEnough( m_HL2Local.m_flSuitPowerLoad, SuitDeviceSprint.GetDeviceDrainRate() ) )
+					{
+						flPowerLoad = 0.0f;
+					}
+					else
+					{
+						// If player's not moving, don't drain sprint juice.
+						flPowerLoad -= SuitDeviceSprint.GetDeviceDrainRate();
+					}
 				}
 			}
 		}
@@ -1832,11 +1830,8 @@ void CHL2_Player::SuitPower_Update( void )
 
 		if( !SuitPower_Drain( flPowerLoad * gpGlobals->frametime ) )
 		{
+			MsgPredTest( "[Server %d] Drained! Sprinting: %s\n", gpGlobals->tickcount, IsSprinting() ? "yes" : "no" );
 			// TURN OFF ALL DEVICES!!
-			if( IsSprinting() )
-			{
-				StopSprinting();
-			}
 
 			if ( Flashlight_UseLegacyVersion() )
 			{
@@ -1859,7 +1854,9 @@ void CHL2_Player::SuitPower_Update( void )
 #endif
 			}
 		}
+
 	}
+	MsgPredTest2( "[Server %d] m_HL2Local.m_flSuitPower: %f m_fIsSprinting: %d\n", gpGlobals->tickcount, m_HL2Local.m_flSuitPower.Get(), m_fIsSprinting.Get() ? 1 : 0 );
 }
 
 
@@ -1870,7 +1867,7 @@ void CHL2_Player::SuitPower_Initialize( void )
 {
 	m_HL2Local.m_bitsActiveDevices = 0x00000000;
 	m_HL2Local.m_flSuitPower = 100.0;
-	m_flSuitPowerLoad = 0.0;
+	m_HL2Local.m_flSuitPowerLoad = 0.0;
 }
 
 
@@ -1887,7 +1884,7 @@ bool CHL2_Player::SuitPower_Drain( float flPower )
 
 	m_HL2Local.m_flSuitPower -= flPower;
 
-	if( m_HL2Local.m_flSuitPower < 0.0 )
+	if( m_HL2Local.m_flSuitPower < 0.01 )
 	{
 		// Power is depleted!
 		// Clamp and fail
@@ -1932,7 +1929,7 @@ bool CHL2_Player::SuitPower_AddDevice( const CSuitPowerDevice &device )
 		return false;
 
 	m_HL2Local.m_bitsActiveDevices |= device.GetDeviceID();
-	m_flSuitPowerLoad += device.GetDeviceDrainRate();
+	m_HL2Local.m_flSuitPowerLoad += device.GetDeviceDrainRate();
 	return true;
 }
 
@@ -1952,16 +1949,18 @@ bool CHL2_Player::SuitPower_RemoveDevice( const CSuitPowerDevice &device )
 	// because the battery is drained, no harm done, the battery charge cannot go below 0. 
 	// This code in combination with the delay before the suit can start recharging are a defense
 	// against exploits where the player could rapidly tap sprint and never run out of power.
+	MsgPredTest2( "[Server %d] [A REMOVE] m_HL2Local.m_flSuitPower: %f\n", gpGlobals->tickcount, m_HL2Local.m_flSuitPower.Get() );
 	SuitPower_Drain( device.GetDeviceDrainRate() * 0.1f );
+	MsgPredTest2( "[Server %d] [B REMOVE] m_HL2Local.m_flSuitPower: %f\n", gpGlobals->tickcount, m_HL2Local.m_flSuitPower.Get() );
 
 	m_HL2Local.m_bitsActiveDevices &= ~device.GetDeviceID();
-	m_flSuitPowerLoad -= device.GetDeviceDrainRate();
+	m_HL2Local.m_flSuitPowerLoad -= device.GetDeviceDrainRate();
 
 	if( m_HL2Local.m_bitsActiveDevices == 0x00000000 )
 	{
 		// With this device turned off, we can set this timer which tells us when the
 		// suit power system entered a no-load state.
-		m_flTimeAllSuitDevicesOff = gpGlobals->curtime;
+		m_HL2Local.m_flTimeAllSuitDevicesOff = gpGlobals->curtime;
 	}
 
 	return true;
@@ -1982,7 +1981,7 @@ bool CHL2_Player::SuitPower_ShouldRecharge( void )
 
 	// Has the system been in a no-load state for long enough
 	// to begin recharging?
-	if( gpGlobals->curtime < m_flTimeAllSuitDevicesOff + SUITPOWER_BEGIN_RECHARGE_DELAY )
+	if( gpGlobals->curtime < m_HL2Local.m_flTimeAllSuitDevicesOff + SUITPOWER_BEGIN_RECHARGE_DELAY )
 		return false;
 
 	return true;
@@ -2000,6 +1999,7 @@ bool CHL2_Player::ApplyBattery( float powerMultiplier )
 		int pct;
 		char szcharge[64];
 
+		int nOldArmorValue = ArmorValue();
 		IncrementArmorValue( sk_battery.GetFloat() * powerMultiplier, MAX_NORMAL_BATTERY );
 
 		CPASAttenuationFilter filter( this, "ItemBattery.Touch" );
@@ -2024,6 +2024,17 @@ bool CHL2_Player::ApplyBattery( float powerMultiplier )
 		
 		//UTIL_EmitSoundSuit(edict(), szcharge);
 		//SetSuitUpdate(szcharge, FALSE, SUIT_NEXT_IN_30SEC);
+
+		if ( IsPlayer() && ArmorValue() > nOldArmorValue )
+		{
+			IGameEvent *event = gameeventmanager->CreateEvent( "take_armor" );
+			if ( event )
+			{
+				event->SetInt( "amount", ArmorValue() - nOldArmorValue );
+				event->SetInt( "total", ArmorValue() );
+				gameeventmanager->FireEvent( event );
+			}
+		}
 		return true;		
 	}
 	return false;
@@ -2481,6 +2492,14 @@ void CHL2_Player::Event_Killed( const CTakeDamageInfo &info )
 
 	FirePlayerProxyOutput( "PlayerDied", variant_t(), this, this );
 	NotifyScriptsOfDeath();
+
+	{
+		IGameEvent *event = gameeventmanager->CreateEvent( "single_player_death" );
+		if ( event )
+		{
+			gameeventmanager->FireEvent( event );
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -2802,18 +2821,18 @@ bool CHL2_Player::ClientCommand( const CCommand &args )
 // Purpose: 
 // Output : void CBasePlayer::PlayerUse
 //-----------------------------------------------------------------------------
-bool CHL2_Player::PlayerUse ( void )
+void CHL2_Player::PlayerUse ( void )
 {
 	// Was use pressed or released?
 	if ( ! ((m_nButtons | m_afButtonPressed | m_afButtonReleased) & IN_USE) )
-		return false;
+		return;
 
 	if ( m_afButtonPressed & IN_USE )
 	{
 		// Currently using a latched entity?
 		if ( ClearUseEntity() )
 		{
-			return false;
+			return;
 		}
 		else
 		{
@@ -2821,7 +2840,7 @@ bool CHL2_Player::PlayerUse ( void )
 			{
 				m_afPhysicsFlags &= ~PFLAG_DIROVERRIDE;
 				m_iTrain = TRAIN_NEW|TRAIN_OFF;
-				return false;
+				return;
 			}
 			else
 			{	// Start controlling the train!
@@ -2832,7 +2851,7 @@ bool CHL2_Player::PlayerUse ( void )
 					m_iTrain = TrainSpeed(pTrain->m_flSpeed, ((CFuncTrackTrain*)pTrain)->GetMaxSpeed());
 					m_iTrain |= TRAIN_NEW;
 					EmitSound( "HL2Player.TrainUse" );
-					return true;
+					return;
 				}
 			}
 		}
@@ -2840,7 +2859,7 @@ bool CHL2_Player::PlayerUse ( void )
 		// Tracker 3926:  We can't +USE something if we're climbing a ladder
 		if ( GetMoveType() == MOVETYPE_LADDER )
 		{
-			return false;
+			return;
 		}
 	}
 
@@ -2848,7 +2867,7 @@ bool CHL2_Player::PlayerUse ( void )
 	{
 		// Something has temporarily stopped us being able to USE things.
 		// Obviously, this should be used very carefully.(sjb)
-		return false;
+		return;
 	}
 
 	CBaseEntity *pUseEntity = FindUseEntity();
@@ -2928,8 +2947,6 @@ bool CHL2_Player::PlayerUse ( void )
 		m_Local.m_nOldButtons |= IN_USE;
 		m_afButtonPressed &= ~IN_USE;
 	}
-
-	return usedSomething;
 }
 
 ConVar	sv_show_crosshair_target( "sv_show_crosshair_target", "0" );
@@ -3767,7 +3784,7 @@ CLogicPlayerProxy *CHL2_Player::GetPlayerProxy( void )
 		if ( pProxy == NULL )
 			return NULL;
 
-		//pProxy->m_hPlayer = this;
+		pProxy->m_hPlayer = this;
 		m_hPlayerProxy = pProxy;
 	}
 
@@ -3792,12 +3809,6 @@ BEGIN_DATADESC( CLogicPlayerProxy )
 	DEFINE_OUTPUT( m_PlayerHasNoAmmo, "PlayerHasNoAmmo" ),
 	DEFINE_OUTPUT( m_PlayerDied,	"PlayerDied" ),
 	DEFINE_OUTPUT( m_PlayerMissedAR2AltFire, "PlayerMissedAR2AltFire" ),
-#ifdef PORTAL
-	DEFINE_OUTPUT( m_OnCoopPing, "OnCoopPing" ),
-#endif
-
-	DEFINE_KEYFIELD( m_bUseActivator, FIELD_BOOLEAN, "UseActivator" ),
-
 	DEFINE_INPUTFUNC( FIELD_VOID,	"RequestPlayerHealth",	InputRequestPlayerHealth ),
 	DEFINE_INPUTFUNC( FIELD_VOID,	"SetFlashlightSlowDrain",	InputSetFlashlightSlowDrain ),
 	DEFINE_INPUTFUNC( FIELD_VOID,	"SetFlashlightNormalDrain",	InputSetFlashlightNormalDrain ),
@@ -3809,30 +3820,18 @@ BEGIN_DATADESC( CLogicPlayerProxy )
 	DEFINE_INPUTFUNC( FIELD_STRING,	"SetLocatorTargetEntity", InputSetLocatorTargetEntity ),
 #ifdef PORTAL
 	DEFINE_INPUTFUNC( FIELD_VOID,	"SuppressCrosshair", InputSuppressCrosshair ),
-	DEFINE_INPUTFUNC( FIELD_VOID,	"UnSuppressCrosshair", InputUnSuppressCrosshair ),
-	DEFINE_INPUTFUNC( FIELD_INTEGER,	"SetPortalgunColor", InputSetPortalgunColor ),
-	DEFINE_INPUTFUNC( FIELD_INTEGER,	"SetPortalgunLinkageID", InputSetPortalgunLinkageID ),
-	
 #endif // PORTAL
-//	DEFINE_FIELD( m_hPlayer, FIELD_EHANDLE ),
+	DEFINE_FIELD( m_hPlayer, FIELD_EHANDLE ),
 END_DATADESC()
 
 void CLogicPlayerProxy::Activate( void )
 {
 	BaseClass::Activate();
-	/*
-	if (m_hPlayer == NULL)
+
+	if ( m_hPlayer == NULL )
 	{
-		if (i <= gpGlobals->maxClients >> 1)
-		{
-			m_hPlayer = AI_GetMultiPlayer();
-		}
-		else
-		{	
-			m_hPlayer = AI_GetSinglePlayer();
-		}
+		m_hPlayer = AI_GetSinglePlayer();
 	}
-	*/
 }
 
 bool CLogicPlayerProxy::PassesDamageFilter( const CTakeDamageInfo &info )
@@ -3848,117 +3847,60 @@ bool CLogicPlayerProxy::PassesDamageFilter( const CTakeDamageInfo &info )
 
 void CLogicPlayerProxy::InputSetPlayerHealth( inputdata_t &inputdata )
 {
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+	if ( m_hPlayer == NULL )
+		return;
 
-		if (pPlayer)
-		pPlayer->SetHealth(inputdata.value.Int());
-	}
+	m_hPlayer->SetHealth( inputdata.value.Int() );
 
 }
 
 void CLogicPlayerProxy::InputRequestPlayerHealth( inputdata_t &inputdata )
 {
-	CBasePlayer *pPlayer = NULL;
+	if ( m_hPlayer == NULL )
+		return;
 
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		pPlayer = UTIL_PlayerByIndex(i);
-	
-		if (pPlayer)
-		m_RequestedPlayerHealth.Set( pPlayer->GetHealth(), inputdata.pActivator, inputdata.pCaller );
-	}
+	m_RequestedPlayerHealth.Set( m_hPlayer->GetHealth(), inputdata.pActivator, inputdata.pCaller );
 }
 
 void CLogicPlayerProxy::InputSetFlashlightSlowDrain( inputdata_t &inputdata )
 {
-	if ( m_bUseActivator )
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(inputdata.pActivator);
-
-		if (phlPlayer)
-			phlPlayer->SetFlashlightPowerDrainScale(hl2_darkness_flashlight_factor.GetFloat());
+	if( m_hPlayer == NULL )
 		return;
-	}
 
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(UTIL_PlayerByIndex(i));
+	CHL2_Player *pPlayer = dynamic_cast<CHL2_Player*>(m_hPlayer.Get());
 
-		if( phlPlayer )
-			phlPlayer->SetFlashlightPowerDrainScale( hl2_darkness_flashlight_factor.GetFloat() );
-	}
+	if( pPlayer )
+		pPlayer->SetFlashlightPowerDrainScale( hl2_darkness_flashlight_factor.GetFloat() );
 }
 
 void CLogicPlayerProxy::InputSetFlashlightNormalDrain( inputdata_t &inputdata )
 {
-	if ( m_bUseActivator )
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(inputdata.pActivator);
-
-		if (phlPlayer)
-			phlPlayer->SetFlashlightPowerDrainScale(1.0f);
+	if( m_hPlayer == NULL )
 		return;
-	}
 
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(UTIL_PlayerByIndex(i));
-		
-		if (phlPlayer)
-			phlPlayer->SetFlashlightPowerDrainScale(1.0f);
-	}
+	CHL2_Player *pPlayer = dynamic_cast<CHL2_Player*>(m_hPlayer.Get());
+
+	if( pPlayer )
+		pPlayer->SetFlashlightPowerDrainScale( 1.0f );
 }
 
 void CLogicPlayerProxy::InputRequestAmmoState( inputdata_t &inputdata )
 {
-	CBasePlayer *pPlayer = NULL;
-	
-	if ( m_bUseActivator )
+	if( m_hPlayer == NULL )
+		return;
+
+	CHL2_Player *pPlayer = dynamic_cast<CHL2_Player*>(m_hPlayer.Get());
+
+	for ( int i = 0 ; i < pPlayer->WeaponCount(); ++i )
 	{
-		pPlayer = ToBasePlayer(inputdata.pActivator);
+		CBaseCombatWeapon* pCheck = pPlayer->GetWeapon( i );
 
-		if (pPlayer)
+		if ( pCheck )
 		{
-			for ( int i = 0 ; i < pPlayer->WeaponCount(); ++i )
+			if ( pCheck->HasAnyAmmo() && (pCheck->UsesPrimaryAmmo() || pCheck->UsesSecondaryAmmo()))
 			{
-				CBaseCombatWeapon* pCheck = pPlayer->GetWeapon( i );
-
-				if ( pCheck )
-				{
-					if ( pCheck->HasAnyAmmo() && (pCheck->UsesPrimaryAmmo() || pCheck->UsesSecondaryAmmo()))
-					{
-						m_PlayerHasAmmo.FireOutput( this, this, 0 );
-						return;
-					}
-				}
-			}
-		}
-	}
-
-	if ( !m_bUseActivator )
-	{
-		for (int i = 1; i <= gpGlobals->maxClients; ++i)
-		{
-			pPlayer = UTIL_PlayerByIndex(i);
-		
-		//	CHL2_Player *phlPlayer = ToHL2Player(pPlayer);
-			if (pPlayer)
-			{
-				for ( int i = 0 ; i < pPlayer->WeaponCount(); ++i )
-				{
-					CBaseCombatWeapon* pCheck = pPlayer->GetWeapon( i );
-
-					if ( pCheck )
-					{
-						if ( pCheck->HasAnyAmmo() && (pCheck->UsesPrimaryAmmo() || pCheck->UsesSecondaryAmmo()))
-						{
-							m_PlayerHasAmmo.FireOutput( this, this, 0 );
-							return;
-						}
-					}
-				}
+				m_PlayerHasAmmo.FireOutput( this, this, 0 );
+				return;
 			}
 		}
 	}
@@ -3968,277 +3910,56 @@ void CLogicPlayerProxy::InputRequestAmmoState( inputdata_t &inputdata )
 
 void CLogicPlayerProxy::InputLowerWeapon( inputdata_t &inputdata )
 {
-	if ( m_bUseActivator )
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(inputdata.pActivator);
-		
-		if (phlPlayer)
-			phlPlayer->Weapon_Lower();
+	if( m_hPlayer == NULL )
 		return;
-	}
 
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(UTIL_PlayerByIndex(i));
-		
-		if (phlPlayer)
-			phlPlayer->Weapon_Lower();
-	}
+	CHL2_Player *pPlayer = dynamic_cast<CHL2_Player*>(m_hPlayer.Get());
+
+	pPlayer->Weapon_Lower();
 }
 
 void CLogicPlayerProxy::InputEnableCappedPhysicsDamage( inputdata_t &inputdata )
 {
-	if ( m_bUseActivator )
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(inputdata.pActivator);
-
-		if (phlPlayer)
-			phlPlayer->EnableCappedPhysicsDamage();
+	if( m_hPlayer == NULL )
 		return;
-	}
 
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(UTIL_PlayerByIndex(i));
-
-		if (phlPlayer)
-		phlPlayer->EnableCappedPhysicsDamage();
-	}
+	CHL2_Player *pPlayer = dynamic_cast<CHL2_Player*>(m_hPlayer.Get());
+	pPlayer->EnableCappedPhysicsDamage();
 }
 
 void CLogicPlayerProxy::InputDisableCappedPhysicsDamage( inputdata_t &inputdata )
 {
-	if ( m_bUseActivator )
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(inputdata.pActivator);
-
-		if (phlPlayer)
-			phlPlayer->DisableCappedPhysicsDamage();
+	if( m_hPlayer == NULL )
 		return;
-	}
 
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(UTIL_PlayerByIndex(i));
-
-		if (phlPlayer)
-			phlPlayer->DisableCappedPhysicsDamage();
-	}
+	CHL2_Player *pPlayer = dynamic_cast<CHL2_Player*>(m_hPlayer.Get());
+	pPlayer->DisableCappedPhysicsDamage();
 }
 
 void CLogicPlayerProxy::InputSetLocatorTargetEntity( inputdata_t &inputdata )
 {
-	if ( m_bUseActivator )
-	{
-		CHL2_Player *phlPlayer = ToHL2Player(inputdata.pActivator);
-
-		CBaseEntity *pTarget = NULL; // assume no target
-		string_t iszTarget = MAKE_STRING(inputdata.value.String());
-
-		if (iszTarget != NULL_STRING)
-		{
-			pTarget = gEntList.FindEntityByName(NULL, iszTarget);
-		}
-
-		if (phlPlayer)
-			phlPlayer->SetLocatorTargetEntity(pTarget);
+	if( m_hPlayer == NULL )
 		return;
-	}
 
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	CBaseEntity *pTarget = NULL; // assume no target
+	string_t iszTarget = MAKE_STRING( inputdata.value.String() );
+
+	if( iszTarget != NULL_STRING )
 	{
-		CHL2_Player *phlPlayer = ToHL2Player(UTIL_PlayerByIndex(i));
-		
-		CBaseEntity *pTarget = NULL; // assume no target
-		string_t iszTarget = MAKE_STRING(inputdata.value.String());
-
-		if (iszTarget != NULL_STRING)
-		{
-			pTarget = gEntList.FindEntityByName(NULL, iszTarget);
-		}
-
-		if (phlPlayer)
-		phlPlayer->SetLocatorTargetEntity(pTarget);
+		pTarget = gEntList.FindEntityByName( NULL, iszTarget );
 	}
+
+	CHL2_Player *pPlayer = dynamic_cast<CHL2_Player*>(m_hPlayer.Get());
+	pPlayer->SetLocatorTargetEntity(pTarget);
 }
 
 #ifdef PORTAL
 void CLogicPlayerProxy::InputSuppressCrosshair( inputdata_t &inputdata )
 {
-	if ( m_bUseActivator )
-	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer( inputdata.pActivator );
-
-		if (pPortalPlayer)
-		{
-			pPortalPlayer->SuppressCrosshair(true);
-		}
+	if( m_hPlayer == NULL )
 		return;
-	}
 
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer(UTIL_PlayerByIndex(i));
-
-		if (pPortalPlayer)
-		{
-			pPortalPlayer->SuppressCrosshair(true);
-		}
-	}
+	CPortal_Player *pPlayer = ToPortalPlayer(m_hPlayer.Get());
+	pPlayer->SuppressCrosshair( true );
 }
-
-void CLogicPlayerProxy::InputUnSuppressCrosshair( inputdata_t &inputdata )
-{
-	if ( m_bUseActivator )
-	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer( inputdata.pActivator );
-
-		if (pPortalPlayer)
-		{
-			pPortalPlayer->SuppressCrosshair(false);
-		}
-		return;
-	}
-
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-
-		CPortal_Player *pPortalPlayer = ToPortalPlayer(UTIL_PlayerByIndex(i));
-
-		if (pPortalPlayer)
-		{
-			pPortalPlayer->SuppressCrosshair(false);
-		}
-	}
-}
-
-void CLogicPlayerProxy::InputSetPortalgunColor( inputdata_t &inputdata )
-{
-	int iDataValue = inputdata.value.Int();
-	
-	if ( m_bUseActivator )
-	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer( inputdata.pActivator );
-		
-		if (pPortalPlayer)
-		{
-			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
-			//if (pWeapon)
-			{
-				
-				if (pPortalgun)
-				{
-					if (iDataValue == 0)
-					{
-						pPortalgun->SetCanFirePortal1(false);
-						pPortalgun->SetCanFirePortal2(false);
-					}
-					else if(iDataValue == 1)
-					{
-						pPortalgun->SetCanFirePortal1(true);
-						pPortalgun->SetCanFirePortal2(false);
-					}
-					else if (iDataValue == 2)
-					{
-						pPortalgun->SetCanFirePortal1(false);
-						pPortalgun->SetCanFirePortal2(true);
-					}
-					else
-					{
-						pPortalgun->SetCanFirePortal1(true);
-						pPortalgun->SetCanFirePortal2(true);
-					}
-				}
-			}
-		}
-
-		return;
-	}
-
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer(UTIL_PlayerByIndex(i));
-
-		if (pPortalPlayer)
-		{
-			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
-			//if (pWeapon)
-			{
-
-				if (pPortalgun)
-				{
-					if (iDataValue == 0)
-					{
-						pPortalgun->SetCanFirePortal1(false);
-						pPortalgun->SetCanFirePortal2(false);
-					}
-					else if (iDataValue == 1)
-					{
-						pPortalgun->SetCanFirePortal1(true);
-						pPortalgun->SetCanFirePortal2(false);
-					}
-					else if (iDataValue == 2)
-					{
-						pPortalgun->SetCanFirePortal1(false);
-						pPortalgun->SetCanFirePortal2(true);
-					}
-					else
-					{
-						pPortalgun->SetCanFirePortal1(true);
-						pPortalgun->SetCanFirePortal2(true);
-					}
-				}
-			}
-		}
-	}
-}
-
-void CLogicPlayerProxy::InputSetPortalgunLinkageID(inputdata_t &inputdata)
-{
-	int iDataValue = inputdata.value.Int();
-	
-	if ( m_bUseActivator )
-	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer( inputdata.pActivator );
-		
-		if (pPortalPlayer)
-		{
-			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
-			//if (pWeapon)
-			{
-
-				if (pPortalgun)
-				{
-					pPortalgun->m_bForceAlwaysUseSetID = true;
-					pPortalgun->m_iPortalLinkageGroupID = (iDataValue);
-					pPortalgun->m_hPrimaryPortal = CProp_Portal::FindPortal(pPortalgun->m_iPortalLinkageGroupID, false, true);
-					pPortalgun->m_hSecondaryPortal = CProp_Portal::FindPortal(pPortalgun->m_iPortalLinkageGroupID, true, true);
-				}
-			}
-		}
-
-		return;
-	}
-
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CPortal_Player *pPortalPlayer = ToPortalPlayer(UTIL_PlayerByIndex(i));
-
-		if (pPortalPlayer)
-		{
-			CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
-			//if (pWeapon)
-			{
-				if (pPortalgun)
-				{
-					pPortalgun->m_bForceAlwaysUseSetID = true;
-					pPortalgun->m_iPortalLinkageGroupID = (iDataValue);
-					pPortalgun->m_hPrimaryPortal = CProp_Portal::FindPortal(pPortalgun->m_iPortalLinkageGroupID, false, true);
-					pPortalgun->m_hSecondaryPortal = CProp_Portal::FindPortal(pPortalgun->m_iPortalLinkageGroupID, true, true);
-				}
-			}
-		}
-	}
-}
-
 #endif // PORTAL

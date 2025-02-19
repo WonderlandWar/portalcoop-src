@@ -184,8 +184,7 @@ BEGIN_DATADESC( CNPC_CScanner )
 
 END_DATADESC()
 
-IMPLEMENT_SERVERCLASS_ST(CNPC_CScanner, DT_NPC_CScanner)
-END_SEND_TABLE()
+
 LINK_ENTITY_TO_CLASS(npc_cscanner, CNPC_CScanner);
 
 
@@ -3008,7 +3007,6 @@ AI_END_CUSTOM_NPC()
 class CNPC_ClawScanner : public CNPC_CScanner
 {
 DECLARE_CLASS( CNPC_ClawScanner, CNPC_CScanner );
-DECLARE_SERVERCLASS();
 
 public:
 	CNPC_ClawScanner();
@@ -3018,8 +3016,6 @@ public:
 BEGIN_DATADESC( CNPC_ClawScanner )
 END_DATADESC()
 
-IMPLEMENT_SERVERCLASS_ST(CNPC_ClawScanner, DT_NPC_ClawScanner)
-END_SEND_TABLE()
 
 LINK_ENTITY_TO_CLASS(npc_clawscanner, CNPC_ClawScanner);
 

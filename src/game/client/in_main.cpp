@@ -44,6 +44,9 @@ extern ConVar cam_idealyaw;
 // For showing/hiding the scoreboard
 #include <game/client/iviewport.h>
 
+// Need this for steam controller
+#include "clientsteamcontext.h"
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -311,6 +314,8 @@ CInput::CInput( void )
 	m_pCommands = NULL;
 	m_pCameraThirdData = NULL;
 	m_pVerifiedCommands = NULL;
+	m_PreferredGameActionSet = GAME_ACTION_SET_MENUCONTROLS;
+	m_bSteamControllerGameActionsInitialized = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -490,25 +495,6 @@ void IN_Grenade2Down( const CCommand &args ) { KeyDown( &in_grenade2, args[1] );
 void IN_XboxStub( const CCommand &args ) { /*do nothing*/ }
 void IN_Attack3Down( const CCommand &args ) { KeyDown(&in_attack3, args[1] );}
 void IN_Attack3Up( const CCommand &args ) { KeyUp(&in_attack3, args[1] );}
-
-kbutton_t	in_coop_ping;
-
-void IN_CoopPingUp( const CCommand &args) { KeyUp( &in_coop_ping, args[1] ); }
-void IN_CoopPingDown( const CCommand &args) { KeyDown( &in_coop_ping, args[1] ); }
-
-static ConCommand presscoopping( "+coop_ping", IN_CoopPingDown );
-static ConCommand unpresscoopping( "-coop_ping", IN_CoopPingUp );
-
-
-kbutton_t	in_glow_players;
-
-void IN_GlowPlayersUp( const CCommand &args) { KeyUp( &in_glow_players, args[1] ); }
-void IN_GlowPlayersDown(const CCommand &args) { KeyDown(&in_glow_players, args[1]); }
-
-static ConCommand pressglowplayers( "+glow_players", IN_GlowPlayersDown );
-static ConCommand unpressglowplayers( "-glow_players", IN_GlowPlayersUp );
-
-
 
 void IN_DuckToggle( const CCommand &args ) 
 { 
@@ -964,7 +950,8 @@ void CInput::ControllerMove( float frametime, CUserCmd *cmd )
 		}
 	}
 
-	JoyStickMove( frametime, cmd);
+	SteamControllerMove( frametime, cmd );
+	JoyStickMove( frametime, cmd );
 
 	// NVNT if we have a haptic device..
 	if(haptics && haptics->HasDevice())
@@ -1487,9 +1474,7 @@ int CInput::GetButtonBits( int bResetState )
 	CalcButtonBits( bits, IN_ZOOM, s_ClearInputState, &in_zoom, bResetState );
 	CalcButtonBits( bits, IN_GRENADE1, s_ClearInputState, &in_grenade1, bResetState );
 	CalcButtonBits( bits, IN_GRENADE2, s_ClearInputState, &in_grenade2, bResetState );
-	CalcButtonBits( bits, IN_ATTACK3, s_ClearInputState, &in_attack3, bResetState );	
-	CalcButtonBits( bits, IN_COOP_PING, s_ClearInputState, &in_coop_ping, bResetState );
-	CalcButtonBits( bits, IN_GLOW_PLAYERS, s_ClearInputState, &in_glow_players, bResetState );
+	CalcButtonBits( bits, IN_ATTACK3, s_ClearInputState, &in_attack3, bResetState );
 
 	if ( KeyState(&in_ducktoggle) )
 	{
@@ -1683,6 +1668,9 @@ void CInput::Init_All (void)
 	m_fHadJoysticks = false;
 	m_flLastForwardMove = 0.0;
 
+	// Make sure this is activated now so steam controller stuff works
+	ClientSteamContext().Activate();
+
 	// Initialize inputs
 	if ( IsPC() )
 	{
@@ -1692,6 +1680,9 @@ void CInput::Init_All (void)
 		
 	// Initialize third person camera controls.
 	Init_Camera();
+
+	// Initialize steam controller action sets
+	m_bSteamControllerGameActionsInitialized = InitializeSteamControllerGameActionSets();
 }
 
 /*

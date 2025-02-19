@@ -13,12 +13,11 @@
 #include "econ_controls.h"
 #include "vgui_controls/TextImage.h"
 #include "vgui_controls/PropertyPage.h"
-#include "iachievementmgr.h"
-/*
 #include "econ_item_system.h"
 #include "econ_item_tools.h"
+#include "iachievementmgr.h"
 #include "econ_item_description.h"
-*/
+
 #if defined(TF_DLL) || defined(TF_CLIENT_DLL)
 #include "tf_shareddefs.h"
 #endif
@@ -995,7 +994,7 @@ void CEconItemDetailsRichText::ApplySchemeSettings( vgui::IScheme *pScheme )
 
 	SetUnderlineFont( m_hLinkFont );
 }
-/*
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -1014,13 +1013,12 @@ void CEconItemDetailsRichText::UpdateDetailsForItem( const CEconItemDefinition *
 	DataText_AppendUsageData( pDef );
 	DataText_AppendToolUsage( pDef );
 }
-*/
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CEconItemDetailsRichText::AddDataText( const char *pszText, bool bAddPostLines, const wchar_t *wpszArg, const wchar_t *wpszArg2, const int *pItemDefIndex )
 {
-	/*
 	static wchar_t wszConstructedString[4096];
 	static wchar_t wszText[4096];
 
@@ -1124,15 +1122,13 @@ void CEconItemDetailsRichText::AddDataText( const char *pszText, bool bAddPostLi
 			InsertString( L"\n\n" );
 		}
 	}
-	*/
 }
-/*
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CEconItemDetailsRichText::DataText_AppendUsageData( const CEconItemDefinition *pBaseDef )
 {
-	
 	// Don't show class/slot usage for class/slot tokens
 	if ( pBaseDef->GetItemClass() && ( !V_strcmp( pBaseDef->GetItemClass(), "class_token" ) || !V_strcmp( pBaseDef->GetItemClass(), "slot_token" ) ) )
 		return;
@@ -1245,10 +1241,8 @@ void CEconItemDetailsRichText::DataText_AppendUsageData( const CEconItemDefiniti
 		}
 	}
 #endif // #if defined(TF_DLL) || defined(TF_CLIENT_DLL)
-	
 }
-*/
-/*
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -1323,9 +1317,7 @@ void CEconItemDetailsRichText::DataText_AppendStoreFlags( const CEconItemDefinit
 		}
 	}
 }
-*/
 
-/*
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -1546,13 +1538,12 @@ void CEconItemDetailsRichText::DataText_AppendSetData( const CEconItemDefinition
 		}
 	}
 }
-*/
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CEconItemDetailsRichText::UpdateToolList( void )
 {
-	/*
 	m_ToolList.Purge();
 
 	// Find all the tool types in our items list
@@ -1596,7 +1587,6 @@ void CEconItemDetailsRichText::UpdateToolList( void )
 			m_ToolList.AddToTail( pDef->GetDefinitionIndex() );
 		}
 	}
-	*/
 }
 
 //-----------------------------------------------------------------------------
@@ -1767,6 +1757,24 @@ void CExplanationPopup::Popup( int iPosition, int iTotalPanels )
 	Q_snprintf(szTmp, 16, "%d/%d", m_iPositionInChain, m_iTotalInChain );
 	SetDialogVariable( "explanationnumber", szTmp );
 
+	if ( m_bUseResFileForControls )
+	{
+		Assert( !m_strTitle.IsEmpty() );
+		Assert( !m_strBody.IsEmpty() );
+		InvalidateLayout( true, true );
+		SetDialogVariable( "title", g_pVGuiLocalize->Find( m_strTitle ) );
+		SetDialogVariable( "body", g_pVGuiLocalize->Find( m_strBody ) );
+		SetControlVisible( "PrevButton", m_iPositionInChain > 1 );
+		SetControlVisible( "NextButton", m_iPositionInChain < m_iTotalInChain );
+		SetControlVisible( "PositionLabel", m_iTotalInChain > 1 );
+
+		// Set the end height to be just below the body label
+		CExLabel* pBodyLabel = FindControl< CExLabel >( "TextLabel" );
+		int nContentWide, nContentTall;
+		pBodyLabel->GetContentSize( nContentWide, nContentTall );
+		m_iEndH = nContentTall + pBodyLabel->GetYPos() + YRES( 30 );
+	}
+
 	SetBounds( m_iStartX, m_iStartY, m_iStartW, m_iStartH );
 	SetVisible( true );
 	vgui::ivgui()->AddTickSignal( GetVPanel() );
@@ -1929,6 +1937,53 @@ void CExplanationPopup::OnKeyCodePressed( vgui::KeyCode code )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: Keep controls in place as we resize
+//-----------------------------------------------------------------------------
+void CExplanationPopup::OnSizeChanged( int newWide, int newTall ) 
+{
+	BaseClass::OnSizeChanged( newWide, newTall );
+
+	if ( !m_bUseResFileForControls )
+		return;
+
+	// Prev button
+	{
+		Panel* pPrev = FindChildByName( "PrevButton" );
+		if ( pPrev )
+		{
+			pPrev->SetPos( 0, GetTall() - pPrev->GetTall() );
+		}
+	}
+
+	// Next button
+	{
+		Panel* pNext = FindChildByName( "NextButton" );
+		if( pNext )
+		{
+			pNext->SetPos( GetWide() - pNext->GetWide(), GetTall() - pNext->GetTall() );
+		}
+	}
+
+	// Position label
+	{
+		Panel* pPosition = FindChildByName( "PositionLabel" );
+		if ( pPosition )
+		{
+			pPosition->SetPos( GetWide() * 0.5f - pPosition->GetWide() * 0.5f, GetTall() - pPosition->GetTall() ); 
+		}
+	}
+
+	// Close button
+	{
+		Panel* pClose = FindChildByName( "CloseButton" );
+		if ( pClose )
+		{
+			pClose->SetPos( GetWide() - pClose->GetWide(), 0 ); 
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CExplanationPopup::PositionCallout( float flElapsed )
@@ -2035,11 +2090,27 @@ void CExplanationPopupCalloutArrow::Paint( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+void CExplanationPopup::ApplySchemeSettings( vgui::IScheme *pScheme )
+{
+	BaseClass::ApplySchemeSettings( pScheme );
+
+	if ( m_bUseResFileForControls )
+	{
+		LoadControlSettings( "resource/ui/ExplanationPopup.res" );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 void CExplanationPopup::ApplySettings( KeyValues *inResourceData )
 {
 	BaseClass::ApplySettings( inResourceData );
 
 	Q_strncpy( m_szNextExplanation, inResourceData->GetString( "next_explanation", "" ), sizeof( m_szNextExplanation ) );
+
+	m_strTitle = inResourceData->GetString( "explanation_title", NULL );
+	m_strBody = inResourceData->GetString( "explanation_body", NULL );
 }
 
 //-----------------------------------------------------------------------------

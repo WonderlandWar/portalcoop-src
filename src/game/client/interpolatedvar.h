@@ -160,7 +160,7 @@ public:
 	// Returns true if the new value is different from the prior most recent value.
 	virtual void NoteLastNetworkedValue() = 0;
 	virtual bool NoteChanged( float changetime, bool bUpdateLastNetworkedValue ) = 0;
-	virtual void Reset( float flCurrentTime ) = 0;
+	virtual void Reset() = 0;
 	
 	// Returns 1 if the value will always be the same if currentTime is always increasing.
 	virtual int Interpolate( float currentTime ) = 0;
@@ -449,7 +449,7 @@ public:
 	virtual void SetInterpolationAmount( float seconds );
 	virtual void NoteLastNetworkedValue();
 	virtual bool NoteChanged( float changetime, bool bUpdateLastNetworkedValue );
-	virtual void Reset( float flCurrentTime );
+	virtual void Reset();
 	virtual int Interpolate( float currentTime );
 	virtual int GetType() const;
 	virtual void RestoreToLastNetworked();
@@ -489,7 +489,7 @@ public:
 	void SetHistoryValuesForItem( int item, Type& value );
 	void	SetLooping( bool looping, int iArrayIndex=0 );
 	
-	void SetMaxCount( float flCurrentTime, int newmax );
+	void SetMaxCount( int newmax );
 	int GetMaxCount() const;
 
 	// Get the time of the oldest entry.
@@ -737,15 +737,15 @@ inline void CInterpolatedVarArrayBase<Type, IS_ARRAY>::AddToHead( float changeTi
 }
 
 template< typename Type, bool IS_ARRAY >
-inline void CInterpolatedVarArrayBase<Type, IS_ARRAY>::Reset( float flCurrentTime )
+inline void CInterpolatedVarArrayBase<Type, IS_ARRAY>::Reset()
 {
 	ClearHistory();
 
 	if ( m_pValue )
 	{
-		AddToHead( flCurrentTime, m_pValue, false );
-		AddToHead( flCurrentTime, m_pValue, false );
-		AddToHead( flCurrentTime, m_pValue, false );
+		AddToHead( gpGlobals->curtime, m_pValue, false );
+		AddToHead( gpGlobals->curtime, m_pValue, false );
+		AddToHead( gpGlobals->curtime, m_pValue, false );
 
 		memcpy( m_LastNetworkedValue, m_pValue, m_nMaxCount * sizeof( Type ) );
 	}
@@ -1276,7 +1276,7 @@ inline void	CInterpolatedVarArrayBase<Type, IS_ARRAY>::SetLooping( bool looping,
 }
 
 template< typename Type, bool IS_ARRAY >
-inline void	CInterpolatedVarArrayBase<Type, IS_ARRAY>::SetMaxCount( float flCurrentTime, int newmax )
+inline void	CInterpolatedVarArrayBase<Type, IS_ARRAY>::SetMaxCount( int newmax )
 {
 	bool changed = ( newmax != m_nMaxCount ) ? true : false;
 
@@ -1294,7 +1294,7 @@ inline void	CInterpolatedVarArrayBase<Type, IS_ARRAY>::SetMaxCount( float flCurr
 		memset( m_bLooping, 0, sizeof(byte) * m_nMaxCount);
 		memset( m_LastNetworkedValue, 0, sizeof(Type) * m_nMaxCount);
 
-		Reset( flCurrentTime );
+		Reset();
 	}
 }
 
@@ -1564,9 +1564,9 @@ class CInterpolatedVarArray : public CInterpolatedVarArrayBase<Type, true >
 {
 public:
 	CInterpolatedVarArray( const char *pDebugName = "no debug name" )
-		: CInterpolatedVarArrayBase< Type, true>( pDebugName )
+		: CInterpolatedVarArrayBase<Type, true>( pDebugName )
 	{
-		CInterpolatedVarArrayBase< Type, true >::SetMaxCount( 0.0f, COUNT );
+		this->SetMaxCount( COUNT );
 	}
 };
 
@@ -1582,7 +1582,7 @@ public:
 	CInterpolatedVar( const char *pDebugName = NULL )
 		: CInterpolatedVarArrayBase< Type, false >(pDebugName) 
 	{
-		CInterpolatedVarArrayBase< Type, false >::SetMaxCount( 0.0f, 1 );
+		this->SetMaxCount( 1 );
 	}
 };
 

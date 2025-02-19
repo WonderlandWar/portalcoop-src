@@ -39,6 +39,10 @@
 #include "saverestoretypes.h"
 #include "nav_mesh.h"
 
+#ifdef TF_DLL
+#include "nav_mesh/tf_nav_area.h"
+#endif
+
 #ifdef NEXT_BOT
 #include "NextBot/NextBotManager.h"
 #endif
@@ -190,6 +194,9 @@ END_SEND_TABLE();
 // This table encodes the CBaseCombatCharacter
 //-----------------------------------------------------------------------------
 IMPLEMENT_SERVERCLASS_ST(CBaseCombatCharacter, DT_BaseCombatCharacter)
+#ifdef GLOWS_ENABLE
+	SendPropBool( SENDINFO( m_bGlowEnabled ) ),
+#endif // GLOWS_ENABLE
 	// Data that only gets sent to the local player.
 	SendPropDataTable( "bcc_localdata", 0, &REFERENCE_SEND_TABLE(DT_BCCLocalPlayerExclusive), SendProxy_SendBaseCombatCharacterLocalDataTable ),
 
@@ -740,6 +747,10 @@ CBaseCombatCharacter::CBaseCombatCharacter( void )
 	m_impactEnergyScale = 1.0f;
 
 	m_bForceServerRagdoll = ai_force_serverside_ragdoll.GetBool();
+
+#ifdef GLOWS_ENABLE
+	m_bGlowEnabled.Set( false );
+#endif // GLOWS_ENABLE
 }
 
 //------------------------------------------------------------------------------
@@ -1222,11 +1233,8 @@ CBaseEntity *CBaseCombatCharacter::CheckTraceHullAttack( const Vector &vStart, c
 	ray.Init( vStart, vEnd, mins, maxs );
 
 	trace_t tr;
-#ifdef PORTAL
-	UTIL_Portal_TraceRay( ray, MASK_SHOT_HULL, &traceFilter, &tr );
-#else
 	enginetrace->TraceRay( ray, MASK_SHOT_HULL, &traceFilter, &tr );
-#endif
+
 	CBaseEntity *pEntity = traceFilter.m_pHit;
 	
 	if ( pEntity == NULL )
@@ -1243,12 +1251,9 @@ CBaseEntity *CBaseCombatCharacter::CheckTraceHullAttack( const Vector &vStart, c
 		vecEnd = vecTopCenter;
 		vecEnd.z += 2.0f;
 		
-		ray.Init(vecTopCenter, vEnd, mins, maxs);
-#ifdef PORTAL
-		UTIL_Portal_TraceRay( ray, MASK_SHOT_HULL, &traceFilter, &tr );
-#else
+		ray.Init( vecTopCenter, vEnd, mins, maxs );
 		enginetrace->TraceRay( ray, MASK_SHOT_HULL, &traceFilter, &tr );
-#endif
+
 		pEntity = traceFilter.m_pHit;
 	}
 
@@ -1542,14 +1547,9 @@ bool CBaseCombatCharacter::BecomeRagdoll( const CTakeDamageInfo &info, const Vec
 #ifdef HL2_DLL	
 
 	bool bMegaPhyscannonActive = false;
-
-#if !defined( HL2MP ) && !defined (PORTAL)
+#if !defined( HL2MP )
 	bMegaPhyscannonActive = HL2GameRules()->MegaPhyscannonActive();
-#endif // !HL2MP || !PORTAL
-
-#ifdef PORTAL
-	bMegaPhyscannonActive = PortalGameRules()->MegaPhyscannonActive();
-#endif
+#endif // !HL2MP
 
 	// Mega physgun requires everything to be a server-side ragdoll
 	if ( m_bForceServerRagdoll == true || ( ( bMegaPhyscannonActive == true ) && !IsPlayer() && Classify() != CLASS_PLAYER_ALLY_VITAL && Classify() != CLASS_PLAYER_ALLY ) )
@@ -2168,7 +2168,20 @@ void CBaseCombatCharacter::Weapon_Equip( CBaseCombatWeapon *pWeapon )
 
 	// Pass the lighting origin over to the weapon if we have one
 	pWeapon->SetLightingOriginRelative( GetLightingOriginRelative() );
+
+	if ( IsPlayer() )
+	{
+		IGameEvent *event = gameeventmanager->CreateEvent( "weapon_equipped" );
+		if ( event )
+		{
+			event->SetString( "class", pWeapon->GetClassname() );
+			event->SetInt( "entindex", pWeapon->entindex() );
+			event->SetInt( "owner_entindex", entindex() );
+			gameeventmanager->FireEvent( event );
+		}
+	}
 }
+
 
 //-----------------------------------------------------------------------------
 // Purpose:	Leaves weapon, giving only ammo to the character
@@ -2996,6 +3009,18 @@ int CBaseCombatCharacter::GiveAmmo( int iCount, int iAmmoIndex, bool bSuppressSo
 
 	m_iAmmo.Set( iAmmoIndex, m_iAmmo[iAmmoIndex] + iAdd );
 
+	if ( IsPlayer() )
+	{
+		IGameEvent *event = gameeventmanager->CreateEvent( "ammo_pickup" );
+		if ( event )
+		{
+			event->SetInt( "ammo_index", iAmmoIndex );
+			event->SetInt( "amount", iAdd );
+			event->SetInt( "total", m_iAmmo[ iAmmoIndex ] );
+			gameeventmanager->FireEvent( event );
+		}
+	}
+
 	return iAdd;
 }
 
@@ -3106,19 +3131,12 @@ void CBaseCombatCharacter::VPhysicsShadowCollision( int index, gamevcollisioneve
 	// which can occur owing to ordering issues it appears.
 	float flOtherAttackerTime = 0.0f;
 
-#if defined( HL2_DLL ) && !defined( HL2MP ) && !defined(PORTAL)
+#if defined( HL2_DLL ) && !defined( HL2MP )
 	if ( HL2GameRules()->MegaPhyscannonActive() == true )
 	{
 		flOtherAttackerTime = 1.0f;
 	}
-#else
-#ifdef PORTAL
-	if (PortalGameRules()->MegaPhyscannonActive() == true)
-	{
-		flOtherAttackerTime = 1.0f;
-	}
-#endif // PORTAL
-#endif // HL2_DLL && !HL2MP && !PORTAL
+#endif // HL2_DLL && !HL2MP
 
 	if ( this == pOther->HasPhysicsAttacker( flOtherAttackerTime ) )
 		return;
@@ -3240,6 +3258,33 @@ float CBaseCombatCharacter::GetSpreadBias( CBaseCombatWeapon *pWeapon, CBaseEnti
 		return pWeapon->GetSpreadBias(GetCurrentWeaponProficiency());
 	return 1.0;
 }
+
+#ifdef GLOWS_ENABLE
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CBaseCombatCharacter::AddGlowEffect( void )
+{
+	SetTransmitState( FL_EDICT_ALWAYS );
+	m_bGlowEnabled.Set( true );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CBaseCombatCharacter::RemoveGlowEffect( void )
+{
+	m_bGlowEnabled.Set( false );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CBaseCombatCharacter::IsGlowEffectActive( void )
+{
+	return m_bGlowEnabled;
+}
+#endif // GLOWS_ENABLE
 
 //-----------------------------------------------------------------------------
 // Assume everyone is average with every weapon. Override this to make exceptions.
@@ -3574,3 +3619,16 @@ float CBaseCombatCharacter::GetTimeSinceLastInjury( int team /*= TEAM_ANY */ ) c
 	return never;
 }
 
+//-----------------------------------------------------------------------------
+HSCRIPT CBaseCombatCharacter::ScriptGetLastKnownArea( void ) const 
+{ 
+#ifdef TF_DLL
+	return ToHScript( GetLastKnownArea() ); 
+#else
+	return NULL;
+#endif
+}	
+
+BEGIN_ENT_SCRIPTDESC( CBaseCombatCharacter, CBaseFlex, "Base combat characters." )
+	DEFINE_SCRIPTFUNC_NAMED( ScriptGetLastKnownArea, "GetLastKnownArea", "Return the last nav area occupied - NULL if unknown" )
+END_SCRIPTDESC();

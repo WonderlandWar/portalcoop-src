@@ -643,14 +643,7 @@ void CAI_BaseNPC::Ignite( float flFlameLifetime, bool bNPCOnly, float flSize, bo
 	BaseClass::Ignite( flFlameLifetime, bNPCOnly, flSize, bCalledByLevelDesigner );
 
 #ifdef HL2_EPISODIC
-
-	CBasePlayer *pPlayer = NULL;
-	//if (gpGlobals->maxClients == 1)
-	{
-		pPlayer = AI_GetSinglePlayer();
-	}
-
-
+	CBasePlayer *pPlayer = AI_GetSinglePlayer();
 	if ( pPlayer->IRelationType( this ) != D_LI )
 	{
 		CNPC_Alyx *alyx = CNPC_Alyx::GetAlyx();
@@ -12266,7 +12259,7 @@ bool CAI_BaseNPC::OnUpcomingPropDoor( AILocalMoveGoal_t *pMoveGoal,
 			}
 
 			// Attach the door to the waypoint so we open it when we get there.
-			// dvs: FIXME: this is kind of bullshit, I need to find the exact waypoint to open the door
+			// dvs: FIXME: this is kind of bad, I need to find the exact waypoint to open the door
 			//		should I just walk the path until I find it?
 			pOpenDoorRoute->m_hData = pDoor;
 

@@ -1,0 +1,13 @@
+"vpc_cache"
+{
+	"CacheVersion"		"1"
+	"win64"
+	{
+		"CRCFile"		"mathlib_win64.vcxproj.vpc_crc"
+		"OutputFiles"
+		{
+			"0"		"mathlib_win64.vcxproj"
+			"1"		"mathlib_win64.vcxproj.filters"
+		}
+	}
+}

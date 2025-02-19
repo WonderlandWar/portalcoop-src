@@ -6,7 +6,7 @@
 //=============================================================================//
 #include "cbase.h"
 #include "c_baseentity.h"
-#ifdef WIN32
+#if defined( WIN32 ) && _MSC_VER <= 1920
 #include <typeinfo.h>
 #endif
 #include "tier0/vprof.h"
@@ -237,7 +237,7 @@ void C_BaseEntity::StartTouch( C_BaseEntity *pOther )
 // Input  : *pOther - 
 //-----------------------------------------------------------------------------
 void C_BaseEntity::Touch( C_BaseEntity *pOther )
-{
+{ 
 	if ( m_pfnTouch ) 
 		(this->*m_pfnTouch)( pOther );
 

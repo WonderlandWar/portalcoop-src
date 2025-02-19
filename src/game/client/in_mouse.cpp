@@ -28,9 +28,6 @@
 #include "tier1/convar_serverbounded.h"
 #include "cam_thirdperson.h"
 #include "inputsystem/iinputsystem.h"
-#ifdef PORTAL
-#include "c_portal_player.h"
-#endif
 
 #if defined( _X360 )
 #include "xbox/xbox_win32stubs.h"
@@ -105,7 +102,30 @@ static ConVar m_mousespeed( "m_mousespeed", "1", FCVAR_ARCHIVE, "Windows mouse a
 static ConVar m_mouseaccel1( "m_mouseaccel1", "0", FCVAR_ARCHIVE, "Windows mouse acceleration initial threshold (2x movement).", true, 0, false, 0.0f );
 static ConVar m_mouseaccel2( "m_mouseaccel2", "0", FCVAR_ARCHIVE, "Windows mouse acceleration secondary threshold (4x movement).", true, 0, false, 0.0f );
 
-static ConVar m_rawinput( "m_rawinput", "0", FCVAR_ARCHIVE, "Use Raw Input for mouse input.");
+static ConVar m_rawinput( "m_rawinput", "1", FCVAR_ARCHIVE, "Use Raw Input for mouse input.");
+static ConVar m_rawinput_onetime_reset( "m_rawinput_onetime_reset", "0", FCVAR_ARCHIVE | FCVAR_HIDDEN );
+
+class CRawInputConvarOnetimeReset : public CAutoGameSystem
+{
+public:
+	CRawInputConvarOnetimeReset( char const *pszName )
+		: CAutoGameSystem( pszName )
+	{
+	}
+
+	virtual void PostInit() OVERRIDE
+	{
+		if ( !m_rawinput_onetime_reset.GetBool() )
+		{
+			m_rawinput.SetValue( "1" );
+			m_rawinput_onetime_reset.SetValue( "1" );
+		}
+	}
+};
+CRawInputConvarOnetimeReset g_RawInputConvarOnetimeReset( "CRawInputConvarOnetimeReset" );
+
+static ConVar m_limitedcapture_workaround( "m_limitedcapture_workaround", "0", FCVAR_NONE,
+                                           "Workaround limitations on mouse capture in some environments" );
 
 #if DEBUG
 ConVar cl_mouselook( "cl_mouselook", "1", FCVAR_ARCHIVE, "Set to 1 to use mouse for look, 0 for keyboard look." );
@@ -257,7 +277,11 @@ void CInput::Init_Mouse (void)
 
 	m_flPreviousMouseXPosition = 0.0f;
 	m_flPreviousMouseYPosition = 0.0f;
-	
+
+	// Should be calling ResetMouse() before using these
+	m_iCaptureWorkaroundLastMouseX = 0.f;
+	m_iCaptureWorkaroundLastMouseY = 0.f;
+
 	m_fMouseInitialized = true;
 
 	m_fMouseParmsValid = false;
@@ -327,7 +351,27 @@ void CInput::ResetMouse( void )
 {
 	int x, y;
 	GetWindowCenter( x,  y );
-	SetMousePos( x, y );	
+
+	// Under RDP in windows, possibly VNC, we can teleport the mouse back into our window, but not within our window.
+	// The cursor will appear to move, but the next RDP input will teleport it to the host's location.  Store off the
+	// last mouse location and use deltas until the mouse escapes, and everything seems to work.
+	if ( m_limitedcapture_workaround.GetBool() )
+	{
+		GetMousePos( m_iCaptureWorkaroundLastMouseX, m_iCaptureWorkaroundLastMouseY );
+		int w, h;
+		engine->GetScreenSize(w, h);
+		if ( m_iCaptureWorkaroundLastMouseX < w && m_iCaptureWorkaroundLastMouseY < h &&
+		     m_iCaptureWorkaroundLastMouseX > 0 && m_iCaptureWorkaroundLastMouseY > 0 )
+		{
+			return;
+		}
+
+		// Fall through to recapture
+		m_iCaptureWorkaroundLastMouseX = x;
+		m_iCaptureWorkaroundLastMouseY = y;
+	}
+
+	SetMousePos( x, y );
 }
 
 
@@ -586,6 +630,13 @@ void CInput::AccumulateMouse( void )
 	int x = w >> 1;	x;
 	int y = h >> 1;	y;
 
+	// See comment in ResetMouse()
+	if ( m_limitedcapture_workaround.GetBool() )
+	{
+		x = m_iCaptureWorkaroundLastMouseX;
+		y = m_iCaptureWorkaroundLastMouseY;
+	}
+
 	//only accumulate mouse if we are not moving the camera with the mouse
 	if ( !m_fCameraInterceptingMouse && vgui::surface()->IsCursorLocked() )
 	{
@@ -655,19 +706,7 @@ void CInput::MouseMove( CUserCmd *cmd )
 
 	// Get view angles from engine
 	engine->GetViewAngles( viewangles );
-	/*
-#ifdef PORTAL
 
-	C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPortalPlayer();
-
-	if ( pPlayer && pPlayer->m_bEyePositionIsTransformedByPortal )
-	{
-		viewangles = pPlayer->m_qPrePortalledStoredViewAngles;
-	}
-
-
-#endif
-	*/
 	// Validate mouse speed/acceleration settings
 	CheckMouseAcclerationVars();
 

@@ -21,7 +21,6 @@
 #include "tier1/utlvector.h"
 #include "tier1/utlstring.h"
 #include "icvar.h"
-#include "Color.h"
 
 #ifdef _WIN32
 #define FORCEINLINE_CVAR FORCEINLINE
@@ -335,6 +334,12 @@ public:
 								ConVar( const char *pName, const char *pDefaultValue, int flags, 
 									const char *pHelpString, bool bMin, float fMin, bool bMax, float fMax,
 									FnChangeCallback_t callback );
+								ConVar( const char *pName, const char *pDefaultValue, int flags,
+									const char *pHelpString, bool bMin, float fMin, bool bMax, float fMax,
+									bool bCompMin, float fCompMin, bool bCompMax, float fCompMax,
+									FnChangeCallback_t callback );
+
+
 
 	virtual						~ConVar( void );
 
@@ -351,7 +356,6 @@ public:
 	// Retrieve value
 	FORCEINLINE_CVAR float			GetFloat( void ) const;
 	FORCEINLINE_CVAR int			GetInt( void ) const;
-	FORCEINLINE_CVAR Color			GetColor( void ) const;
 	FORCEINLINE_CVAR bool			GetBool() const {  return !!GetInt(); }
 	FORCEINLINE_CVAR char const	   *GetString( void ) const;
 
@@ -362,7 +366,7 @@ public:
 	virtual void				SetValue( const char *value );
 	virtual void				SetValue( float value );
 	virtual void				SetValue( int value );
-	
+		
 	// Reset to default value
 	void						Revert( void );
 
@@ -371,6 +375,13 @@ public:
 	bool						GetMax( float& maxVal ) const;
 	const char					*GetDefault( void ) const;
 	void						SetDefault( const char *pszDefault );
+
+	// True if it has a min/max competitive setting
+	bool						GetCompMin( float& minVal ) const;
+	bool						GetCompMax( float& maxVal ) const;
+
+	FORCEINLINE_CVAR bool		IsCompetitiveRestricted() const;
+	bool						SetCompetitiveMode( bool bCompetitive );
 
 private:
 	// Called by CCvar when the value of a var is changing.
@@ -382,13 +393,27 @@ private:
 	virtual bool				ClampValue( float& value );
 	virtual void				ChangeStringValue( const char *tempVal, float flOldValue );
 
-	virtual void				Create( const char *pName, const char *pDefaultValue, int flags = 0,
+	virtual void				Create_Vtbl( const char *pName, const char *pDefaultValue, int flags = 0,
 									const char *pHelpString = 0, bool bMin = false, float fMin = 0.0,
 									bool bMax = false, float fMax = false, FnChangeCallback_t callback = 0 );
+
+	void						Create( const char *pName, const char *pDefaultValue, int flags = 0,
+									const char *pHelpString = 0, bool bMin = false, float fMin = 0.0,
+									bool bMax = false, float fMax = 0.0, 
+									bool bCompMin = false, float fCompMin = 0.0, 
+									bool bCompMax = false, float fCompMax = 0.0,
+									FnChangeCallback_t callback = 0 );
+
 
 	// Used internally by OneTimeInit to initialize.
 	virtual void				Init();
 	int GetFlags() { return m_pParent->m_nFlags; }
+	
+	virtual void				InternalSetFloatValue2( float fNewValue, bool bForce = false );
+	inline	void				InternalSetFloatValue( float fNewValue, bool bForce )
+	{
+		this->InternalSetFloatValue2( fNewValue, bForce );
+	}
 private:
 
 	// This either points to "this" or it points to the original declaration of a ConVar.
@@ -416,6 +441,14 @@ private:
 	
 	// Call this function when ConVar changes
 	FnChangeCallback_t			m_fnChangeCallback;
+	
+	// Min/Max values for competitive.
+	bool						m_bHasCompMin;
+	float						m_fCompMinVal;
+	bool						m_bHasCompMax;
+	float						m_fCompMaxVal;
+
+	bool						m_bCompetitiveRestrictions;
 };
 
 
@@ -437,17 +470,6 @@ FORCEINLINE_CVAR int ConVar::GetInt( void ) const
 	return m_pParent->m_nValue;
 }
 
-// From MapBase
-//-----------------------------------------------------------------------------
-// Purpose: Return ConVar value as a color
-// Output : Color
-//-----------------------------------------------------------------------------
-FORCEINLINE_CVAR Color ConVar::GetColor( void ) const 
-{
-	unsigned char *pColorElement = ((unsigned char *)&m_pParent->m_nValue);
-	return Color( pColorElement[0], pColorElement[1], pColorElement[2], pColorElement[3] );
-}
-
 
 //-----------------------------------------------------------------------------
 // Purpose: Return ConVar value as a string, return "" for bogus string pointer, etc.
@@ -459,6 +481,21 @@ FORCEINLINE_CVAR const char *ConVar::GetString( void ) const
 		return "FCVAR_NEVER_AS_STRING";
 
 	return ( m_pParent->m_pszString ) ? m_pParent->m_pszString : "";
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Return whether this convar is restricted for competitive play.
+// Output : bool
+//-----------------------------------------------------------------------------
+FORCEINLINE_CVAR bool ConVar::IsCompetitiveRestricted() const
+{
+	const int nFlags = m_pParent->m_nFlags;
+
+	const bool bHasCompSettings = m_pParent->m_bHasCompMin || m_pParent->m_bHasCompMax;
+	const bool bClientCanAdjust = ( nFlags & ( FCVAR_ARCHIVE | FCVAR_ALLOWED_IN_COMPETITIVE ) ) != 0;
+	const bool bInternalUseOnly = ( nFlags & ( FCVAR_HIDDEN | FCVAR_DEVELOPMENTONLY | FCVAR_INTERNAL_USE | FCVAR_GAMEDLL | FCVAR_REPLICATED | FCVAR_CHEAT ) ) != 0;
+
+	return bHasCompSettings || !( bClientCanAdjust || bInternalUseOnly );
 }
 
 
@@ -480,7 +517,6 @@ public:
 	// Get/Set value
 	float GetFloat( void ) const;
 	int GetInt( void ) const;
-	Color GetColor( void ) const;
 	bool GetBool() const { return !!GetInt(); }
 	const char *GetString( void ) const;
 	// True if it has a min/max setting
@@ -495,7 +531,7 @@ public:
 	const char *GetName() const;
 
 	const char *GetDefault() const;
-	
+
 private:
 	// High-speed method to read convar data
 	IConVar *m_pConVar;
@@ -547,6 +583,15 @@ FORCEINLINE_CVAR const char *ConVarRef::GetString( void ) const
 	return m_pConVarState->m_pszString;
 }
 
+FORCEINLINE_CVAR bool ConVarRef::GetMin( float& minVal ) const
+{
+	return m_pConVarState->GetMin( minVal );
+}
+
+FORCEINLINE_CVAR bool ConVarRef::GetMax( float& maxVal ) const
+{
+	return m_pConVarState->GetMax( maxVal );
+}
 
 FORCEINLINE_CVAR void ConVarRef::SetValue( const char *pValue )
 {
@@ -573,15 +618,51 @@ FORCEINLINE_CVAR const char *ConVarRef::GetDefault() const
 	return m_pConVarState->m_pszDefaultValue;
 }
 
-FORCEINLINE_CVAR bool ConVarRef::GetMin(float& minVal) const
+class IVEngineClient;
+// Josh:
+// This class is here to solve the problem
+// that we had VGUI CVar sliders, etc changing sv_cheats
+// and other CVars forcefully.
+//
+// This uses engine->CLientCmd_Unrestricted instead of
+// setting the convar's value directly, so it goes
+// through all of the filtering code.
+//
+// In lieu of IVEngineClient being present,
+// it will fall back to never being able to set
+// FCVAR_UNREGISTERED, FCVAR_DEVELOPMENTONLY, FCVAR_REPLICATED, FCVAR_CHEAT or FCVAR_SPONLY
+// commands to allow tools like Hammer to still use this.
+//
+// We check that the main ConVar ref (that returns stuff like GetString, GetFloat
+// has a valid convar so we don't end up sending a random string of junk via
+// ClientCmd_Unrestricted, and we have no support for setting strings directly
+// to just avoid the whole escaping nightmare.
+//
+// If you want to quickly audit potential ConVarRefs
+// that are not using string literals, you can use the
+//   ConVarRef.*\([^"][^"]
+// regex.
+class UIConVarRef : public ConVarRef
 {
-	return m_pConVarState->GetMin(minVal);
-}
+public:
+	UIConVarRef( IVEngineClient *pEngine, const char *pName, bool bIgnoreMissing = false );
 
-FORCEINLINE_CVAR bool ConVarRef::GetMax(float& maxVal) const
-{
-	return m_pConVarState->GetMax(maxVal);
-}
+	void Init( const char *pName, bool bIgnoreMissing ) = delete;
+	void Init( IVEngineClient *pEngine, const char *pName, bool bIgnoreMissing );
+	IConVar *GetLinkedConVar() = delete;
+
+	// Josh:
+	// No setting of strings plox!
+	void SetValue( const char *pValue ) = delete;
+	void SetValue( float flValue );
+	void SetValue( int nValue );
+	void SetValue( bool bValue );
+
+private:
+	bool CanSetWithoutEngine();
+
+	IVEngineClient *m_pEngine;
+};
 
 //-----------------------------------------------------------------------------
 // Called by the framework to register ConCommands with the ICVar

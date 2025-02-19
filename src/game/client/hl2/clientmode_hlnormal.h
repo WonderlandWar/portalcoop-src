@@ -16,12 +16,8 @@
 #include <vgui_controls/EditablePanel.h>
 #include <vgui/Cursor.h>
 
-//class CHudViewport;
+class CHudViewport;
 
-namespace vgui
-{
-	typedef unsigned long HScheme;
-}
 
 
 //-----------------------------------------------------------------------------

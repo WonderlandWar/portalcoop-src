@@ -5,7 +5,6 @@
 // $NoKeywords: $
 //
 //=============================================================================//
-#include "cbase.h"
 #include "cvarslider.h"
 #include <stdio.h>
 #include "tier1/KeyValues.h"
@@ -40,15 +39,6 @@ CCvarSlider::CCvarSlider( Panel *parent, const char *panelName, char const *capt
 		float minValue, float maxValue, char const *cvarname, bool bAllowOutOfRange )
   : Slider( parent, panelName )
 {
-	if (!minValue)
-		m_bUseConVarMin = true;
-	else
-		m_bUseConVarMin = false;
-	if (!maxValue)
-		m_bUseConVarMax = true;
-	else
-		m_bUseConVarMax = false;
-
 	AddActionSignalTarget( this );
 
 	SetupSlider( minValue, maxValue, cvarname, bAllowOutOfRange );
@@ -62,28 +52,19 @@ CCvarSlider::CCvarSlider( Panel *parent, const char *panelName, char const *capt
 //-----------------------------------------------------------------------------
 void CCvarSlider::SetupSlider( float minValue, float maxValue, const char *cvarname, bool bAllowOutOfRange )
 {
-	if (!minValue)
-		m_bUseConVarMin = true;
-	else
-		m_bUseConVarMin = false;
-	if (!maxValue)
-		m_bUseConVarMax = true;	
-	else
-		m_bUseConVarMax = false;
-
 	// make sure min/max don't go outside cvar range if there's one
-	ConVarRef var( cvarname, true );
+	UIConVarRef var( g_pVGui->GetVGUIEngine(), cvarname, true );
 	if ( var.IsValid() )
 	{
 		float flCVarMin;
 		if ( var.GetMin( flCVarMin ) )
 		{
-			minValue = m_bUseConVarMin ? flCVarMin : MAX(minValue, flCVarMin);
+			minValue = m_bUseConVarMinMax ? flCVarMin : MAX( minValue, flCVarMin );
 		}
 		float flCVarMax;
 		if ( var.GetMax( flCVarMax ) )
 		{
-			maxValue = m_bUseConVarMax ? flCVarMax : MIN(maxValue, flCVarMax);
+			maxValue = m_bUseConVarMinMax ? flCVarMax : MIN( maxValue, flCVarMax );
 		}
 	}
 
@@ -205,7 +186,7 @@ void CCvarSlider::Paint()
 {
 	// Get engine's current value
 //	float curvalue = engine->pfnGetCvarFloat( m_szCvarName );
-	ConVarRef var( m_szCvarName, true );
+	UIConVarRef var( g_pVGui->GetVGUIEngine(), m_szCvarName, true );
 	if ( !var.IsValid() )
 		return;
 	float curvalue = var.GetFloat();
@@ -242,7 +223,7 @@ void CCvarSlider::ApplyChanges()
         }
     
 		//engine->Cvar_SetValue( m_szCvarName, m_fStartValue );
-		ConVarRef var( m_szCvarName, true );
+		UIConVarRef var( g_pVGui->GetVGUIEngine(), m_szCvarName, true );
 		if ( !var.IsValid() )
 			return;
 		var.SetValue( (float)m_fStartValue );
@@ -289,7 +270,7 @@ void CCvarSlider::Reset()
 {
 	// Set slider to current value
 //	m_fStartValue = engine->pfnGetCvarFloat( m_szCvarName );
-	ConVarRef var( m_szCvarName, true );
+	UIConVarRef var( g_pVGui->GetVGUIEngine(), m_szCvarName, true );
 	if ( !var.IsValid() )
 	{
 	    m_fCurrentValue = m_fStartValue = 0.0f;

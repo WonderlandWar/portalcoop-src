@@ -25,7 +25,7 @@
 	#include "sourcevr/isourcevirtualreality.h"
 
 #else
-	#include "../../public/vphysics/player_controller.h"
+
 	#include "iservervehicle.h"
 	#include "trains.h"
 	#include "world.h"
@@ -56,10 +56,10 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-	extern ConVar sv_pushaway_force;
+#if defined(GAME_DLL) && !defined(_XBOX)
 	extern ConVar sv_pushaway_max_force;
+	extern ConVar sv_pushaway_force;
 	extern ConVar sv_turbophysics;
-
 
 	class CUsePushFilter : public CTraceFilterEntitiesOnly
 	{
@@ -85,7 +85,6 @@
 			return g_pGameRules->CanEntityBeUsePushed( pEntity );
 		}
 	};
-#if defined(GAME_DLL) && !defined(_XBOX)
 #endif
 
 #ifdef CLIENT_DLL
@@ -553,7 +552,7 @@ void CBasePlayer::UpdateStepSound( surfacedata_t *psurface, const Vector &vecOri
 	// In Portal we MUST play footstep sounds even when the player is moving very slowly
 	// This is used to count the number of footsteps they take in the challenge mode
 	// -Jeep
-//	moving_fast_enough = true;
+	moving_fast_enough = true;
 #endif
 
 	// To hear step sounds you must be either on a ladder or moving along the ground AND
@@ -697,8 +696,7 @@ void CBasePlayer::PlayStepSound( Vector &vecOrigin, surfacedata_t *psurface, flo
 	}
 	else
 	{
-		IPhysicsSurfaceProps *physprops = MoveHelper()->GetSurfaceProps();
-		const char *pSoundName = physprops->GetString( stepSoundName );
+		const char *pSoundName = MoveHelper()->GetSurfaceProps()->GetString( stepSoundName );
 
 		// Give child classes an opportunity to override.
 		pSoundName = GetOverrideStepSound( pSoundName );
@@ -1270,39 +1268,25 @@ CBaseEntity *CBasePlayer::FindUseEntity()
 	return pNearest;
 }
 
-bool CBasePlayer::ClearUseEntity()
-{
-	if ( m_hUseEntity != NULL )
-	{
-		// Stop controlling the train/object
-		// TODO: Send HUD Update
-		m_hUseEntity->Use( this, this, USE_OFF, 0 );
-		m_hUseEntity = NULL;
-		return true;
-	}
-
-	return false;
-}
-
 //-----------------------------------------------------------------------------
 // Purpose: Handles USE keypress
 //-----------------------------------------------------------------------------
-bool CBasePlayer::PlayerUse ( void )
+void CBasePlayer::PlayerUse ( void )
 {
+#ifdef GAME_DLL
 	// Was use pressed or released?
 	if ( ! ((m_nButtons | m_afButtonPressed | m_afButtonReleased) & IN_USE) )
-		return false;
+		return;
 
 	if ( IsObserver() )
 	{
-#ifdef GAME_DLL
 		// do special use operation in oberserver mode
 		if ( m_afButtonPressed & IN_USE )
 			ObserverUse( true );
 		else if ( m_afButtonReleased & IN_USE )
 			ObserverUse( false );
-#endif
-		return true;
+		
+		return;
 	}
 
 #if !defined(_XBOX)
@@ -1349,16 +1333,15 @@ bool CBasePlayer::PlayerUse ( void )
 		// Controlling some latched entity?
 		if ( ClearUseEntity() )
 		{
-			return true;
+			return;
 		}
-#ifdef GAME_DLL
 		else
 		{
 			if ( m_afPhysicsFlags & PFLAG_DIROVERRIDE )
 			{
 				m_afPhysicsFlags &= ~PFLAG_DIROVERRIDE;
 				m_iTrain = TRAIN_NEW|TRAIN_OFF;
-				return false;
+				return;
 			}
 			else
 			{	// Start controlling the train!
@@ -1369,11 +1352,10 @@ bool CBasePlayer::PlayerUse ( void )
 					m_iTrain = TrainSpeed(pTrain->m_flSpeed, ((CFuncTrackTrain*)pTrain)->GetMaxSpeed());
 					m_iTrain |= TRAIN_NEW;
 					EmitSound( "Player.UseTrain" );
-					return true;
+					return;
 				}
 			}
 		}
-#endif
 	}
 
 	CBaseEntity *pUseEntity = FindUseEntity();
@@ -1383,7 +1365,7 @@ bool CBasePlayer::PlayerUse ( void )
 	{
 
 		//!!!UNDONE: traceline here to prevent +USEing buttons through walls			
-#ifdef GAME_DLL
+
 		int caps = pUseEntity->ObjectCaps();
 		variant_t emptyVariant;
 		if ( ( (m_nButtons & IN_USE) && (caps & FCAP_CONTINUOUS_USE) ) || ( (m_afButtonPressed & IN_USE) && (caps & (FCAP_IMPULSE_USE|FCAP_ONOFF_USE)) ) )
@@ -1402,24 +1384,20 @@ bool CBasePlayer::PlayerUse ( void )
 				pUseEntity->AcceptInput( "Use", this, this, emptyVariant, USE_TOGGLE );
 			}
 		}
-
 		// UNDONE: Send different USE codes for ON/OFF.  Cache last ONOFF_USE object to send 'off' if you turn away
 		else if ( (m_afButtonReleased & IN_USE) && (pUseEntity->ObjectCaps() & FCAP_ONOFF_USE) )	// BUGBUG This is an "off" use
 		{
 			pUseEntity->AcceptInput( "Use", this, this, emptyVariant, USE_OFF );
 		}
-#endif
 	}
 	else if ( m_afButtonPressed & IN_USE )
 	{
 		PlayUseDenySound();
-		return false;
 	}
-
-	return pUseEntity != NULL;
+#endif
 }
 
-ConVar	sv_suppress_viewpunch( "sv_suppress_viewpunch", "0", FCVAR_REPLICATED );
+ConVar	sv_suppress_viewpunch( "sv_suppress_viewpunch", "0", FCVAR_REPLICATED | FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -1818,7 +1796,6 @@ float CBasePlayer::GetFOVDistanceAdjustFactor()
 	// If FOV is lower, then we're "zoomed" in and this will give a factor < 1 so apparent LOD distances can be
 	//  shorted accordingly
 	return localFOV / defaultFOV;
-
 }
 
 //-----------------------------------------------------------------------------
@@ -1867,8 +1844,6 @@ void CBasePlayer::SharedSpawn()
 	else
 		SetCollisionBounds( VEC_HULL_MIN, VEC_HULL_MAX );
 
-	m_hUseEntity = NULL;
-
 	// dont let uninitialized value here hurt the player
 	m_Local.m_flFallVelocity = 0;
 
@@ -1878,6 +1853,20 @@ void CBasePlayer::SharedSpawn()
 	if(IsLocalPlayer() &&haptics)
 		haptics->LocalPlayerReset();
 #endif
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CBasePlayer::IsLerpingFOV( void ) const
+{
+	// If it's immediate, just do it
+	if (m_Local.m_flFOVRate == 0.0f)
+		return false;
+
+	float deltaTime = (float)(gpGlobals->curtime - m_flFOVTime) / m_Local.m_flFOVRate;
+	return deltaTime < 1.f;
 }
 
 
@@ -2084,62 +2073,11 @@ const Vector &CBasePlayer::GetPreviouslyPredictedOrigin() const
 	return m_vecPreviouslyPredictedOrigin;
 }
 
-
-//-----------------------------------------------------------------------------
-// Purpose: Strips off IN_xxx flags from the player's input
-//-----------------------------------------------------------------------------
-void CBasePlayer::ForceButtons( int nButtons )
-{
-	m_afButtonForced |= nButtons;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Re-enables stripped IN_xxx flags to the player's input
-//-----------------------------------------------------------------------------
-void CBasePlayer::UnforceButtons( int nButtons )
-{
-	m_afButtonForced &= ~nButtons;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CBasePlayer::SetVCollisionState( const Vector &vecAbsOrigin, const Vector &vecAbsVelocity, int collisionState )
-{
-#ifdef GAME_DLL
-	m_vphysicsCollisionState = collisionState;
-	switch( collisionState )
-	{
-	case VPHYS_WALK:
- 		m_pShadowStand->SetPosition( vecAbsOrigin, vec3_angle, true );
-		m_pShadowStand->SetVelocity( &vecAbsVelocity, NULL );
-		m_pShadowCrouch->EnableCollisions( false );
-		m_pPhysicsController->SetObject( m_pShadowStand );
-		VPhysicsSwapObject( m_pShadowStand );
-		m_pShadowStand->EnableCollisions( true );
-		break;
-
-	case VPHYS_CROUCH:
-		m_pShadowCrouch->SetPosition( vecAbsOrigin, vec3_angle, true );
-		m_pShadowCrouch->SetVelocity( &vecAbsVelocity, NULL );
-		m_pShadowStand->EnableCollisions( false );
-		m_pPhysicsController->SetObject( m_pShadowCrouch );
-		VPhysicsSwapObject( m_pShadowCrouch );
-		m_pShadowCrouch->EnableCollisions( true );
-		break;
-	
-	case VPHYS_NOCLIP:
-		m_pShadowCrouch->EnableCollisions( false );
-		m_pShadowStand->EnableCollisions( false );
-		break;
-	}
-#endif
-}
-
 bool fogparams_t::operator !=( const fogparams_t& other ) const
 {
 	if ( this->enable != other.enable ||
 		this->blend != other.blend ||
+		this->radial != other.radial ||
 		!VectorsAreEqual(this->dirPrimary, other.dirPrimary, 0.01f ) || 
 		this->colorPrimary.Get() != other.colorPrimary.Get() ||
 		this->colorSecondary.Get() != other.colorSecondary.Get() ||
@@ -2157,3 +2095,4 @@ bool fogparams_t::operator !=( const fogparams_t& other ) const
 
 	return false;
 }
+

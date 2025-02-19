@@ -23,13 +23,6 @@
 #include "fx_water.h"
 #include "positionwatcher.h"
 #include "vphysics/constraints.h"
-#include "c_props.h"
-
-#ifdef PORTAL
-#include "portal_physics_collisionevent.h"
-#include "physicsshadowclone.h"
-#include "PortalSimulation.h"
-#endif
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -43,13 +36,102 @@ void PrecachePhysicsSounds( void );
 //FIXME: Replicated from server end, consolidate?
 
 
-#ifdef PORTAL
-	CPortal_CollisionEvent g_Collisions;
-#else
-	CCollisionEvent g_Collisions;
-#endif
-
 extern IVEngineClient *engine;
+
+class CCollisionEvent : public IPhysicsCollisionEvent, public IPhysicsCollisionSolver, public IPhysicsObjectEvent
+{
+public:
+	CCollisionEvent( void );
+
+	void	ObjectSound( int index, vcollisionevent_t *pEvent );
+	void	PreCollision( vcollisionevent_t *pEvent ) {}
+	void	PostCollision( vcollisionevent_t *pEvent );
+	void	Friction( IPhysicsObject *pObject, float energy, int surfaceProps, int surfacePropsHit, IPhysicsCollisionData *pData );
+
+	void	BufferTouchEvents( bool enable ) { m_bBufferTouchEvents = enable; }
+
+	void	StartTouch( IPhysicsObject *pObject1, IPhysicsObject *pObject2, IPhysicsCollisionData *pTouchData );
+	void	EndTouch( IPhysicsObject *pObject1, IPhysicsObject *pObject2, IPhysicsCollisionData *pTouchData );
+
+	void	FluidStartTouch( IPhysicsObject *pObject, IPhysicsFluidController *pFluid );
+	void	FluidEndTouch( IPhysicsObject *pObject, IPhysicsFluidController *pFluid );
+	void	PostSimulationFrame() {}
+
+	virtual void ObjectEnterTrigger( IPhysicsObject *pTrigger, IPhysicsObject *pObject ) {}
+	virtual void ObjectLeaveTrigger( IPhysicsObject *pTrigger, IPhysicsObject *pObject ) {}
+
+	float	DeltaTimeSinceLastFluid( CBaseEntity *pEntity );
+	void	FrameUpdate( void );
+
+	void	UpdateFluidEvents( void );
+	void	UpdateTouchEvents( void );
+
+	// IPhysicsCollisionSolver
+	int		ShouldCollide( IPhysicsObject *pObj0, IPhysicsObject *pObj1, void *pGameData0, void *pGameData1 );
+#if _DEBUG
+	int		ShouldCollide_2( IPhysicsObject *pObj0, IPhysicsObject *pObj1, void *pGameData0, void *pGameData1 );
+#endif
+	// debugging collision problem in TF2
+	int		ShouldSolvePenetration( IPhysicsObject *pObj0, IPhysicsObject *pObj1, void *pGameData0, void *pGameData1, float dt );
+	bool	ShouldFreezeObject( IPhysicsObject *pObject ) { return true; }
+	int		AdditionalCollisionChecksThisTick( int currentChecksDone ) { return 0; }
+	bool ShouldFreezeContacts( IPhysicsObject **pObjectList, int objectCount )  { return true; }
+
+	// IPhysicsObjectEvent
+	virtual void ObjectWake( IPhysicsObject *pObject )
+	{
+		C_BaseEntity *pEntity = static_cast<C_BaseEntity *>(pObject->GetGameData());
+		if (pEntity && pEntity->HasDataObjectType(VPHYSICSWATCHER))
+		{
+			ReportVPhysicsStateChanged( pObject, pEntity, true );
+		}
+	}
+
+	virtual void ObjectSleep( IPhysicsObject *pObject )
+	{
+		C_BaseEntity *pEntity = static_cast<C_BaseEntity *>(pObject->GetGameData());
+		if ( pEntity && pEntity->HasDataObjectType( VPHYSICSWATCHER ) )
+		{
+			ReportVPhysicsStateChanged( pObject, pEntity, false );
+		}
+	}
+
+
+	friction_t *FindFriction( CBaseEntity *pObject );
+	void ShutdownFriction( friction_t &friction );
+	void UpdateFrictionSounds();
+	bool IsInCallback() { return m_inCallback > 0 ? true : false; }
+
+private:
+	class CallbackContext
+	{
+	public:
+		CallbackContext(CCollisionEvent *pOuter)
+		{
+			m_pOuter = pOuter;
+			m_pOuter->m_inCallback++;
+		}
+		~CallbackContext()
+		{
+			m_pOuter->m_inCallback--;
+		}
+	private:
+		CCollisionEvent *m_pOuter;
+	};
+	friend class CallbackContext;
+	
+	void	AddTouchEvent( C_BaseEntity *pEntity0, C_BaseEntity *pEntity1, int touchType, const Vector &point, const Vector &normal );
+	void	DispatchStartTouch( C_BaseEntity *pEntity0, C_BaseEntity *pEntity1, const Vector &point, const Vector &normal );
+	void	DispatchEndTouch( C_BaseEntity *pEntity0, C_BaseEntity *pEntity1 );
+
+	friction_t					m_current[8];
+	CUtlVector<fluidevent_t>	m_fluidEvents;
+	CUtlVector<touchevent_t>	m_touchEvents;
+	int							m_inCallback;
+	bool						m_bBufferTouchEvents;
+};
+
+CCollisionEvent g_Collisions;
 
 bool PhysIsInCallback()
 {
@@ -95,7 +177,7 @@ void PhysicsLevelInit( void )
 	physenv->SetGravity( Vector(0, 0, -GetCurrentGravity() ) );
 	// 15 ms per tick
 	// NOTE: Always run client physics at this rate - helps keep ragdolls stable
-	physenv->SetSimulationTimestep( IsXbox() ? DEFAULT_XBOX_CLIENT_VPHYSICS_TICK : DEFAULT_TICK_INTERVAL );
+	physenv->SetSimulationTimestep( IsXbox() ? DEFAULT_XBOX_CLIENT_VPHYSICS_TICK : gpGlobals->interval_per_tick );
 	physenv->SetCollisionEventHandler( &g_Collisions );
 	physenv->SetCollisionSolver( &g_Collisions );
 
@@ -358,15 +440,10 @@ void CPhysicsSystem::PhysicsSimulate()
 	{
 		tmZone( TELEMETRY_LEVEL0, TMZF_NONE, "%s %d", __FUNCTION__, physenv->GetActiveObjectCount() );
 
-
+		g_Collisions.BufferTouchEvents( true );
 #ifdef _DEBUG
 		physenv->DebugCheckContacts();
 #endif
-
-#ifndef PORTAL //instead of wrapping 1 simulation with this, portal needs to wrap 3
-		g_Collisions.BufferTouchEvents( true );
-#endif
-
 		physenv->Simulate( frametime * cl_phys_timescale.GetFloat() );
 
 		int activeCount = physenv->GetActiveObjectCount();
@@ -395,30 +472,6 @@ void CPhysicsSystem::PhysicsSimulate()
 	}
 	physicssound::PlayImpactSounds( m_impactSounds );
 }
-
-
-#ifdef PORTAL
-ConVar cl_fullsyncclones("cl_fullsyncclones", "1", FCVAR_CHEAT );
-void PortalPhysicsSimulate() //small wrapper for PhysFrame that simulates all environments at once
-{
-	CPortalSimulator::PrePhysFrame();
-
-	if( cl_fullsyncclones.GetBool() )
-		CPhysicsShadowClone::FullSyncAllClones();
-
-	g_Collisions.BufferTouchEvents( true );
-
-	PhysicsSimulate();
-
-	g_Collisions.PortalPostSimulationFrame();
-
-	g_Collisions.BufferTouchEvents( false );
-
-	g_Collisions.FrameUpdate();
-
-	CPortalSimulator::PostPhysFrame();
-}
-#endif
 
 
 void PhysicsSimulate()
@@ -482,7 +535,6 @@ void CCollisionEvent::FrameUpdate( void )
 //-----------------------------------------------------------------------------
 void CCollisionEvent::UpdateTouchEvents( void )
 {
-#if 1
 	// Turn on buffering in case new touch events occur during processing
 	bool bOldTouchEvents = m_bBufferTouchEvents;
 	m_bBufferTouchEvents = true;
@@ -502,45 +554,6 @@ void CCollisionEvent::UpdateTouchEvents( void )
 
 	m_touchEvents.RemoveAll();
 	m_bBufferTouchEvents = bOldTouchEvents;
-#else
-	// Copied from server
-
-	int i;
-	// Turn on buffering in case new touch events occur during processing
-	bool bOldTouchEvents = m_bBufferTouchEvents;
-	m_bBufferTouchEvents = true;
-	for ( i = 0; i < m_touchEvents.Count(); i++ )
-	{
-		const touchevent_t &event = m_touchEvents[i];
-		if ( event.touchType == TOUCH_START )
-		{
-			DispatchStartTouch( event.pEntity0, event.pEntity1, event.endPoint, event.normal );
-		}
-		else
-		{
-			// TOUCH_END
-			DispatchEndTouch( event.pEntity0, event.pEntity1 );
-		}
-	}
-	m_touchEvents.RemoveAll();
-
-	for ( i = 0; i < m_triggerEvents.Count(); i++ )
-	{
-		m_currentTriggerEvent = m_triggerEvents[i];
-		if ( m_currentTriggerEvent.bStart )
-		{
-			m_currentTriggerEvent.pTriggerEntity->StartTouch( m_currentTriggerEvent.pEntity );
-		}
-		else
-		{
-			m_currentTriggerEvent.pTriggerEntity->EndTouch( m_currentTriggerEvent.pEntity );
-		}
-	}
-	m_triggerEvents.RemoveAll();
-	m_currentTriggerEvent.Clear();
-	m_bBufferTouchEvents = bOldTouchEvents;
-
-#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -1036,64 +1049,3 @@ float PhysGetSyncCreateTime()
 	}
 	return gpGlobals->curtime;
 }
-
-// Simple Physics Entities
-
-class C_SimplePhysicsBrush : public C_BaseEntity
-{
-	DECLARE_CLASS( C_SimplePhysicsBrush, C_BaseEntity );
-	DECLARE_CLIENTCLASS()
-public:
-	void Spawn()
-	{
-		SetModel( STRING( GetModelName() ) );
-		SetMoveType( MOVETYPE_VPHYSICS );
-		SetSolid( SOLID_VPHYSICS );
-		m_takedamage = DAMAGE_EVENTS_ONLY;
-	}
-};
-
-IMPLEMENT_CLIENTCLASS_DT(C_SimplePhysicsBrush, DT_SimplePhysicsBrush, CSimplePhysicsBrush)
-END_RECV_TABLE()
-
-LINK_ENTITY_TO_CLASS( simple_physics_brush, C_SimplePhysicsBrush );
-
-class C_SimplePhysicsProp : public C_BaseProp
-{
-	DECLARE_CLASS( C_SimplePhysicsProp, C_BaseProp );
-	DECLARE_CLIENTCLASS()
-public:
-	void Spawn()
-	{
-		BaseClass::Spawn();
-		SetMoveType( MOVETYPE_VPHYSICS );
-		SetSolid( SOLID_VPHYSICS );
-		m_takedamage = DAMAGE_EVENTS_ONLY;
-	}
-
-	int ObjectCaps()
-	{ 
-		int caps = BaseClass::ObjectCaps() | FCAP_WCEDIT_POSITION;
-
-		if ( CBasePlayer::CanPickupObject( this, 35, 128 ) )
-		{
-			caps |= FCAP_IMPULSE_USE;
-		}
-
-		return caps;
-	}
-
-	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
-	{
-		CBasePlayer *pPlayer = ToBasePlayer( pActivator );
-		if ( pPlayer )
-		{
-			pPlayer->PickupObject( this );
-		}
-	}
-};
-
-IMPLEMENT_CLIENTCLASS_DT( C_SimplePhysicsProp, DT_SimplePhysicsProp, CSimplePhysicsProp )
-END_RECV_TABLE()
-
-LINK_ENTITY_TO_CLASS( simple_physics_prop, C_SimplePhysicsProp );

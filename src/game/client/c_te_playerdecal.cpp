@@ -22,12 +22,16 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-static ConVar cl_playerspraydisable( "cl_playerspraydisable", "0", FCVAR_CLIENTDLL | FCVAR_ARCHIVE, "Disable player sprays." );
+#ifdef TF_CLIENT_DLL
+static ConVar cl_spraydisable( "cl_spraydisable", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE, "Disable player sprays." );
+#else
+static ConVar cl_spraydisable( "cl_spraydisable", "0", FCVAR_CLIENTDLL | FCVAR_ARCHIVE, "Disable player sprays." );
+#endif
 
 #ifndef _XBOX
 CLIENTEFFECT_REGISTER_BEGIN( PrecachePlayerDecal )
 CLIENTEFFECT_MATERIAL( "decals/playerlogo01" )
-#if !defined(HL2_DLL) || defined(HL2MP) || defined(PORTAL)
+#if !defined(HL2_DLL) || defined(HL2MP)
 CLIENTEFFECT_MATERIAL( "decals/playerlogo02" )
 CLIENTEFFECT_MATERIAL( "decals/playerlogo03" )
 CLIENTEFFECT_MATERIAL( "decals/playerlogo04" )
@@ -158,16 +162,11 @@ IMaterial *CreateTempMaterialForPlayerLogo( int iPlayerIndex, player_info_t *inf
 {
 	// Doesn't have a logo?
 	if ( !info->customFiles[0] )	
-	{
-		Warning("No Logo!\n");
 		return NULL;
-	}
+
 	IMaterial *logo = materials->FindMaterial( VarArgs("decals/playerlogo%2.2d", iPlayerIndex), TEXTURE_GROUP_DECAL );
 	if ( IsErrorMaterial( logo ) )
-	{
-		Warning("Error Material!!\n");
 		return NULL;
-	}
 
 	char logohex[ 16 ];
 	Q_binarytohex( (byte *)&info->customFiles[0], sizeof( info->customFiles[0] ), logohex, sizeof( logohex ) );
@@ -181,26 +180,15 @@ IMaterial *CreateTempMaterialForPlayerLogo( int iPlayerIndex, player_info_t *inf
 	{
 		char custname[ 512 ];
 		Q_snprintf( custname, sizeof( custname ), "download/user_custom/%c%c/%s.dat", logohex[0], logohex[1], logohex );
-		
-		const char* pszCustname = custname;
-
-		Msg("custname: %s\n", pszCustname);
-
 		// it may have been downloaded but not copied under materials folder
 		if ( !filesystem->FileExists( custname ) )
-		{
-			Warning("!filesystem->FileExists\n");
-			return NULL;
-		}
+			return NULL; // not downloaded yet
 
 		// copy from download folder to materials/temp folder
 		// this is done since material system can access only materials/*.vtf files
 
-		if ( !engine->CopyLocalFile( custname, fulltexname) )
-		{
-			Warning("!engine->CopyLocalFile\n");
+		if ( !engine->CopyLocalFile( custname, fulltexname ) )
 			return NULL;
-		}
 	}
 
 	return logo;
@@ -217,15 +205,14 @@ IMaterial *CreateTempMaterialForPlayerLogo( int iPlayerIndex, player_info_t *inf
 void TE_PlayerDecal( IRecipientFilter& filter, float delay,
 	const Vector* pos, int player, int entity  )
 {
-	if ( cl_playerspraydisable.GetBool() )
+	if ( cl_spraydisable.GetBool() )
 		return;
-		
+
 	// No valid target?
 	C_BaseEntity *ent = cl_entitylist->GetEnt( entity );
 	if ( !ent )
 		return;
 
-	
 	// Find player logo for shooter
 	player_info_t info;
 	engine->GetPlayerInfo( player, &info );
@@ -257,7 +244,7 @@ void TE_PlayerDecal( IRecipientFilter& filter, float delay,
 	color32 rgbaColor = { 255, 255, 255, 255 };
 	effects->PlayerDecalShoot( 
 		logo, 
-		(void *)player,
+		(void *)(intp)player,
 		entity, 
 		ent->GetModel(), 
 		ent->GetAbsOrigin(), 

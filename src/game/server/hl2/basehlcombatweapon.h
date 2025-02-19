@@ -43,7 +43,7 @@ public:
 
 protected:
 
-	CNetworkVar(int, m_nShotsFired);	// Number of consecutive shots fired
+	int	m_nShotsFired;	// Number of consecutive shots fired
 
 	float	m_flNextSoundTime;	// real-time clock of when to make next sound
 };

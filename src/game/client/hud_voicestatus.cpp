@@ -59,7 +59,7 @@ void CHudVoiceSelfStatus::ApplySchemeSettings(vgui::IScheme *pScheme)
 {
 	BaseClass::ApplySchemeSettings( pScheme );
 
-#if defined HL2MP || PORTAL
+#ifdef HL2MP
 	SetBgColor( Color( 0, 0, 0, 0 ) );
 #endif
 }
@@ -187,8 +187,8 @@ CHudVoiceStatus::~CHudVoiceStatus()
 void CHudVoiceStatus::ApplySchemeSettings(vgui::IScheme *pScheme)
 {
 	BaseClass::ApplySchemeSettings( pScheme );
-	
-#if defined HL2MP || PORTAL
+
+#ifdef HL2MP
 	SetBgColor( Color( 0, 0, 0, 0 ) );
 #endif
 }
@@ -250,7 +250,7 @@ void CHudVoiceStatus::OnThink( void )
 				{
 					if ( steamapicontext != NULL && steamapicontext->SteamUtils() != NULL )
 					{
-						CSteamID steamIDForPlayer( pi.friendsID, 1, steamapicontext->SteamUtils()->GetConnectedUniverse(), k_EAccountTypeIndividual );
+						CSteamID steamIDForPlayer( pi.friendsID, 1, GetUniverse(), k_EAccountTypeIndividual );
 						activeSpeaker.pAvatar->SetAvatarSteamID(steamIDForPlayer, k_EAvatarSize32x32);
 					}
 				}
@@ -354,11 +354,9 @@ void CHudVoiceStatus::Paint()
 
 		float oldAlphaMultiplier = surface()->DrawGetAlphaMultiplier();
 		surface()->DrawSetAlphaMultiplier(oldAlphaMultiplier * m_SpeakingList[i].fAlpha);
-#ifndef PORTAL
+
 		Color c = g_PR->GetTeamColor( g_PR ? g_PR->GetTeam(playerId) : TEAM_UNASSIGNED );
-#else
-		Color c = g_PR->GetPortalgunColor( playerId );
-#endif
+
 		c[3] = 128;
 
 		const char *pName = g_PR ? g_PR->GetPlayerName(playerId) : "unknown";
@@ -383,7 +381,7 @@ void CHudVoiceStatus::Paint()
 							wchar_t unicodeName[ 64 ];
 							g_pVGuiLocalize->ConvertANSIToUnicode( pName, unicodeName, sizeof( unicodeName ) );
 
-							g_pVGuiLocalize->ConstructString( szconverted, sizeof( szconverted ),
+							g_pVGuiLocalize->ConstructString_safe( szconverted,
 								formatStr, 2, unicodeName, unicodeLocation );
 
 							usedLocation = true;

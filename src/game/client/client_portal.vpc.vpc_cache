@@ -1,0 +1,13 @@
+"vpc_cache"
+{
+	"CacheVersion"		"1"
+	"win64"
+	{
+		"CRCFile"		"client_win64_portal.vcxproj.vpc_crc"
+		"OutputFiles"
+		{
+			"0"		"client_win64_portal.vcxproj"
+			"1"		"client_win64_portal.vcxproj.filters"
+		}
+	}
+}

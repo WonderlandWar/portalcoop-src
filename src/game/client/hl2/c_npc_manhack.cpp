@@ -71,7 +71,7 @@ IMPLEMENT_CLIENTCLASS_DT(C_NPC_Manhack, DT_NPC_Manhack, CNPC_Manhack)
 	RecvPropFloat(RECVINFO(m_flEnginePitch2Time)),
 END_RECV_TABLE()
 
-LINK_ENTITY_TO_CLASS(npc_manhack, C_NPC_Manhack)
+
 
 //-----------------------------------------------------------------------------
 // Purpose: Start the manhack's engine sound.

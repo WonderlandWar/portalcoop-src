@@ -27,7 +27,7 @@
 
 #include "iclassmap.h"
 #include "recvproxy.h"
-#include "client_class.h"
+
 class SendTable;
 
 // Game DLL includes
@@ -42,30 +42,41 @@ class SendTable;
 #define DECLARE_NETWORKCLASS()											\
 		DECLARE_CLIENTCLASS()
 
+#define DECLARE_NETWORKCLASS_OVERRIDE()									\
+		DECLARE_CLIENTCLASS_OVERRIDE()
+
 #define DECLARE_NETWORKCLASS_NOBASE()									\
-		DECLARE_CLIENTCLASS_NOBASE()							
+		DECLARE_CLIENTCLASS_NOBASE()
 
 #else
 
 #define DECLARE_NETWORKCLASS()											\
 		DECLARE_SERVERCLASS()
 
+#define DECLARE_NETWORKCLASS_OVERRIDE()									\
+		DECLARE_SERVERCLASS_OVERRIDE()
+
 #define DECLARE_NETWORKCLASS_NOBASE()									\
-		DECLARE_SERVERCLASS_NOBASE()	
+		DECLARE_SERVERCLASS_NOBASE()
 
 #endif
 
 #if defined( CLIENT_DLL )
 
 #ifndef NO_ENTITY_PREDICTION
-#define DECLARE_PREDICTABLE()											\
+#define DECLARE_PREDICTABLE_IMPL( MAYBE_OVERRIDE )						\
 	public:																\
 		static typedescription_t m_PredDesc[];							\
 		static datamap_t m_PredMap;										\
-		virtual datamap_t *GetPredDescMap( void );						\
+		virtual datamap_t *GetPredDescMap( void ) MAYBE_OVERRIDE;		\
 		template <typename T> friend datamap_t *PredMapInit(T *)
+#define DECLARE_PREDICTABLE()	DECLARE_PREDICTABLE_IMPL( /* override */; )
+// With warnings set to inconsistent-override, marking this properly as override would create warnings in all old files.
+// Instead, as files are converted to use override, just upgrade to this
+#define DECLARE_PREDICTABLE_OVERRIDE()	DECLARE_PREDICTABLE_IMPL( OVERRIDE )
 #else
 #define DECLARE_PREDICTABLE()	template <typename T> friend datamap_t *PredMapInit(T *)
+#define DECLARE_PREDICTABLE_OVERRIDE()	DECLARE_PREDICTABLE()
 #endif
 
 #ifndef NO_ENTITY_PREDICTION
@@ -132,9 +143,10 @@ class SendTable;
 #else
 
 	// nothing, only client has a prediction system
-	#define DECLARE_PREDICTABLE()	
-	#define BEGIN_PREDICTION_DATA( className ) 
-	#define END_PREDICTION_DATA() 
+	#define DECLARE_PREDICTABLE()
+	#define DECLARE_PREDICTABLE_OVERRIDE()
+	#define BEGIN_PREDICTION_DATA( className )
+	#define END_PREDICTION_DATA()
 
 #endif
 
@@ -155,34 +167,14 @@ class SendTable;
 		{																	\
 			GetClassMap().Add( #localName, #className, sizeof( className ),	\
 				&C##className##Factory );									\
-			__g_##className##ClientClass.m_pMapClassname = #localName;		\
 		}																	\
 	};																		\
 	static C##localName##Foo g_C##localName##Foo;
-
-#define LINK_ENTITY_TO_CLASS_CLIENTONLY( localName, className )				\
-	static C_BaseEntity *C##className##Factory( void )						\
-	{																		\
-		return static_cast< C_BaseEntity * >( new className );				\
-	};																		\
-	class C##localName##Foo													\
-	{																		\
-	public:																	\
-		C##localName##Foo( void )											\
-		{																	\
-			GetClassMap().Add( #localName, #className, sizeof( className ),	\
-				&C##className##Factory );									\
-		}																	\
-	};																		\
-	static C##localName##Foo g_C##localName##Foo;
-
 
 #define BEGIN_NETWORK_TABLE( className, tableName ) BEGIN_RECV_TABLE( className, tableName )
 #define BEGIN_NETWORK_TABLE_NOBASE( className, tableName ) BEGIN_RECV_TABLE_NOBASE( className, tableName )
 
 #define END_NETWORK_TABLE	END_RECV_TABLE
-
-#define LINK_ENTITY_TO_CLASS_ALIASED( localName, className ) LINK_ENTITY_TO_CLASS(localName, C_##className )
 
 #define IMPLEMENT_NETWORKCLASS_ALIASED(className, dataTable)			\
 	IMPLEMENT_CLIENTCLASS( C_##className, dataTable, C##className )
@@ -197,8 +189,6 @@ class SendTable;
 #define BEGIN_NETWORK_TABLE_NOBASE( className, tableName ) BEGIN_SEND_TABLE_NOBASE( className, tableName )
 
 #define END_NETWORK_TABLE	END_SEND_TABLE
-
-#define LINK_ENTITY_TO_CLASS_ALIASED( localName, className ) LINK_ENTITY_TO_CLASS(localName, C##className )
 
 #define IMPLEMENT_NETWORKCLASS_ALIASED(className, dataTable)			\
 	IMPLEMENT_SERVERCLASS( C##className, dataTable )

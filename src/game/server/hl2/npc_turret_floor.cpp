@@ -146,9 +146,6 @@ BEGIN_DATADESC( CNPC_FloorTurret )
 
 END_DATADESC()
 
-IMPLEMENT_SERVERCLASS_ST( CNPC_FloorTurret, DT_NPC_FloorTurret)
-END_SEND_TABLE()
-
 LINK_ENTITY_TO_CLASS( npc_turret_floor, CNPC_FloorTurret );
 
 //-----------------------------------------------------------------------------
@@ -236,6 +233,7 @@ void CNPC_FloorTurret::Precache( void )
 	if ( IsCitizenTurret() )
 	{
 		PrecacheModel( LASER_BEAM_SPRITE );
+		PrecacheScriptSound( "NPC_FloorTurret.AlarmPing");
 	}
 
 	// Activities
@@ -258,7 +256,6 @@ void CNPC_FloorTurret::Precache( void )
 	PrecacheScriptSound( "NPC_FloorTurret.Ping");
 	PrecacheScriptSound( "NPC_FloorTurret.DryFire");
 	PrecacheScriptSound( "NPC_FloorTurret.Destruct" );
-	PrecacheScriptSound( "NPC_FloorTurret.AlarmPing");
 
 #ifdef HL2_EPISODIC
 	PrecacheParticleSystem( "explosion_turret_break" );
@@ -308,7 +305,7 @@ void CNPC_FloorTurret::Spawn( void )
 	m_iHealth		= 100;
 	m_iMaxHealth	= 100;
 
-	AddEFlags( EFL_NO_DISSOLVE | EFL_NO_MEGAPHYSCANNON_RAGDOLL );
+	AddEFlags( EFL_NO_DISSOLVE );
 
 	SetPoseParameter( m_poseAim_Yaw, 0 );
 	SetPoseParameter( m_poseAim_Pitch, 0 );
@@ -2126,9 +2123,6 @@ void CNPC_FloorTurret::SelfDestructThink( void )
 //-----------------------------------------------------------------------------
 void CNPC_FloorTurret::InputSelfDestruct( inputdata_t &inputdata )
 {
-	if (!m_bActive)
-		Deploy();
-
 	// Ka-boom!
 	m_flDestructStartTime = gpGlobals->curtime;
 	m_flPingTime = gpGlobals->curtime;

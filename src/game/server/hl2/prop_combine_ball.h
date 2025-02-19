@@ -171,7 +171,7 @@ private:
 
 	bool	m_bFiredGrabbedOutput;
 	bool	m_bStruckEntity;		// Has hit an entity already (control accuracy)
-	CNetworkVar(bool, m_bWeaponLaunched);		// Means this was fired from the AR2
+	bool	m_bWeaponLaunched;		// Means this was fired from the AR2
 	bool	m_bForward;				// Movement direction in ball spawner
 
 	unsigned char m_nState;

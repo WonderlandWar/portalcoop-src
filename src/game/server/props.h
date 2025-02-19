@@ -25,7 +25,6 @@
 class CBaseProp : public CBaseAnimating
 {
 	DECLARE_CLASS( CBaseProp, CBaseAnimating );
-	DECLARE_SERVERCLASS()
 public:
 
 	void Spawn( void );
@@ -85,12 +84,8 @@ public:
 	virtual bool   HasPreferredCarryAnglesForPlayer( CBasePlayer *pPlayer )
 	{
 		if ( HasInteraction( PROPINTER_PHYSGUN_LAUNCH_SPIN_Z ) )
-		{
-			m_bHasPreferredCarryAngles = true;
 			return true;
-		}
-		
-		m_bHasPreferredCarryAngles = false;
+
 		return false; 
 	}
 
@@ -115,9 +110,7 @@ public:
 
 	int				m_iMinHealthDmg;
 
-	CNetworkQAngle( m_preferredCarryAngles );
-
-	CNetworkVar( bool, m_bHasPreferredCarryAngles );
+	QAngle			m_preferredCarryAngles;
 
 public:
 // IBreakableWithPropData
@@ -300,7 +293,6 @@ public:
 	void InputTurnOff( inputdata_t &inputdata );
 	void InputDisableCollision( inputdata_t &inputdata );
 	void InputEnableCollision( inputdata_t &inputdata );
-	void InputSetPlaybackRate( inputdata_t &inputdata );
 
 	COutputEvent		m_pOutputAnimBegun;
 	COutputEvent		m_pOutputAnimOver;
@@ -413,16 +405,6 @@ private:
 
 protected:
 	CNetworkVar( bool, m_bAwake );
-};
-
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-class CPhysicsPropOverride : public CPhysicsProp
-{
-	DECLARE_CLASS(CPhysicsPropOverride, CPhysicsProp);
-	DECLARE_SERVERCLASS();
 };
 
 

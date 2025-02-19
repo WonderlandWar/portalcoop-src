@@ -30,6 +30,10 @@
 #include "ai_utils.h"
 #include "physics_impact_damage.h"
 
+#ifdef TF_DLL
+#include "tf_shareddefs.h"
+#endif // TF_DLL
+
 class CNavArea;
 class CScriptedTarget;
 typedef CHandle<CBaseCombatWeapon> CBaseCombatWeaponHandle;
@@ -119,6 +123,7 @@ public:
 	DECLARE_SERVERCLASS();
 	DECLARE_DATADESC();
 	DECLARE_PREDICTABLE();
+	DECLARE_ENT_SCRIPTDESC();
 
 public:
 
@@ -367,7 +372,7 @@ public:
 	virtual bool		RemoveEntityRelationship( CBaseEntity *pEntity );
 	virtual void		AddClassRelationship( Class_T nClass, Disposition_t nDisposition, int nPriority );
 
-	virtual void		ChangeTeam( int iTeamNum );
+	virtual void		ChangeTeam( int iTeamNum ) OVERRIDE;
 
 	// Nav hull type
 	Hull_t	GetHullType() const				{ return m_eHull; }
@@ -401,6 +406,7 @@ public:
 	bool				m_bPreventWeaponPickup;
 
 	virtual CNavArea *GetLastKnownArea( void ) const		{ return m_lastNavArea; }		// return the last nav area the player occupied - NULL if unknown
+	HSCRIPT ScriptGetLastKnownArea( void ) const;
 	virtual bool IsAreaTraversable( const CNavArea *area ) const;							// return true if we can use the given area 
 	virtual void ClearLastKnownArea( void );
 	virtual void UpdateLastKnownArea( void );										// invoke this to update our last known nav area (since there is no think method chained to CBaseCombatCharacter)
@@ -411,6 +417,17 @@ public:
 	// Notification from INextBots.
 	// -----------------------
 	virtual void		OnPursuedBy( INextBot * RESTRICT pPursuer ){} // called every frame while pursued by a bot in DirectChase.
+
+#ifdef TF_DLL
+	virtual HalloweenBossType GetBossType() const { return HALLOWEEN_BOSS_INVALID; }
+#endif // TF_DLL
+
+#ifdef GLOWS_ENABLE
+	// Glows
+	void				AddGlowEffect( void );
+	void				RemoveGlowEffect( void );
+	bool				IsGlowEffectActive( void );
+#endif // GLOWS_ENABLE
 
 #ifdef INVASION_DLL
 public:
@@ -449,9 +466,16 @@ protected:
 public:
 	CNetworkVar( float, m_flNextAttack );			// cannot attack again until this time
 
+#ifdef GLOWS_ENABLE
+protected:
+	CNetworkVar( bool, m_bGlowEnabled );
+#endif // GLOWS_ENABLE
 
 private:
 	Hull_t		m_eHull;
+
+	void				UpdateGlowEffect( void );
+	void				DestroyGlowEffect( void );
 
 protected:
 	int			m_bloodColor;			// color of blood particless

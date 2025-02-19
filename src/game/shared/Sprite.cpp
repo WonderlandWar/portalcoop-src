@@ -28,6 +28,8 @@
 const float MAX_SPRITE_SCALE = 64.0f;
 const float MAX_GLOW_PROXY_SIZE = 64.0f;
 
+LINK_ENTITY_TO_CLASS( env_sprite, CSprite );
+LINK_ENTITY_TO_CLASS( env_sprite_oriented, CSpriteOriented );
 #if !defined( CLIENT_DLL )
 LINK_ENTITY_TO_CLASS( env_glow, CSprite ); // For backwards compatibility, remove when no longer needed.
 #endif
@@ -171,8 +173,6 @@ BEGIN_NETWORK_TABLE( CSprite, DT_Sprite )
 #endif
 END_NETWORK_TABLE()
 
-LINK_ENTITY_TO_CLASS_ALIASED( env_sprite, Sprite );
-
 
 CSprite::CSprite()
 {
@@ -285,9 +285,9 @@ void CSprite::ComputeWorldSpaceSurroundingBox( Vector *pVecWorldMins, Vector *pV
 //-----------------------------------------------------------------------------
 void CSprite::SetModel( const char *szModelName )
 {
-	int index = modelinfo->GetModelIndex( szModelName );
-	const model_t *model = modelinfo->GetModel( index );
-	if ( model && modelinfo->GetModelType( model ) != mod_sprite )
+	int index_ = modelinfo->GetModelIndex( szModelName );
+	const model_t *pModel = modelinfo->GetModel( index_ );
+	if ( pModel && modelinfo->GetModelType( pModel ) != mod_sprite )
 	{
 		Msg( "Setting CSprite to non-sprite model %s\n", szModelName?szModelName:"NULL" );
 	}
@@ -677,7 +677,10 @@ void CSprite::GetRenderBounds( Vector &vecMins, Vector &vecMaxs )
 
 #if 0
 	// Visualize the bounds
-	debugoverlay->AddBoxOverlay( GetRenderOrigin(), vecMins, vecMaxs, GetRenderAngles(), 255, 255, 255, 0, 0.01f );
+	if ( debugoverlay )
+	{
+		debugoverlay->AddBoxOverlay( GetRenderOrigin(), vecMins, vecMaxs, GetRenderAngles(), 255, 255, 255, 0, 0.01f );
+	}
 #endif
 }
 
@@ -845,8 +848,6 @@ IMPLEMENT_CLIENTCLASS_DT(C_SpriteOriented, DT_SpriteOriented, CSpriteOriented)
 #define CSpriteOriented C_SpriteOriented
 END_RECV_TABLE()
 #endif
-
-LINK_ENTITY_TO_CLASS_ALIASED( env_sprite_oriented, SpriteOriented );
 
 #if !defined( CLIENT_DLL )
 

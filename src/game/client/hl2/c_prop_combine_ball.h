@@ -23,12 +23,8 @@ public:
 
 	virtual void	OnDataChanged( DataUpdateType_t updateType );
 	virtual int		DrawModel( int flags );
-	
-	bool WasWeaponLaunched( void ) const { return m_bWeaponLaunched; }
 
 protected:
-	
-	bool	m_bWeaponLaunched;		// Means this was fired from the AR2
 
 	void	DrawMotionBlur( void );
 	void	DrawFlicker( void );
@@ -44,11 +40,6 @@ protected:
 	IMaterial	*m_pBodyMaterial;
 	IMaterial	*m_pBlurMaterial;
 };
-
-// Query function to find out if a physics object is a combine ball (used for collision checks)
-bool UTIL_IsCombineBall( CBaseEntity *pEntity );
-bool UTIL_IsCombineBallDefinite( CBaseEntity *pEntity );
-bool UTIL_IsAR2CombineBall( CBaseEntity *pEntity );
 
 
 #endif

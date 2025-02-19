@@ -11,30 +11,6 @@
 #pragma once
 #endif
 
-#ifdef PORTAL
-enum PINGICON
-{
-	PING_ICON_DEFAULT,
-	PING_ICON_DOOR,
-	PING_ICON_BOX,
-	PING_ICON_SPHERE,
-	PING_ICON_FLOORBUTTON,
-	PING_ICON_SWITCH,
-	PING_ICON_ENERGYBALL_LAUNCHER,
-	PING_ICON_ENERGYBALL_CATCHER,
-
-	// Extra, probably will go unused
-	PING_ICON_PISTON_VERTICAL,
-	PING_ICON_PISTON_HORIZONTAL,
-
-	//Hard Coded
-	PING_ICON_PORTAL,
-	PING_ICON_TURRET,
-	PING_ICON_GLADOS_CORE,
-
-};
-#endif
-
 extern ConVar hl2_episodic;
 
 // Simple shared header file for common base entities
@@ -274,6 +250,30 @@ inline bool CBaseEntity::IsEffectActive( int nEffects ) const
 	return (m_fEffects & nEffects) != 0; 
 }
 
+#ifdef GAME_DLL
+inline HSCRIPT ToHScript( CBaseEntity *pEnt )
+{
+	return ( pEnt ) ? pEnt->GetScriptInstance() : NULL;
+}
+
+template <> ScriptClassDesc_t *GetScriptDesc<CBaseEntity>( CBaseEntity * );
+inline CBaseEntity *ToEnt( HSCRIPT hScript )
+{
+
+	return ( hScript ) ? (CBaseEntity *)g_pScriptVM->GetInstanceValue( hScript, GetScriptDescForClass(CBaseEntity) ) : NULL;
+}
+
+template <typename T>
+inline T* ScriptToEntClass( HSCRIPT hScript )
+{
+	CBaseEntity *pEntity = ToEnt( hScript );
+	if ( !pEntity )
+		return NULL;
+
+	return dynamic_cast< T* >( pEntity );
+}
+#endif
+
 // Shared EntityMessage between game and client .dlls
 #define BASEENTITY_MSG_REMOVE_DECALS	1
 
@@ -333,8 +333,5 @@ inline bool IsEntityQAngleVelReasonable( const QAngle &q )
 }
 
 extern bool CheckEmitReasonablePhysicsSpew();
-
-
-extern CUtlVector<IPhysicsObject*> g_AllPhysObjects;
 
 #endif // BASEENTITY_SHARED_H

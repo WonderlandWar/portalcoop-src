@@ -41,8 +41,9 @@
 #include "physics_collisionevent.h"
 #include "gamestats.h"
 #include "vehicle_base.h"
-#ifdef PORTAL
-#include "portal_player.h"
+
+#ifdef TF_DLL
+#include "nav_mesh/tf_nav_mesh.h"
 #endif
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -175,10 +176,6 @@ float GetBreakableDamage( const CTakeDamageInfo &inputInfo, IBreakableWithPropDa
 //=============================================================================================================
 // BASE PROP
 //=============================================================================================================
-
-IMPLEMENT_SERVERCLASS_ST( CBaseProp, DT_BaseProp)
-END_SEND_TABLE()
-
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -737,10 +734,6 @@ static ConCommand prop_debug("prop_debug", CC_Prop_Debug, "Toggle prop debug mod
 // BREAKABLE PROPS
 //=============================================================================================================
 IMPLEMENT_SERVERCLASS_ST(CBreakableProp, DT_BreakableProp)
-
-	SendPropBool( SENDINFO( m_bHasPreferredCarryAngles ) ),
-	SendPropQAngles( SENDINFO( m_preferredCarryAngles ) ),
-
 END_SEND_TABLE()
 
 BEGIN_DATADESC( CBreakableProp )
@@ -812,8 +805,6 @@ BEGIN_DATADESC( CBreakableProp )
 	// Damage
 	DEFINE_FIELD( m_hLastAttacker, FIELD_EHANDLE ),
 	DEFINE_FIELD( m_hFlareEnt,	FIELD_EHANDLE ),
-
-	DEFINE_FIELD( m_bHasPreferredCarryAngles, FIELD_BOOLEAN ),
 
 END_DATADESC()
 
@@ -1850,7 +1841,6 @@ BEGIN_DATADESC( CDynamicProp )
 	DEFINE_INPUTFUNC( FIELD_VOID,		"Disable",		InputTurnOff ),
 	DEFINE_INPUTFUNC( FIELD_VOID,		"EnableCollision",	InputEnableCollision ),
 	DEFINE_INPUTFUNC( FIELD_VOID,		"DisableCollision",	InputDisableCollision ),
-	DEFINE_INPUTFUNC( FIELD_FLOAT,		"SetPlaybackRate",	InputSetPlaybackRate ),
 
 	// Outputs
 	DEFINE_OUTPUT( m_pOutputAnimBegun, "OnAnimationBegun" ),
@@ -2269,14 +2259,6 @@ void CDynamicProp::InputSetDefaultAnimation( inputdata_t &inputdata )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CDynamicProp::InputSetPlaybackRate( inputdata_t &inputdata )
-{
-	SetPlaybackRate( inputdata.value.Float() );
-}
-
-//-----------------------------------------------------------------------------
 // Purpose: Helper in case we have to async load the sequence
 // Input  : nSequence - 
 //-----------------------------------------------------------------------------
@@ -2422,7 +2404,7 @@ void COrnamentProp::InputDetach( inputdata_t &inputdata )
 //=============================================================================
 LINK_ENTITY_TO_CLASS( physics_prop, CPhysicsProp );
 LINK_ENTITY_TO_CLASS( prop_physics, CPhysicsProp );	
-LINK_ENTITY_TO_CLASS( prop_physics_override, CPhysicsPropOverride );	
+LINK_ENTITY_TO_CLASS( prop_physics_override, CPhysicsProp );	
 
 BEGIN_DATADESC( CPhysicsProp )
 
@@ -2459,10 +2441,6 @@ BEGIN_DATADESC( CPhysicsProp )
 END_DATADESC()
 
 IMPLEMENT_SERVERCLASS_ST( CPhysicsProp, DT_PhysicsProp )
-	SendPropBool( SENDINFO( m_bAwake ) ),
-END_SEND_TABLE()
-
-IMPLEMENT_SERVERCLASS_ST( CPhysicsPropOverride, DT_PhysicsPropOverride )
 	SendPropBool( SENDINFO( m_bAwake ) ),
 END_SEND_TABLE()
 
@@ -2924,16 +2902,6 @@ void CPhysicsProp::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		}
 
 		pPlayer->PickupObject( this );
-
-#ifdef PORTAL
-		CPortal_Player *pPortalPlayer = (CPortal_Player*)pPlayer;
-		if (pPortalPlayer)
-		{
-			pPortalPlayer->SetLookingForUseEntity(false);
-			pPortalPlayer->SetLookForUseEntity(false);
-		}
-#endif
-
 	}
 }
 
@@ -4737,6 +4705,8 @@ public:
 
 	void	InputSetSpeed(inputdata_t &inputdata);
 
+	virtual void ComputeDoorExtent( Extent *extent, unsigned int extentType );	// extent contains the volume encompassing open + closed states
+
 	DECLARE_DATADESC();
 
 private:
@@ -4854,6 +4824,10 @@ void CPropDoorRotating::Spawn()
 	{
 		::V_swap( m_angRotationOpenForward, m_angRotationOpenBack );
 	}
+
+#ifdef TF_DLL
+	TheTFNavMesh()->OnDoorCreated( this );
+#endif
 
 	// Figure out our volumes of movement as this door opens
 	CalculateDoorVolume( GetLocalAngles(), m_angRotationOpenForward, &m_vecForwardBoundsMin, &m_vecForwardBoundsMax );
@@ -5054,6 +5028,33 @@ void CPropDoorRotating::OnRestore( void )
 	// Figure out our volumes of movement as this door opens
 	CalculateDoorVolume( GetLocalAngles(), m_angRotationOpenForward, &m_vecForwardBoundsMin, &m_vecForwardBoundsMax );
 	CalculateDoorVolume( GetLocalAngles(), m_angRotationOpenBack, &m_vecBackBoundsMin, &m_vecBackBoundsMax );
+}
+
+// extent contains the volume encompassing open + closed states
+void CPropDoorRotating::ComputeDoorExtent( Extent *extent, unsigned int extentType )
+{
+	if ( !extent )
+		return;
+
+	if ( extentType & DOOR_EXTENT_CLOSED )
+	{
+		Extent closedExtent;
+		CalculateDoorVolume( m_angRotationClosed, m_angRotationClosed, &extent->lo, &extent->hi );
+
+		if ( extentType & DOOR_EXTENT_OPEN )
+		{
+			Extent openExtent;
+			UTIL_ComputeAABBForBounds( m_vecForwardBoundsMin, m_vecForwardBoundsMax, m_vecBackBoundsMin, m_vecBackBoundsMax, &openExtent.lo, &openExtent.hi );
+			extent->Encompass( openExtent );
+		}
+	}
+	else if ( extentType & DOOR_EXTENT_OPEN )
+	{
+		UTIL_ComputeAABBForBounds( m_vecForwardBoundsMin, m_vecForwardBoundsMax, m_vecBackBoundsMin, m_vecBackBoundsMax, &extent->lo, &extent->hi );
+	}
+
+	extent->lo += GetAbsOrigin();
+	extent->hi += GetAbsOrigin();
 }
 
 //-----------------------------------------------------------------------------
@@ -5706,7 +5707,6 @@ END_SEND_TABLE()
 class CPhysicsPropRespawnable : public CPhysicsProp
 {
 	DECLARE_CLASS( CPhysicsPropRespawnable, CPhysicsProp );
-	DECLARE_SERVERCLASS();
 	DECLARE_DATADESC();
 
 public:
@@ -5728,10 +5728,6 @@ private:
 
 	float m_flRespawnTime;
 };
-
-IMPLEMENT_SERVERCLASS_ST(CPhysicsPropRespawnable, DT_PhysicsPropRespawnable)
-	SendPropBool(SENDINFO(m_bAwake)),
-END_SEND_TABLE()
 
 LINK_ENTITY_TO_CLASS( prop_physics_respawnable, CPhysicsPropRespawnable );
 

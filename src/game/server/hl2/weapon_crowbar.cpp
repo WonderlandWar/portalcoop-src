@@ -175,13 +175,7 @@ void CWeaponCrowbar::HandleAnimEventMeleeHit( animevent_t *pEvent, CBaseCombatCh
 
 		// Fake a trace impact, so the effects work out like a player's crowbaw
 		trace_t traceHit;
-#ifdef PORTAL
-		Ray_t ray;
-		ray.Init(pOperator->Weapon_ShootPosition(), pHurt->GetAbsOrigin());
-		UTIL_Portal_TraceRay(ray, MASK_SHOT_HULL, pOperator, COLLISION_GROUP_NONE, &traceHit);
-#else
 		UTIL_TraceLine( pOperator->Weapon_ShootPosition(), pHurt->GetAbsOrigin(), MASK_SHOT_HULL, pOperator, COLLISION_GROUP_NONE, &traceHit );
-#endif
 		ImpactEffect( traceHit );
 	}
 	else

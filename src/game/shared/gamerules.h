@@ -116,15 +116,14 @@ abstract_class CGameRules : public CAutoGameSystemPerFrame
 public:
 	DECLARE_CLASS_GAMEROOT( CGameRules, CAutoGameSystemPerFrame );
 
-	DECLARE_NETWORKCLASS_NOBASE();
-	DECLARE_SIMPLE_DATADESC();
-		
 	virtual char const *Name() { return "CGameRules"; }
 
 	// Stuff shared between client and server.
 
 	CGameRules(void);
 	virtual ~CGameRules( void );
+
+	virtual void	LevelShutdownPostEntity() OVERRIDE;
 
 	// Damage Queries - these need to be implemented by the various subclasses (single-player, multi-player, etc).
 	// The queries represent queries against damage types and properties.
@@ -185,11 +184,9 @@ public:
 	// cvars with the FCVAR_NOT_CONNECTED rule if it returns true
 	virtual bool IsConnectedUserInfoChangeAllowed( CBasePlayer *pPlayer )
 	{ 
-	//	Assert( !IsMultiplayer() );
+		Assert( !IsMultiplayer() );
 		return true; 
 	}
-	
-	virtual bool CanEntityBeUsePushed( CBaseEntity *pEnt ) { return true; }
 
 #ifdef CLIENT_DLL
 
@@ -206,7 +203,7 @@ public:
 
 	virtual void ModifySentChat( char *pBuf, int iBufSize ) { return; }
 
-	virtual bool ShouldWarnOfAbandonOnQuit() { return false; }
+	virtual bool ShouldConfirmOnDisconnect() { return false; }
 	
 #else
 
@@ -270,6 +267,7 @@ public:
 	virtual bool IsTeamplay( void ) { return FALSE; };// is this deathmatch game being played with team rules?
 	virtual bool IsCoOp( void ) = 0;// is this a coop game?
 	virtual const char *GetGameDescription( void ) { return "Half-Life 2"; }  // this is the game name that gets seen in the server browser
+	
 // Client connection/disconnection
 	virtual bool ClientConnected( edict_t *pEntity, const char *pszName, const char *pszAddress, char *reject, int maxrejectlen ) = 0;// a client just connected to the server (player hasn't spawned yet)
 	virtual void InitHUD( CBasePlayer *pl ) = 0;		// the client dll is ready for updating
@@ -392,7 +390,9 @@ public:
 
 	// Whether props that are on fire should get a DLIGHT.
 	virtual bool ShouldBurningPropsEmitLight() { return false; }
-	
+
+	virtual bool CanEntityBeUsePushed( CBaseEntity *pEnt ) { return true; }
+
 	virtual void CreateCustomNetworkStringTables( void ) { }
 
 	// Game Achievements (server version)
@@ -422,22 +422,19 @@ public:
 
 	virtual bool IsManualMapChangeOkay( const char **pszReason ){ return true; }
 
-	// Bonus Logic
-	
+	virtual void RegisterScriptFunctions() { }
+
+	virtual void SaveConvar( const ConVarRef & cvar );
+	virtual void RevertSavedConvars();
+	virtual bool HasSavedConvar( const string_t cvarName );
+
 #ifdef GAME_DLL
-	bool	m_bPauseBonusProgress;
+	virtual bool IsOfficialMap() { return false; }
 #endif
 
-	// Never let the client set its own progress, it's networked
-#ifdef GAME_DLL
-	void					PauseBonusProgress( bool bPause = true );
-	void					SetBonusProgress( int iBonusProgress );
-	void					SetBonusChallenge( int iBonusChallenge );
-#endif
+protected:
+	CUtlVector< string_t > m_SavedConvars;
 
-	int						GetBonusProgress() const;
-	int						GetBonusChallenge() const;
-	
 #ifndef CLIENT_DLL
 private:
 	float m_flNextVerboseLogOutput;
