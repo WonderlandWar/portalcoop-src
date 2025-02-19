@@ -6,13 +6,13 @@
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
-
+#if 0
 IMPLEMENT_CLIENTCLASS_DT( C_BaseToggle, DT_BaseToggle, CBaseToggle )
 	RecvPropVector( RECVINFO( m_vecFinalDest ) ),
 	RecvPropInt( RECVINFO( m_movementType ) ),
 	RecvPropFloat( RECVINFO( m_flMoveTargetTime ) ),
 END_RECV_TABLE()
-
+#endif
 BEGIN_PREDICTION_DATA( C_BaseToggle )
 END_PREDICTION_DATA()
 

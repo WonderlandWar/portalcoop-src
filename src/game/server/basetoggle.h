@@ -15,7 +15,7 @@
 class CBaseToggle : public CBaseEntity
 {
 	DECLARE_CLASS( CBaseToggle, CBaseEntity );
-	DECLARE_SERVERCLASS();
+	//DECLARE_SERVERCLASS();
 public:
 	CBaseToggle();
 

@@ -23,6 +23,7 @@ ipch
 *.VC*
 *.pdb
 *.vpc_cache
+*.recipe
 DocumentLayout.json
 
 # OSX/Linux build products

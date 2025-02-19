@@ -151,13 +151,13 @@ BEGIN_DATADESC( CBaseToggle )
 
 END_DATADESC()
 
-
+#if 0
 IMPLEMENT_SERVERCLASS_ST(CBaseToggle, DT_BaseToggle)
 	SendPropVector( SENDINFO( m_vecFinalDest ) ),
 	SendPropInt( SENDINFO( m_movementType ) ),
 	SendPropFloat( SENDINFO( m_flMoveTargetTime ) ),
 END_SEND_TABLE()
-
+#endif
 
 CBaseToggle::CBaseToggle()
 {

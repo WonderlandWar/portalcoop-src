@@ -23,6 +23,8 @@
 // FIX ME
 #include "portal_shareddefs.h"
 
+#define DISABLE_ATTACHED_CLONING_AREA
+
 static const char *s_pDelayedPlacementContext = "DelayedPlacementContext";
 static const char *s_pTestRestingSurfaceContext = "TestRestingSurfaceContext";
 static const char *s_pFizzleThink = "FizzleThink";
@@ -203,9 +205,9 @@ public:
 	bool m_bPlayerIsInPortalEnvironment;
 
 	virtual C_Prop_Portal *GetPropPortal() { return this; };
-
+#ifndef DISABLE_ATTACHED_CLONING_AREA
 	CPhysicsCloneArea		*m_pAttachedCloningArea;
-
+#endif
 private:
 
 	bool m_bDoRenderThink;

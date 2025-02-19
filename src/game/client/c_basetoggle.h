@@ -24,7 +24,7 @@ class C_BaseToggle: public C_BaseEntity
 {
 public:
 	DECLARE_CLASS( C_BaseToggle, C_BaseEntity );
-	DECLARE_CLIENTCLASS();
+	//DECLARE_CLIENTCLASS();
 	DECLARE_PREDICTABLE(); //elevators
 
 	virtual void GetGroundVelocityToApply( Vector &vecGroundVel );
@@ -41,7 +41,7 @@ public:
 	float m_fLastNetworkedTime;
 	
 	Vector m_vecFinalDest;
-	int m_movementType;
+	CNetworkVar( int, m_movementType );
 	float m_flMoveTargetTime;
 	bool m_bWasPredictingMotion;
 };
