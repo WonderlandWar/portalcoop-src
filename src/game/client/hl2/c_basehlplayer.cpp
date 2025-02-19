@@ -25,6 +25,10 @@ extern ConVar zoom_sensitivity_ratio;
 extern ConVar default_fov;
 extern ConVar sensitivity;
 
+ConVar hl2_walkspeed("hl2_walkspeed", "150", FCVAR_REPLICATED);
+ConVar hl2_normspeed("hl2_normspeed", "190", FCVAR_REPLICATED);
+ConVar hl2_sprintspeed("hl2_sprintspeed", "320", FCVAR_REPLICATED);
+
 ConVar cl_npc_speedmod_intime( "cl_npc_speedmod_intime", "0.25", FCVAR_CLIENTDLL | FCVAR_ARCHIVE );
 ConVar cl_npc_speedmod_outtime( "cl_npc_speedmod_outtime", "1.5", FCVAR_CLIENTDLL | FCVAR_ARCHIVE );
 
@@ -665,3 +669,34 @@ void C_BaseHLPlayer::BuildTransformations( CStudioHdr *hdr, Vector *pos, Quatern
 	BuildFirstPersonMeathookTransformations( hdr, pos, q, cameraTransform, boneMask, boneComputed, "ValveBiped.Bip01_Head1" );
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: Force the player to drop any physics objects he's carrying
+//-----------------------------------------------------------------------------
+void C_BaseHLPlayer::ForceDropOfCarriedPhysObjects( CBaseEntity *pOnlyIfHoldingThis )
+{
+	/*
+	if ( PhysIsInCallback() )
+	{
+		variant_t value;
+		g_EventQueue.AddEvent( this, "ForceDropPhysObjects", value, 0.01f, pOnlyIfHoldingThis, this );
+		return;
+	}
+
+#ifdef HL2_EPISODIC
+	if ( hl2_episodic.GetBool() )
+	{
+		CBaseEntity *pHeldEntity = PhysCannonGetHeldEntity( GetActiveWeapon() );
+		if( pHeldEntity && pHeldEntity->ClassMatches( "grenade_helicopter" ) )
+		{
+			return;
+		}
+	}
+#endif
+
+
+	// Then force the physcannon to drop anything it's holding, if it's our active weapon
+	PhysCannonForceDrop( GetActiveWeapon(), NULL );
+	*/
+	// Drop any objects being handheld.
+	SetUseEntity(NULL);
+}

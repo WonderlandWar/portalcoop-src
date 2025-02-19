@@ -100,7 +100,7 @@ public:
 	virtual void		Activate( void );
 	virtual void		CheatImpulseCommands( int iImpulse );
 	virtual void		PlayerRunCommand( CUserCmd *ucmd, IMoveHelper *moveHelper);
-	virtual void		PlayerUse ( void );
+	virtual bool		PlayerUse(void);
 	virtual void		SuspendUse( float flDuration ) { m_flTimeUseSuspended = gpGlobals->curtime + flDuration; }
 	virtual void		UpdateClientData( void );
 	virtual void		OnRestore();
@@ -164,6 +164,7 @@ public:
 	void UpdateLocatorPosition( const Vector &vecPosition );
 
 	// Sprint Device
+	bool GetSprintDevice( void );
 	void StartAutoSprint( void );
 	void StartSprinting( void );
 	void StopSprinting( void );
@@ -171,6 +172,8 @@ public:
 	bool IsSprinting( void ) { return m_fIsSprinting; }
 	bool CanSprint( void );
 	void EnableSprint( bool bEnable);
+
+	bool m_bHasSprintDevice;
 
 	bool CanZoom( CBaseEntity *pRequester );
 	void ToggleZoom(void);
@@ -377,6 +380,32 @@ void CHL2_Player::EnableCappedPhysicsDamage()
 void CHL2_Player::DisableCappedPhysicsDamage()
 {
 	m_bUseCappedPhysicsDamageTable = false;
+}
+
+
+//-----------------------------------------------------------------------------
+// Converts an entity to a player
+//-----------------------------------------------------------------------------
+inline CHL2_Player *ToHL2Player( CBaseEntity *pEntity )
+{
+	if ( !pEntity || !pEntity->IsPlayer() )
+		return NULL;
+#if _DEBUG
+	return dynamic_cast<CHL2_Player *>( pEntity );
+#else
+	return static_cast<CHL2_Player *>(pEntity);
+#endif
+}
+
+inline const CHL2_Player *ToHL2Player(const CBaseEntity *pEntity)
+{
+	if ( !pEntity || !pEntity->IsPlayer() )
+		return NULL;
+#if _DEBUG
+	return dynamic_cast<const CHL2_Player *>( pEntity );
+#else
+	return static_cast<const CHL2_Player *>(pEntity);
+#endif
 }
 
 

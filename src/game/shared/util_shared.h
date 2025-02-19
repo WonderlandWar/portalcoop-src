@@ -36,6 +36,10 @@ typedef CGameTrace trace_t;
 
 extern ConVar developer;	// developer mode
 
+#define CON_COMMAND( name, description ) \
+   static void name( const CCommand &args ); \
+   static ConCommand name##_command( #name, name, description ); \
+   static void name( const CCommand &args )
 
 //-----------------------------------------------------------------------------
 // Language IDs.
@@ -344,7 +348,9 @@ void		UTIL_ParticleTracer( const char *pszTracerEffectName, const Vector &vecSta
 
 // Old style, non-particle system, tracers
 void		UTIL_Tracer( const Vector &vecStart, const Vector &vecEnd, int iEntIndex = 0, int iAttachment = TRACER_DONT_USE_ATTACHMENT, float flVelocity = 0, bool bWhiz = false, const char *pCustomTracerName = NULL, int iParticleID = 0 );
-
+#ifdef CLIENT_DLL
+void		UTIL_ClearTrace(trace_t &trace);
+#endif
 bool		UTIL_IsLowViolence( void );
 bool		UTIL_ShouldShowBlood( int bloodColor );
 void		UTIL_BloodDrips( const Vector &origin, const Vector &direction, int color, int amount );
@@ -389,6 +395,34 @@ char *UTIL_GetFilteredChatText( int iPlayerIndex, char *pszText, int nTextBuffer
 
 // decodes a buffer using a 64bit ICE key (inplace)
 void		UTIL_DecodeICE( unsigned char * buffer, int size, const unsigned char *key);
+
+//assumes the object is already in a mostly passable space
+#define FL_AXIS_DIRECTION_NONE	( 0 )
+#define FL_AXIS_DIRECTION_X		( 1 << 0 )
+#define FL_AXIS_DIRECTION_NX	( 1 << 1 )
+#define FL_AXIS_DIRECTION_Y		( 1 << 2 )
+#define FL_AXIS_DIRECTION_NY	( 1 << 3 )
+#define FL_AXIS_DIRECTION_Z		( 1 << 4 )
+#define FL_AXIS_DIRECTION_NZ	( 1 << 5 )
+
+struct FindClosestPassableSpace_TraceAdapter_t;
+typedef void (*FN_RayTraceAdapterFunc)( const Ray_t &ray, trace_t *pResult, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter );
+typedef bool (*FN_PointIsOutsideWorld)( const Vector &vTest, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter );
+
+//derive from this to tack on additional data to your adapted functions
+struct FindClosestPassableSpace_TraceAdapter_t
+{
+	FN_RayTraceAdapterFunc pTraceFunc;
+	FN_PointIsOutsideWorld pPointOutsideWorldFunc;
+
+	ITraceFilter *pTraceFilter;
+	unsigned int fMask;
+};
+
+bool		UTIL_FindClosestPassableSpace( const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, unsigned int iIterations, Vector &vCenterOut, int nAxisRestrictionFlags, FindClosestPassableSpace_TraceAdapter_t *pTraceAdapter );
+bool		UTIL_FindClosestPassableSpace( const Vector &vCenter, const Vector &vExtents, const Vector &vIndecisivePush, ITraceFilter *pTraceFilter, unsigned int fMask, unsigned int iIterations, Vector &vCenterOut, int nAxisRestrictionFlags = FL_AXIS_DIRECTION_NONE );
+bool		UTIL_FindClosestPassableSpace( CBaseEntity *pEntity, const Vector &vIndecisivePush, unsigned int fMask, unsigned int iIterations, Vector &vOriginOut, Vector *pStartingPosition = NULL, int nAxisRestrictionFlags = FL_AXIS_DIRECTION_NONE );
+bool		UTIL_FindClosestPassableSpace( CBaseEntity *pEntity, const Vector &vIndecisivePush, unsigned int fMask, Vector *pStartingPosition = NULL, int nAxisRestrictionFlags = FL_AXIS_DIRECTION_NONE );
 
 
 //--------------------------------------------------------------------------------------------------------------
@@ -642,6 +676,9 @@ class RealTimeCountdownTimer : public CountdownTimer
 char* ReadAndAllocStringValue( KeyValues *pSub, const char *pName, const char *pFilename = NULL );
 
 int UTIL_StringFieldToInt( const char *szValue, const char **pValueStrings, int iNumStrings );
+// From MapBase
+int UTIL_CountNumBitsSet( unsigned int nVar );
+int UTIL_CountNumBitsSet( uint64 nVar );
 
 //-----------------------------------------------------------------------------
 // Holidays

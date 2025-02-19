@@ -480,6 +480,10 @@ BEGIN_RECV_TABLE_NOBASE(C_BaseEntity, DT_BaseEntity)
 #ifdef TF_CLIENT_DLL
 	RecvPropArray3( RECVINFO_ARRAY(m_nModelIndexOverrides),	RecvPropInt( RECVINFO(m_nModelIndexOverrides[0]) ) ),
 #endif
+	
+#ifdef PORTAL
+	RecvPropInt( RECVINFO( m_iPingIcon ) ),
+#endif
 
 END_RECV_TABLE()
 
@@ -1338,6 +1342,33 @@ bool C_BaseEntity::VPhysicsIsFlesh( void )
 }
 
 
+//------------------------------------------------------------------------------
+// Purpose : Returns velcocity of base entity.  If physically simulated gets
+//			 velocity from physics object
+// Input   :
+// Output  :
+//------------------------------------------------------------------------------
+void C_BaseEntity::GetVelocity(Vector *vVelocity, AngularImpulse *vAngVelocity)
+{
+	if (GetMoveType() == MOVETYPE_VPHYSICS && m_pPhysicsObject)
+	{
+		m_pPhysicsObject->GetVelocity(vVelocity, vAngVelocity);
+	}
+	else
+	{
+		if (vVelocity != NULL)
+		{
+			*vVelocity = GetAbsVelocity();
+		}
+		if (vAngVelocity != NULL)
+		{
+			QAngle tmp = GetLocalAngularVelocity();
+			QAngleToAngularImpulse(tmp, *vAngVelocity);
+		}
+	}
+}
+
+
 //-----------------------------------------------------------------------------
 // Purpose: Retrieves the coordinate frame for this entity.
 // Input  : forward - Receives the entity's forward vector.
@@ -1537,12 +1568,12 @@ void C_BaseEntity::SetShadowUseOtherEntity( C_BaseEntity *pEntity )
 	m_ShadowDirUseOtherEntity = pEntity;
 }
 
-CInterpolatedVar< QAngle >& C_BaseEntity::GetRotationInterpolator()
+CDiscontinuousInterpolatedVar< QAngle >& C_BaseEntity::GetRotationInterpolator()
 {
 	return m_iv_angRotation;
 }
 
-CInterpolatedVar< Vector >& C_BaseEntity::GetOriginInterpolator()
+CDiscontinuousInterpolatedVar< Vector >& C_BaseEntity::GetOriginInterpolator()
 {
 	return m_iv_vecOrigin;
 }
@@ -2706,6 +2737,14 @@ void C_BaseEntity::CheckInitPredictable( const char *context )
 		return;
 
 	// Msg( "Predicting init %s at %s\n", GetClassname(), context );
+	
+	// It's either a player, a weapon or a view model
+	C_BasePlayer *pOwner = GetPredictionOwner();
+	Assert( pOwner );
+	if ( !pOwner )
+		return;
+
+	// Msg( "Predicting init %s at %s\n", GetClassname(), context );
 
 	InitPredictable();
 #endif
@@ -2716,6 +2755,46 @@ bool C_BaseEntity::IsSelfAnimating()
 	return true;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: See if a predictable should stop predicting
+// Input  : *context - 
+//-----------------------------------------------------------------------------
+void C_BaseEntity::CheckShutdownPredictable( const char *context )
+{
+	if ( IsClientCreated() )
+		return;
+
+	if ( !ShouldPredict() || 
+		!GetPredictionEligible() ||
+		(GetPredictionOwner() == NULL) )
+	{
+		if( IsIntermediateDataAllocated() )
+		{
+			ShutdownPredictable();
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Return the player who will predict this entity
+//-----------------------------------------------------------------------------
+C_BasePlayer* C_BaseEntity::GetPredictionOwner()
+{
+	C_BasePlayer *pOwner = ToBasePlayer( this );
+	if ( !pOwner )
+	{
+		pOwner = ToBasePlayer( GetOwnerEntity() );
+		if ( !pOwner )
+		{
+			C_BaseViewModel *vm = ToBaseViewModel(this);
+			if ( vm )
+			{
+				pOwner = ToBasePlayer( vm->GetOwner() );
+			}
+		}
+	}
+	return pOwner;
+}
 
 //-----------------------------------------------------------------------------
 // EFlags.. 
@@ -2832,6 +2911,22 @@ void C_BaseEntity::OnLatchInterpolatedVariables( int flags )
 	{
 		AddToInterpolationList();
 	}
+}
+
+float CBaseEntity::GetEffectiveInterpolationCurTime( float currentTime )
+{
+	if ( GetPredictable() || IsClientCreated() )
+	{
+		C_BasePlayer *localplayer = C_BasePlayer::GetLocalPlayer();
+		if ( localplayer )
+		{
+			currentTime = localplayer->GetFinalPredictedTime();
+			currentTime -= TICK_INTERVAL;
+			currentTime += ( gpGlobals->interpolation_amount * TICK_INTERVAL );
+		}
+	}
+
+	return currentTime;
 }
 
 int CBaseEntity::BaseInterpolatePart1( float &currentTime, Vector &oldOrigin, QAngle &oldAngles, Vector &oldVel, int &bNoMoreChanges )
@@ -4721,6 +4816,11 @@ void C_BaseEntity::SetSize( const Vector &vecMin, const Vector &vecMax )
 	SetCollisionBounds( vecMin, vecMax );
 }
 
+void C_BaseEntity::HandlePredictionError( bool bErrorInThisEntity )
+{
+
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: Just look up index
 // Input  : *name - 
@@ -4796,6 +4896,10 @@ const char *C_BaseEntity::GetClassname( void )
 	static char outstr[ 256 ];
 	outstr[ 0 ] = 0;
 	bool gotname = false;
+	ClientClass *pClientClass = GetClientClass();
+	if ( pClientClass && pClientClass->m_pMapClassname )
+		return pClientClass->m_pMapClassname;
+
 #ifndef NO_ENTITY_PREDICTION
 	if ( GetPredDescMap() )
 	{
@@ -5448,6 +5552,7 @@ int C_BaseEntity::ComputePackedSize_R( datamap_t *map )
 
 		case FIELD_FLOAT:
 		case FIELD_VECTOR:
+		case FIELD_VMATRIX:
 		case FIELD_QUATERNION:
 		case FIELD_INTEGER:
 		case FIELD_EHANDLE:
@@ -5870,8 +5975,8 @@ void C_BaseEntity::Interp_Reset( VarMapping_t *map )
 	{
 		VarMapEntry_t *e = &map->m_Entries[ i ];
 		IInterpolatedVar *watcher = e->watcher;
-
-		watcher->Reset();
+		
+		watcher->Reset( gpGlobals->curtime );
 	}
 }
 

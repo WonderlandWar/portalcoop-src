@@ -22,6 +22,17 @@
 	#include "hl_movedata.h"
 #endif
 
+#ifdef PORTAL
+
+#ifdef CLIENT_DLL
+#include "c_portal_player.h"
+#else
+#include "portal_player.h"
+#endif
+
+
+#endif
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -1170,6 +1181,11 @@ void CGameMovement::ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMove )
 // 	player = NULL;
 }
 
+void CGameMovement::Reset( void )
+{
+	player = NULL;
+}
+
 void CGameMovement::StartTrackPredictionErrors( CBasePlayer *pPlayer )
 {
 	player = pPlayer;
@@ -1879,6 +1895,17 @@ void CGameMovement::StayOnGround( void )
 	{
 		float flDelta = fabs(mv->GetAbsOrigin().z - trace.endpos.z);
 
+#ifdef PORTAL		
+		// Set the implicit vertical speed keeping the player on the surface
+		// Ignore this one if it's on an angled surface, the player is moving, and we get a zero.
+		// The values cycle back to zero occasionally while moving on sloped surfaces, which doesn't accurately reflect this implicit speed.
+		if( gpGlobals->frametime != 0.0f && ( flDelta != 0.0f || AlmostEqual( trace.plane.normal.z, 1.0f ) || ( mv->m_flSideMove == 0.0f && mv->m_flForwardMove == 0.0f ) ) )
+		{
+			CPortal_Player *pPortalPlayer = (CPortal_Player*)player;
+			pPortalPlayer->SetImplicitVerticalStepSpeed( flDelta / gpGlobals->frametime );
+		}
+#endif
+
 		//This is incredibly hacky. The real problem is that trace returning that strange value we can't network over.
 		if ( flDelta > 0.5f * COORD_RESOLUTION)
 		{
@@ -2464,7 +2491,7 @@ bool CGameMovement::CheckJumpButton( void )
 
 	// Add a little forward velocity based on your current forward velocity - if you are not sprinting.
 #if defined( HL2_DLL ) || defined( HL2_CLIENT_DLL )
-	if ( gpGlobals->maxClients == 1 )
+	//if ( gpGlobals->maxClients == 1 )
 	{
 		CHLMoveData *pMoveData = ( CHLMoveData* )mv;
 		Vector vecForward;
@@ -2503,6 +2530,7 @@ bool CGameMovement::CheckJumpButton( void )
 	OnJump(mv->m_outJumpVel.z);
 
 	// Set jump time.
+	// PCOOP_NEW_REVISIT:
 	if ( gpGlobals->maxClients == 1 )
 	{
 		player->m_Local.m_flJumpTime = GAMEMOVEMENT_JUMP_TIME;

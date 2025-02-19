@@ -38,6 +38,8 @@
 
 #endif
 
+CUtlVector<IPhysicsObject*> g_AllPhysObjects;
+
 #ifdef HL2_EPISODIC
 ConVar hl2_episodic( "hl2_episodic", "1", FCVAR_REPLICATED );
 #else
@@ -1253,6 +1255,11 @@ void CBaseEntity::VPhysicsSetObject( IPhysicsObject *pPhysics )
 	{
 		CollisionRulesChanged();
 	}
+	
+	if ( m_pPhysicsObject )
+	{		
+		g_AllPhysObjects.AddToTail( m_pPhysicsObject );
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -1262,6 +1269,8 @@ void CBaseEntity::VPhysicsDestroyObject( void )
 {
 	if ( m_pPhysicsObject )
 	{
+		g_AllPhysObjects.FindAndRemove( m_pPhysicsObject );
+
 #ifndef CLIENT_DLL
 		PhysRemoveShadow( this );
 #endif
@@ -2566,3 +2575,54 @@ bool CBaseEntity::IsToolRecording() const
 #endif
 }
 #endif
+
+void CBaseEntity::PhysicsTouchTriggers( const Vector *pPrevAbsOrigin )
+{
+#if defined( CLIENT_DLL )
+#if defined( FAST_TRIGGER_TOUCH )
+	{
+		Assert( !pPrevAbsOrigin );
+		TouchTriggerPlayerMovement( this );
+		return;
+	}
+#endif // FAST_TRIGGER_TOUCH
+#endif // CLIENT_DLL
+#ifdef GAME_DLL
+	edict_t *pEdict = edict();
+
+	if ( pEdict && !IsWorld() )
+#else
+	if ( !IsWorld() )
+#endif
+	{
+		Assert(CollisionProp());
+		bool isTriggerCheckSolids = IsSolidFlagSet( FSOLID_TRIGGER );
+		bool isSolidCheckTriggers = IsSolid() && !isTriggerCheckSolids;		// NOTE: Moving triggers (items, ammo etc) are not 
+																			// checked against other triggers to reduce the number of touchlinks created
+		if ( !(isSolidCheckTriggers || isTriggerCheckSolids) )
+			return;
+
+		if ( GetSolid() == SOLID_BSP ) 
+		{
+			if ( !GetModel() && Q_strlen( STRING( GetModelName() ) ) == 0 ) 
+			{
+				Warning( "Inserted %s with no model\n", GetClassname() );
+				return;
+			}
+		}
+
+		SetCheckUntouch( true );
+
+		// Damn it, we're locked by engine code...
+#ifdef GAME_DLL
+		if ( isSolidCheckTriggers )
+		{
+			engine->SolidMoved( pEdict, CollisionProp(), pPrevAbsOrigin, sm_bAccurateTriggerBboxChecks );
+		}
+		if ( isTriggerCheckSolids )
+		{
+			engine->TriggerMoved( pEdict, sm_bAccurateTriggerBboxChecks );
+		}
+#endif
+	}
+}

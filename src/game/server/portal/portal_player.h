@@ -271,8 +271,6 @@ private:
 	string_t					m_iszExpressionScene;
 	EHANDLE						m_hExpressionSceneEnt;
 	float						m_flExpressionLoopTime;
-	
-	mutable Vector m_vWorldSpaceCenterHolder; //WorldSpaceCenter() returns a reference, need an actual value somewhere
 
 	Vector m_vEyeOffset;
 

@@ -41,6 +41,8 @@
 #include "fx.h"
 #include "dt_utlvector_recv.h"
 #include "cam_thirdperson.h"
+#include "c_physicsprop.h"
+#include "c_physbox.h"
 #if defined( REPLAY_ENABLED )
 #include "replay/replaycamera.h"
 #include "replay/ireplaysystem.h"
@@ -290,9 +292,6 @@ END_RECV_TABLE()
 		RecvPropInt		(RECVINFO(m_iHealth)),
 		RecvPropInt		(RECVINFO(m_lifeState)),
 
-		RecvPropInt		(RECVINFO(m_iBonusProgress)),
-		RecvPropInt		(RECVINFO(m_iBonusChallenge)),
-
 		RecvPropFloat	(RECVINFO(m_flMaxspeed)),
 		RecvPropInt		(RECVINFO(m_fFlags)),
 
@@ -370,8 +369,6 @@ BEGIN_PREDICTION_DATA( C_BasePlayer )
 	DEFINE_PRED_FIELD( m_hVehicle, FIELD_EHANDLE, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD_TOL( m_flMaxspeed, FIELD_FLOAT, FTYPEDESC_INSENDTABLE, 0.5f ),
 	DEFINE_PRED_FIELD( m_iHealth, FIELD_INTEGER, FTYPEDESC_INSENDTABLE | FTYPEDESC_ONLY_ERROR_IF_ABOVE_ZERO_TO_ZERO_OR_BELOW_ETC ),
-	DEFINE_PRED_FIELD( m_iBonusProgress, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
-	DEFINE_PRED_FIELD( m_iBonusChallenge, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_fOnTarget, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_nNextThinkTick, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_lifeState, FIELD_CHARACTER, FTYPEDESC_INSENDTABLE ),
@@ -409,9 +406,9 @@ BEGIN_PREDICTION_DATA( C_BasePlayer )
 	DEFINE_FIELD( m_surfaceFriction, FIELD_FLOAT ),
 
 END_PREDICTION_DATA()
-
+#ifndef PORTAL
 LINK_ENTITY_TO_CLASS( player, C_BasePlayer );
-
+#endif
 // -------------------------------------------------------------------------------- //
 // Functions.
 // -------------------------------------------------------------------------------- //
@@ -445,6 +442,7 @@ C_BasePlayer::C_BasePlayer() : m_iv_vecViewOffset( "C_BasePlayer::m_iv_vecViewOf
 	m_surfaceFriction = 1.0f;
 	m_chTextureType = 0;
 
+	m_afButtonForced = 0;
 	m_flNextAchievementAnnounceTime = 0;
 
 	m_bFiredWeapon = false;
@@ -956,6 +954,9 @@ void C_BasePlayer::PostDataUpdate( DataUpdateType_t updateType )
 	{
 		ResetLatched();
 	}
+	
+	m_fLastUpdateServerTime = engine->GetLastTimeStamp();
+	m_nLastUpdateTickBase = m_nTickBase;
 }
 
 //-----------------------------------------------------------------------------
@@ -2383,6 +2384,18 @@ void C_BasePlayer::PhysicsSimulate( void )
 #endif
 }
 
+
+void C_BasePlayer::PhysicsTouchTriggers( const Vector *pPrevAbsOrigin )
+{
+	C_BaseCombatCharacter::PhysicsTouchTriggers( pPrevAbsOrigin );
+
+	if ( this == GetLocalPlayer() )
+	{
+		extern void TouchTriggerSoundOperator( C_BaseEntity *pEntity );
+		TouchTriggerSoundOperator( this );
+	}
+}
+
 const QAngle& C_BasePlayer::GetPunchAngle()
 {
 	return m_Local.m_vecPunchAngle.Get();
@@ -2424,6 +2437,71 @@ bool C_BasePlayer::IsUseableEntity( CBaseEntity *pEntity, unsigned int requiredC
 	return false;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool C_BasePlayer::CanPickupObject( CBaseEntity *pObject, float massLimit, float sizeLimit )
+{
+	// UNDONE: Make this virtual and move to HL2 player
+#ifdef HL2_CLIENT_DLL
+	//Must be valid
+	if ( pObject == NULL )
+		return false;
+
+	//Must move with physics
+	if ( pObject->GetMoveType() != MOVETYPE_VPHYSICS )
+		return false;
+
+	IPhysicsObject *pList[VPHYSICS_MAX_OBJECT_LIST_COUNT];
+	int count = pObject->VPhysicsGetObjectList( pList, ARRAYSIZE(pList) );
+
+	//Must have a physics object
+	if (!count)
+		return false;
+
+	float objectMass = 0;
+	bool checkEnable = false;
+	for ( int i = 0; i < count; i++ )
+	{
+		objectMass += pList[i]->GetMass();
+		if ( !pList[i]->IsMoveable() )
+		{
+			checkEnable = true;
+		}
+		if ( pList[i]->GetGameFlags() & FVPHYSICS_NO_PLAYER_PICKUP )
+			return false;
+		if ( pList[i]->IsHinged() )
+			return false;
+	}
+
+
+	//Msg( "Target mass: %f\n", pPhys->GetMass() );
+
+	//Must be under our threshold weight
+	if ( massLimit > 0 && objectMass > massLimit )
+		return false;
+	
+	if ( checkEnable )
+	{
+		// Allow pickup of phys props that are motion enabled on player pickup
+		C_PhysicsProp *pProp = dynamic_cast<C_PhysicsProp*>(pObject);
+		C_PhysBox *pBox = dynamic_cast<C_PhysBox*>(pObject);
+		if ( !pProp && !pBox )
+			return false;
+	}
+	
+	if ( sizeLimit > 0 )
+	{
+		const Vector &size = pObject->CollisionProp()->OBBSize();
+		if ( size.x > sizeLimit || size.y > sizeLimit || size.z > sizeLimit )
+			return false;
+	}
+
+	return true;
+#else
+	return false;
+#endif
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -2633,6 +2711,11 @@ float C_BasePlayer::GetMinFOV()	const
 float C_BasePlayer::GetFinalPredictedTime() const
 {
 	return ( m_nFinalPredictedTick * TICK_INTERVAL );
+}
+
+float C_BasePlayer::PredictedServerTime() const
+{
+	return m_fLastUpdateServerTime + ((m_nTickBase - m_nLastUpdateTickBase) * TICK_INTERVAL);
 }
 
 void C_BasePlayer::NotePredictionError( const Vector &vDelta )

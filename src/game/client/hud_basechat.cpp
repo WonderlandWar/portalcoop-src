@@ -1389,12 +1389,16 @@ Color CBaseHudChat::GetClientColor( int clientIndex )
 	{
 		return g_ColorGreen;
 	}
+#ifndef PORTAL
 	else if( g_PR )
 	{
 		return g_ColorGrey;
 	}
 
 	return g_ColorYellow;
+#else
+	return g_PR->GetPortalgunColor( clientIndex );
+#endif
 }
 
 //-----------------------------------------------------------------------------

@@ -77,13 +77,12 @@ BEGIN_DATADESC( CSpriteTrail )
 
 END_DATADESC()
 
-LINK_ENTITY_TO_CLASS( env_spritetrail, CSpriteTrail );
-
 
 //-----------------------------------------------------------------------------
 // Networking
 //-----------------------------------------------------------------------------
 IMPLEMENT_NETWORKCLASS_ALIASED( SpriteTrail, DT_SpriteTrail );
+LINK_ENTITY_TO_CLASS_ALIASED(env_spritetrail, SpriteTrail);
 
 BEGIN_NETWORK_TABLE( CSpriteTrail, DT_SpriteTrail )
 #if !defined( CLIENT_DLL )

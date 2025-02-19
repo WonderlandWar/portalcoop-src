@@ -496,8 +496,8 @@ CStudioHdr *C_ServerRagdoll::OnNewModel( void )
 		{
 			m_elementCount = RagdollExtractBoneIndices( m_boneIndex, hdr, pCollide );
 		}
-		m_iv_ragPos.SetMaxCount( m_elementCount );
-		m_iv_ragAngles.SetMaxCount( m_elementCount );
+		m_iv_ragPos.SetMaxCount( gpGlobals->curtime, m_elementCount );
+		m_iv_ragAngles.SetMaxCount( gpGlobals->curtime, m_elementCount );
 	}
 
 	return hdr;

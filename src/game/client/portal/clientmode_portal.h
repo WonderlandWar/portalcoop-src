@@ -15,12 +15,12 @@
 #include <vgui/Cursor.h>
 
 class CHudViewport;
-
+#if 0
 namespace vgui
 {
 	typedef unsigned long HScheme;
 }
-
+#endif
 class ClientModePortalNormal : public ClientModeShared 
 {
 DECLARE_CLASS( ClientModePortalNormal, ClientModeShared );

@@ -12,9 +12,9 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-LINK_ENTITY_TO_CLASS( basehlcombatweapon, CBaseHLCombatWeapon );
-
 IMPLEMENT_NETWORKCLASS_ALIASED( BaseHLCombatWeapon , DT_BaseHLCombatWeapon )
+
+LINK_ENTITY_TO_CLASS_ALIASED( basehlcombatweapon, BaseHLCombatWeapon );
 
 BEGIN_NETWORK_TABLE( CBaseHLCombatWeapon , DT_BaseHLCombatWeapon )
 #if !defined( CLIENT_DLL )

@@ -99,6 +99,8 @@ class CSkyCamera;
 class CEntityMapData;
 class INextBot;
 class IHasAttributes;
+class CGrabController;
+class CWeaponPhysCannon;
 
 typedef CUtlVector< CBaseEntity* > EntityList_t;
 
@@ -938,7 +940,7 @@ private:
 public:
 
 	// Returns a CBaseAnimating if the entity is derived from CBaseAnimating.
-	virtual CBaseAnimating*	GetBaseAnimating() { return 0; }
+	virtual CBaseAnimating*	GetBaseAnimating() { return NULL; }
 
 	virtual IResponseSystem *GetResponseSystem();
 	virtual void	DispatchResponse( const char *conceptName );
@@ -1361,6 +1363,16 @@ public:
 	int				GetCollisionGroup() const;
 	void			SetCollisionGroup( int collisionGroup );
 	void			CollisionRulesChanged();
+
+	//Grab Controller
+	CGrabController *m_pGrabController;
+	CGrabController *GetGrabController() { return m_pGrabController; }
+	void SetGrabController(CGrabController *pGrabController) { m_pGrabController = pGrabController; }
+	
+	//Physgun
+	CWeaponPhysCannon *m_pPhysgun;
+	CWeaponPhysCannon *GetPhysgun() { return m_pPhysgun; }
+	void SetPhysgun(CWeaponPhysCannon *pPhysgun) { m_pPhysgun = pPhysgun; }
 
 	// Damage accessors
 	virtual int		GetDamageType() const;
@@ -1937,6 +1949,11 @@ public:
 
 	// So it can get at the physics methods
 	friend class CCollisionEvent;
+	
+	PINGICON SetDefaultPingIcon() { m_iPingIcon = PING_ICON_DEFAULT; }
+	PINGICON SetPingIcon(PINGICON iPingIcon) { m_iPingIcon = iPingIcon; }
+
+	CNetworkVar(PINGICON, m_iPingIcon);
 
 // Methods shared by client and server
 public:

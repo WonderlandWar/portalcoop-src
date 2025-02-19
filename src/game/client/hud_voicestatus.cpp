@@ -58,8 +58,8 @@ CHudVoiceSelfStatus::CHudVoiceSelfStatus( const char *pName ) :
 void CHudVoiceSelfStatus::ApplySchemeSettings(vgui::IScheme *pScheme)
 {
 	BaseClass::ApplySchemeSettings( pScheme );
-
-#ifdef HL2MP
+	
+#if defined HL2MP || defined ( PORTAL )
 	SetBgColor( Color( 0, 0, 0, 0 ) );
 #endif
 }
@@ -188,7 +188,7 @@ void CHudVoiceStatus::ApplySchemeSettings(vgui::IScheme *pScheme)
 {
 	BaseClass::ApplySchemeSettings( pScheme );
 
-#ifdef HL2MP
+#if defined HL2MP || defined ( PORTAL )
 	SetBgColor( Color( 0, 0, 0, 0 ) );
 #endif
 }
@@ -354,8 +354,12 @@ void CHudVoiceStatus::Paint()
 
 		float oldAlphaMultiplier = surface()->DrawGetAlphaMultiplier();
 		surface()->DrawSetAlphaMultiplier(oldAlphaMultiplier * m_SpeakingList[i].fAlpha);
-
+		
+#ifndef PORTAL
 		Color c = g_PR->GetTeamColor( g_PR ? g_PR->GetTeam(playerId) : TEAM_UNASSIGNED );
+#else
+		Color c = g_PR->GetPortalgunColor( playerId );
+#endif
 
 		c[3] = 128;
 

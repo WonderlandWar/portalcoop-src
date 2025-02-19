@@ -598,6 +598,44 @@ CBasePlayer *UTIL_GetLocalPlayer( void )
 }
 
 //
+// Returns nearest player. 
+// Control with boolean if line of sight is needed.
+//
+CBasePlayer *UTIL_GetNearestPlayer(CBaseEntity *pLooker, bool bNeedsLOS)
+{
+	float flFinalDistance = 999999.0f;
+	CBasePlayer *pFinalPlayer = NULL;
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+
+		if (!pPlayer){
+			continue;
+		}
+
+		float flDistance = (pPlayer->GetAbsOrigin() - pLooker->GetAbsOrigin()).LengthSqr();
+
+		if (flDistance < flFinalDistance)
+		{
+			if (bNeedsLOS)
+			{
+				//Check if the player is visible to the entity (only brushes obstruct vision)
+				if (!pLooker->FVisible(pPlayer, MASK_SOLID_BRUSHONLY))
+				{
+					continue;
+				}
+			}
+
+			pFinalPlayer = pPlayer;
+			flFinalDistance = flDistance;
+		}
+	}
+
+	return pFinalPlayer;
+}
+
+//
 // Get the local player on a listen server - this is for multiplayer use only
 // 
 CBasePlayer *UTIL_GetListenServerHost( void )
@@ -605,8 +643,10 @@ CBasePlayer *UTIL_GetListenServerHost( void )
 	// no "local player" if this is a dedicated server or a single player game
 	if (engine->IsDedicatedServer())
 	{
+#if 0
 		Assert( !"UTIL_GetListenServerHost" );
 		Warning( "UTIL_GetListenServerHost() called from a dedicated server or single-player game.\n" );
+#endif
 		return NULL;
 	}
 

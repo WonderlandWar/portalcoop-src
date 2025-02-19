@@ -152,6 +152,13 @@ BEGIN_DATADESC( CBaseToggle )
 END_DATADESC()
 
 
+IMPLEMENT_SERVERCLASS_ST(CBaseToggle, DT_BaseToggle)
+	SendPropVector( SENDINFO( m_vecFinalDest ) ),
+	SendPropInt( SENDINFO( m_movementType ) ),
+	SendPropFloat( SENDINFO( m_flMoveTargetTime ) ),
+END_SEND_TABLE()
+
+
 CBaseToggle::CBaseToggle()
 {
 #ifdef _DEBUG
@@ -163,6 +170,14 @@ CBaseToggle::CBaseToggle()
 	m_vecFinalDest.Init();
 	m_vecFinalAngle.Init();
 #endif
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Returns the velocity imparted to players standing on us.
+//-----------------------------------------------------------------------------
+void CBaseToggle::GetGroundVelocityToApply( Vector &vecGroundVel )
+{
+	vecGroundVel = GetLocalVelocity();
 }
 
 bool CBaseToggle::KeyValue( const char *szKeyName, const char *szValue )
@@ -218,6 +233,7 @@ void CBaseToggle::LinearMove( const Vector &vecDest, float flSpeed )
 
 	// set m_flNextThink to trigger a call to LinearMoveDone when dest is reached
 	SetMoveDoneTime( flTravelTime );
+	m_flMoveTargetTime = gpGlobals->curtime + flTravelTime;
 
 	// scale the destdelta vector by the time spent traveling to get velocity
 	SetLocalVelocity( vecDestDelta / flTravelTime );

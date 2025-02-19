@@ -60,6 +60,8 @@ void SendProxy_CropFlagsToPlayerFlagBitsLength( const SendProp *pProp, const voi
 
 IMPLEMENT_NETWORKCLASS_ALIASED( BaseGrenade, DT_BaseGrenade )
 
+LINK_ENTITY_TO_CLASS_ALIASED( grenade, BaseGrenade );
+
 BEGIN_NETWORK_TABLE( CBaseGrenade, DT_BaseGrenade )
 #if !defined( CLIENT_DLL )
 	SendPropFloat( SENDINFO( m_flDamage ), 10, SPROP_ROUNDDOWN, 0.0, 256.0f ),
@@ -84,8 +86,6 @@ BEGIN_NETWORK_TABLE( CBaseGrenade, DT_BaseGrenade )
 	RecvPropInt( RECVINFO( m_fFlags ) ),
 #endif
 END_NETWORK_TABLE()
-
-LINK_ENTITY_TO_CLASS( grenade, CBaseGrenade );
 
 #if defined( CLIENT_DLL )
 

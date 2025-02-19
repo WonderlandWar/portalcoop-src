@@ -31,6 +31,7 @@ class IClientEntity;
 class CHudTexture;
 class CGameTrace;
 class C_BaseEntity;
+class IPhysicsObject;
 
 struct Ray_t;
 struct client_textmessage_t;
@@ -61,6 +62,9 @@ void	UTIL_Smoke( const Vector &origin, const float scale, const float framerate 
 void	UTIL_ImpactTrace( trace_t *pTrace, int iDamageType, const char *pCustomImpactName = NULL );
 int		UTIL_PrecacheDecal( const char *name, bool preload = false );
 void	UTIL_EmitAmbientSound( C_BaseEntity *entity, const Vector &vecOrigin, const char *samp, float vol, soundlevel_t soundlevel, int fFlags, int pitch );
+
+// Drops an entity onto the floor
+int		UTIL_DropToFloor( CBaseEntity *pEntity, unsigned int mask, CBaseEntity *pIgnore = NULL );
 void	UTIL_SetOrigin( C_BaseEntity *entity, const Vector &vecOrigin );
 void	UTIL_ScreenShake( const Vector &center, float amplitude, float frequency, float duration, float radius, ShakeCommand_t eCommand, bool bAirShake=false );
 byte	*UTIL_LoadFileForMe( const char *filename, int *pLength );
@@ -115,10 +119,12 @@ bool GetTargetInHudSpace( C_BaseEntity *pTargetEntity, int& iX, int& iY, Vector 
 class C_BasePlayer;
 void ClientPrint( C_BasePlayer *player, int msg_dest, const char *msg_name, const char *param1 = NULL, const char *param2 = NULL, const char *param3 = NULL, const char *param4 = NULL );
 
+C_BaseEntity* UTIL_EntityFromUserMessageEHandle( long nEncodedEHandle );
+
 // Pass in an array of pointers and an array size, it fills the array and returns the number inserted
 int			UTIL_EntitiesInBox( C_BaseEntity **pList, int listMax, const Vector &mins, const Vector &maxs, int flagMask, int partitionMask = PARTITION_CLIENT_NON_STATIC_EDICTS );
 int			UTIL_EntitiesInSphere( C_BaseEntity **pList, int listMax, const Vector &center, float radius, int flagMask, int partitionMask = PARTITION_CLIENT_NON_STATIC_EDICTS );
-int			UTIL_EntitiesAlongRay( C_BaseEntity **pList, int listMax, const Ray_t &ray, int flagMask, int partitionMask = PARTITION_CLIENT_NON_STATIC_EDICTS );
+//int			UTIL_EntitiesAlongRay( C_BaseEntity **pList, int listMax, const Ray_t &ray, int flagMask, int partitionMask = PARTITION_CLIENT_NON_STATIC_EDICTS );
 
 // make this a fixed size so it just sits on the stack
 #define MAX_SPHERE_QUERY	256
@@ -182,5 +188,28 @@ bool UTIL_HasLoadedAnyMap();
 // Plays pszNearMissSound in their ears and returns true when a near-
 // miss is detected.
 bool UTIL_BPerformNearMiss( const CBaseEntity* pEntity, const char* pszNearMissSound, float flNearMissDistanceThreshold );
+
+
+//-----------------------------------------------------------------------------
+// class CFlaggedEntitiesEnum
+//-----------------------------------------------------------------------------
+// enumerate entities that match a set of edict flags into a static array
+class CFlaggedEntitiesEnum : public IPartitionEnumerator
+{
+public:
+	CFlaggedEntitiesEnum( C_BaseEntity **pList, int listMax, int flagMask );
+	// This gets called	by the enumeration methods with each element
+	// that passes the test.
+	virtual IterationRetval_t EnumElement( IHandleEntity *pHandleEntity );
+	
+	int GetCount() { return m_count; }
+	bool AddToList( C_BaseEntity *pEntity );
+	
+private:
+	C_BaseEntity		**m_pList;
+	int				m_listMax;
+	int				m_flagMask;
+	int				m_count;
+};
 
 #endif // !UTIL_H

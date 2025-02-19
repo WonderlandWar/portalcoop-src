@@ -217,16 +217,20 @@ void CCredits::OnRestore()
 
 void CCredits::RollOutroCredits()
 {
-	sv_unlockedchapters.SetValue( "15" );
-	
-	CBasePlayer *pPlayer = UTIL_GetLocalPlayer();
+	//sv_unlockedchapters.SetValue( "15" );
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+		if (pPlayer)
+		{
+			CSingleUserRecipientFilter user( pPlayer );
+			user.MakeReliable();
 
-	CSingleUserRecipientFilter user( pPlayer );
-	user.MakeReliable();
-
-	UserMessageBegin( user, "CreditsMsg" );
-		WRITE_BYTE( 3 );
-	MessageEnd();
+			UserMessageBegin( user, "CreditsMsg" );
+				WRITE_BYTE( 3 );
+			MessageEnd();
+		}
+	}
 }
 
 void CCredits::InputRollOutroCredits( inputdata_t &inputdata )
@@ -241,22 +245,27 @@ void CCredits::InputRollOutroCredits( inputdata_t &inputdata )
 
 void CCredits::InputShowLogo( inputdata_t &inputdata )
 {
-	CBasePlayer *pPlayer = UTIL_GetLocalPlayer();
-
-	CSingleUserRecipientFilter user( pPlayer );
-	user.MakeReliable();
-
-	if ( m_flLogoLength )
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		UserMessageBegin( user, "LogoTimeMsg" );
-			WRITE_FLOAT( m_flLogoLength );
-		MessageEnd();
-	}
-	else
-	{
-		UserMessageBegin( user, "CreditsMsg" );
-			WRITE_BYTE( 1 );
-		MessageEnd();
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+		if (pPlayer)
+		{
+			CSingleUserRecipientFilter user(pPlayer);
+			user.MakeReliable();
+
+			if (m_flLogoLength)
+			{
+				UserMessageBegin(user, "LogoTimeMsg");
+				WRITE_FLOAT(m_flLogoLength);
+				MessageEnd();
+			}
+			else
+			{
+				UserMessageBegin(user, "CreditsMsg");
+				WRITE_BYTE(1);
+				MessageEnd();
+			}
+		}
 	}
 }
 
@@ -267,12 +276,17 @@ void CCredits::InputSetLogoLength( inputdata_t &inputdata )
 
 void CCredits::InputRollCredits( inputdata_t &inputdata )
 {
-	CBasePlayer *pPlayer = UTIL_GetLocalPlayer();
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
+		if (pPlayer)
+		{
+			CSingleUserRecipientFilter user(pPlayer);
+			user.MakeReliable();
 
-	CSingleUserRecipientFilter user( pPlayer );
-	user.MakeReliable();
-
-	UserMessageBegin( user, "CreditsMsg" );
-		WRITE_BYTE( 2 );
-	MessageEnd();
+			UserMessageBegin(user, "CreditsMsg");
+			WRITE_BYTE(2);
+			MessageEnd();
+		}
+	}
 }

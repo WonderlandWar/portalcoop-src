@@ -109,8 +109,9 @@ BEGIN_NETWORK_TABLE_NOBASE( CHalfLife2Survival, DT_HL2SurvivalGameRules )
 END_NETWORK_TABLE()
 
 
-LINK_ENTITY_TO_CLASS( hl2_survival_gamerules, CHalfLife2SurvivalProxy );
 IMPLEMENT_NETWORKCLASS_ALIASED( HalfLife2SurvivalProxy, DT_HalfLife2SurvivalProxy )
+
+LINK_ENTITY_TO_CLASS_ALIASED( hl2_survival_gamerules, HalfLife2SurvivalProxy );
 
 #ifdef CLIENT_DLL
 	void RecvProxy_HL2SurvivalGameRules( const RecvProp *pProp, void **pOut, void *pData, int objectID )

@@ -54,6 +54,7 @@ class CSprite;
 class CNPC_FloorTurret : public CNPCBaseInteractive<CAI_BaseNPC>, public CDefaultPlayerPickupVPhysics
 {
 	DECLARE_CLASS( CNPC_FloorTurret, CNPCBaseInteractive<CAI_BaseNPC> );
+	DECLARE_SERVERCLASS()
 public:
 
 	CNPC_FloorTurret( void );

@@ -2,7 +2,7 @@
 _.HOST_WIN64.HOST_WINDOWS.SOURCESDK.VS2022.WINDOWS_/vpcgame:portal_
 PROJECT.server.GAME.portal.PLATFORM.win64
 9663c805 server_portal.vpc
-043c7e29 ..\..\game\server\server_base.vpc
+a42819da ..\..\game\server\server_base.vpc
 2093e423 ..\..\vpc_scripts\source_dll_base.vpc
 8ef6e028 ..\..\vpc_scripts\platform_dirs.vpc
 a75746b9 ..\..\vpc_scripts\source_base.vpc

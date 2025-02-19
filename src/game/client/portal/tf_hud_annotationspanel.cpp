@@ -19,7 +19,7 @@
 #include "view.h"
 #include "ivieweffects.h"
 #include "viewrender.h"
-#include "econ/econ_controls.h"
+//#include "econ/econ_controls.h"
 #include "ienginevgui.h"
 #include "c_weapon_portalgun.h"
 #include "c_npc_portal_turret_floor.h"
@@ -463,7 +463,7 @@ CTFAnnotationsPanelCallout::CTFAnnotationsPanelCallout( Panel *parent, const cha
 	m_flAlpha[0] = m_flAlpha[1] = 0.0f;
 	SetWorldPositionCurrentFrame( true );
 
-	m_iForcedPingIcon = (PINGICON)0;
+	m_iForcedPingIcon = PING_ICON_DEFAULT;
 }
 
 //-----------------------------------------------------------------------------
@@ -497,7 +497,7 @@ void CTFAnnotationsPanelCallout::ApplySchemeSettings( vgui::IScheme *pScheme )
 
 		//m_pBackground->SetImage("../hud/color_panel_blu");
 
-		m_pAnnotationLabel = dynamic_cast<CExLabel *>( FindChildByName( "CalloutLabel" ) );
+		m_pAnnotationLabel = dynamic_cast<CLabel *>( FindChildByName( "CalloutLabel" ) );
 		m_pAnnotationLabel->SetParent( m_pBackground );
 	
 		m_pAnnotationImage = dynamic_cast<ImagePanel*>( FindChildByName( "CalloutImage" ) );
@@ -931,7 +931,6 @@ void CTFAnnotationsPanelCallout::FadeAndRemove()
 
 void CTFAnnotationsPanelCallout::SetupPingImage()
 {
-
 	PINGICON pingicon = m_iForcedPingIcon;
 	
 	/*

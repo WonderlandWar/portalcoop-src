@@ -170,6 +170,23 @@ public:
 
 	// Look up flex controller index by global name
 	LocalFlexController_t				FindFlexController( const char *szName );
+	
+	//Accessors for portal ghosts
+	
+	LocalFlexController_t GetEyeUpDown( void ) { return m_iEyeUpdown; }
+	LocalFlexController_t GetEyeRightLeft( void ) { return m_iEyeRightleft; }
+	
+	float GetFlexDelayTime( void )		{ return m_flFlexDelayTime; }
+	float *GetFlexDelayedWeight( void ) { return m_flFlexDelayedWeight; }
+	int GetcFlexDelayedWeight( void )	{ return m_cFlexDelayedWeight; }
+	
+	float GetBlinkTime( void )			{ return m_blinktime; }
+	float GetPrevBlinkToggle( void )	{ return m_prevblinktoggle; }
+	float GetBlink( void )				{ return m_iBlink; }
+	
+	static int GetGlobalNumFlexControllers( void )	{ return g_numflexcontrollers; }
+	static char *GetGlobalFlexController( int i )	{ return g_flexcontroller[i]; }
+	static float GetGlobalFlexWeight( int i )		{ return g_flexweight[i]; }
 
 public:
 	Vector			m_viewtarget;

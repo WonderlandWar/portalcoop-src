@@ -461,6 +461,80 @@ void CPredictionCopy::DescribeVector( difftype_t dt, Vector* outValue, const Vec
 					outValue[0].x, outValue[0].y, outValue[0].z );
 }
 
+void CPredictionCopy::DescribeVMatrix( difftype_t dt, VMatrix& outValue, const VMatrix &inValue )
+{
+	if ( !m_bErrorCheck )
+		return;
+
+	if ( dt == DIFFERS )
+	{
+		VMatrix delta = outValue - inValue;
+
+		ReportFieldsDiffer( "matrix differs \n(\nnet %f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n- \npred %f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f\n) \ndelta(%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f\n)\n", 
+			
+			inValue.m[0][0], inValue.m[0][1], inValue.m[0][2], inValue.m[0][3],
+			inValue.m[1][0], inValue.m[1][1], inValue.m[1][2], inValue.m[1][3],
+			inValue.m[2][0], inValue.m[2][1], inValue.m[2][2], inValue.m[2][3],
+			inValue.m[3][0], inValue.m[3][1], inValue.m[3][2], inValue.m[3][3],
+
+			outValue.m[0][0], outValue.m[0][1], outValue.m[0][2], outValue.m[0][3],
+			outValue.m[1][0], outValue.m[1][1], outValue.m[1][2], outValue.m[1][3],
+			outValue.m[2][0], outValue.m[2][1], outValue.m[2][2], outValue.m[2][3],
+			outValue.m[3][0], outValue.m[3][1], outValue.m[3][2], outValue.m[3][3],
+			
+			delta.m[0][0], delta.m[0][1], delta.m[0][2], delta.m[0][3],
+			delta.m[1][0], delta.m[1][1], delta.m[1][2], delta.m[1][3],
+			delta.m[2][0], delta.m[2][1], delta.m[2][2], delta.m[2][3],
+			delta.m[3][0], delta.m[3][1], delta.m[3][2], delta.m[3][3]
+			);
+	}
+
+	DescribeFields( dt, "vmatrix\n(\n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n)\n",
+		outValue.m[0][0], outValue.m[0][1], outValue.m[0][2], outValue.m[0][3],
+		outValue.m[1][0], outValue.m[1][1], outValue.m[1][2], outValue.m[1][3],
+		outValue.m[2][0], outValue.m[2][1], outValue.m[2][2], outValue.m[2][3],
+		outValue.m[3][0], outValue.m[3][1], outValue.m[3][2], outValue.m[3][3]
+		);
+	
+}
+
+void CPredictionCopy::DescribeVMatrix( difftype_t dt, VMatrix* outValue, const VMatrix *inValue, int count )
+{
+	if ( !m_bErrorCheck )
+		return;
+
+	if ( dt == DIFFERS )
+	{
+		int i = 0;
+		VMatrix delta = outValue[i] - inValue[i];
+		
+		ReportFieldsDiffer( "matrix differs \n(\nnet %f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n- \npred %f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f\n) \ndelta(%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f\n)\n", 
+			
+			inValue[i].m[0][0], inValue[i].m[0][1], inValue[i].m[0][2], inValue[i].m[0][3],
+			inValue[i].m[1][0], inValue[i].m[1][1], inValue[i].m[1][2], inValue[i].m[1][3],
+			inValue[i].m[2][0], inValue[i].m[2][1], inValue[i].m[2][2], inValue[i].m[2][3],
+			inValue[i].m[3][0], inValue[i].m[3][1], inValue[i].m[3][2], inValue[i].m[3][3],
+
+			outValue[i].m[0][0], outValue[i].m[0][1], outValue[i].m[0][2], outValue[i].m[0][3],
+			outValue[i].m[1][0], outValue[i].m[1][1], outValue[i].m[1][2], outValue[i].m[1][3],
+			outValue[i].m[2][0], outValue[i].m[2][1], outValue[i].m[2][2], outValue[i].m[2][3],
+			outValue[i].m[3][0], outValue[i].m[3][1], outValue[i].m[3][2], outValue[i].m[3][3],
+			
+			delta.m[0][0], delta.m[0][1], delta.m[0][2], delta.m[0][3],
+			delta.m[1][0], delta.m[1][1], delta.m[1][2], delta.m[1][3],
+			delta.m[2][0], delta.m[2][1], delta.m[2][2], delta.m[2][3],
+			delta.m[3][0], delta.m[3][1], delta.m[3][2], delta.m[3][3]
+			);
+	}
+	
+	DescribeFields( dt, "vmatrix\n(\n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n)\n",
+		outValue[0].m[0][0], outValue[0].m[0][1], outValue[0].m[0][2], outValue[0].m[0][3],
+		outValue[0].m[1][0], outValue[0].m[1][1], outValue[0].m[1][2], outValue[0].m[1][3],
+		outValue[0].m[2][0], outValue[0].m[2][1], outValue[0].m[2][2], outValue[0].m[2][3],
+		outValue[0].m[3][0], outValue[0].m[3][1], outValue[0].m[3][2], outValue[0].m[3][3]
+		);
+}
+
 void CPredictionCopy::WatchVector( difftype_t dt, Vector& outValue, const Vector &inValue )
 {
 	if ( m_pWatchField != m_pCurrentField )
@@ -478,6 +552,29 @@ void CPredictionCopy::WatchVector( difftype_t dt, Vector* outValue, const Vector
 }
 
 
+void CPredictionCopy::WatchVMatrix( difftype_t dt, VMatrix& outValue, const VMatrix &inValue )
+{
+	if ( m_pWatchField != m_pCurrentField )
+		return;
+
+	WatchMsg( "vmatrix \n(\n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n)\n",
+		outValue.m[0][0], outValue.m[0][1], outValue.m[0][2], outValue.m[0][3],
+		outValue.m[1][0], outValue.m[1][1], outValue.m[1][2], outValue.m[1][3],
+		outValue.m[2][0], outValue.m[2][1], outValue.m[2][2], outValue.m[2][3],
+		outValue.m[3][0], outValue.m[3][1], outValue.m[3][2], outValue.m[3][3] );
+}
+
+void CPredictionCopy::WatchVMatrix( difftype_t dt, VMatrix* outValue, const VMatrix *inValue, int count )
+{
+	if ( m_pWatchField != m_pCurrentField )
+		return;
+	
+	WatchMsg( "vmatrix \n(\n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n%f %f %f %f \n)\n",
+		outValue[0].m[0][0], outValue[0].m[0][1], outValue[0].m[0][2], outValue[0].m[0][3],
+		outValue[0].m[1][0], outValue[0].m[1][1], outValue[0].m[1][2], outValue[0].m[1][3],
+		outValue[0].m[2][0], outValue[0].m[2][1], outValue[0].m[2][2], outValue[0].m[2][3],
+		outValue[0].m[3][0], outValue[0].m[3][1], outValue[0].m[3][2], outValue[0].m[3][3] );
+}
 
 void CPredictionCopy::DescribeQuaternion( difftype_t dt, Quaternion& outValue, const Quaternion &inValue )
 {
@@ -795,6 +892,11 @@ void CPredictionCopy::CopyVector( difftype_t dt, Vector& outValue, const Vector 
 	CopyVector( dt, &outValue, &inValue, 1 );
 }
 
+void CPredictionCopy::CopyVMatrix( difftype_t dt, VMatrix& outValue, const VMatrix &inValue )
+{
+	CopyVMatrix( dt, &outValue, &inValue, 1 );
+}
+
 void CPredictionCopy::CopyQuaternion( difftype_t dt, Quaternion& outValue, const Quaternion &inValue )
 {
 	CopyQuaternion( dt, &outValue, &inValue, 1 );
@@ -817,6 +919,36 @@ CPredictionCopy::difftype_t CPredictionCopy::CompareVector( Vector& outValue, co
 			if ( fabs( delta.x ) <= tolerance &&
 				 fabs( delta.y ) <= tolerance &&
 				 fabs( delta.z ) <= tolerance )
+			{
+				return WITHINTOLERANCE;
+			}
+		}
+
+		return DIFFERS;
+	}
+
+	return IDENTICAL;
+}
+
+CPredictionCopy::difftype_t CPredictionCopy::CompareVMatrix( VMatrix& outValue, const VMatrix &inValue )
+{
+	if ( !m_bErrorCheck )
+		return DIFFERS;
+
+	if ( CanCheck() )
+	{
+		float tolerance = m_pCurrentField->fieldTolerance;
+		Assert( tolerance >= 0.0f );
+
+		if ( outValue != inValue && ( tolerance > 0.0f ) )
+		{
+			VMatrix delta = outValue - inValue;
+
+			if ( fabs( delta.m[0][0] ) <= tolerance && fabs( delta.m[0][1] ) <= tolerance && fabs( delta.m[0][2] ) <= tolerance && fabs( delta.m[0][3] ) <= tolerance &&
+				 fabs( delta.m[1][0] ) <= tolerance && fabs( delta.m[1][1] ) <= tolerance && fabs( delta.m[1][2] ) <= tolerance && fabs( delta.m[2][3] ) <= tolerance &&
+				 fabs( delta.m[2][0] ) <= tolerance && fabs( delta.m[2][1] ) <= tolerance && fabs( delta.m[2][2] ) <= tolerance && fabs( delta.m[3][3] ) <= tolerance &&
+				 fabs( delta.m[3][0] ) <= tolerance && fabs( delta.m[3][1] ) <= tolerance && fabs( delta.m[3][2] ) <= tolerance && fabs( delta.m[4][3] ) <= tolerance
+				 )
 			{
 				return WITHINTOLERANCE;
 			}
@@ -885,6 +1017,17 @@ void CPredictionCopy::CopyVector( difftype_t dt, Vector* outValue, const Vector 
 	CopyData( dt, sizeof( Vector ) * count, (char *)outValue, (const char *)inValue );
 }
 
+void CPredictionCopy::CopyVMatrix( difftype_t dt, VMatrix* outValue, const VMatrix *inValue, int count )
+{
+	if ( !m_bPerformCopy )
+		return;
+
+	if ( dt == IDENTICAL )
+		return;
+
+	CopyData( dt, sizeof( VMatrix ) * count, (char *)outValue, (const char *)inValue );
+}
+
 void CPredictionCopy::CopyQuaternion( difftype_t dt, Quaternion* outValue, const Quaternion *inValue, int count )
 {
 	if ( !m_bPerformCopy )
@@ -921,6 +1064,44 @@ CPredictionCopy::difftype_t CPredictionCopy::CompareVector( Vector* outValue, co
 				if ( fabs( delta.x ) <= tolerance &&
 					 fabs( delta.y ) <= tolerance &&
 					 fabs( delta.z ) <= tolerance )
+				{
+					retval = WITHINTOLERANCE;
+					continue;
+				}
+			}
+			return DIFFERS;
+		}
+	}
+
+	return retval;
+}
+
+CPredictionCopy::difftype_t CPredictionCopy::CompareVMatrix( VMatrix* outValue, const VMatrix *inValue, int count )
+{
+	if ( !m_bErrorCheck )
+		return DIFFERS;
+
+	difftype_t retval = IDENTICAL;
+
+	if ( CanCheck() )
+	{
+		float tolerance = m_pCurrentField->fieldTolerance;
+		Assert( tolerance >= 0.0f );
+
+		for ( int i = 0; i < count; i++ )
+		{
+			if ( outValue[ i ] == inValue[ i ] )
+				continue;
+
+			VMatrix delta = outValue[ i ] - inValue[ i ];
+
+			if ( tolerance > 0.0f )
+			{
+				if  (fabs( delta.m[0][0] ) <= tolerance && fabs( delta.m[0][1] ) <= tolerance && fabs( delta.m[0][2] ) <= tolerance && fabs( delta.m[0][3] ) <= tolerance &&
+					 fabs( delta.m[1][0] ) <= tolerance && fabs( delta.m[1][1] ) <= tolerance && fabs( delta.m[1][2] ) <= tolerance && fabs( delta.m[2][3] ) <= tolerance &&
+					 fabs( delta.m[2][0] ) <= tolerance && fabs( delta.m[2][1] ) <= tolerance && fabs( delta.m[2][2] ) <= tolerance && fabs( delta.m[3][3] ) <= tolerance &&
+					 fabs( delta.m[3][0] ) <= tolerance && fabs( delta.m[3][1] ) <= tolerance && fabs( delta.m[3][2] ) <= tolerance && fabs( delta.m[4][3] ) <= tolerance
+					)
 				{
 					retval = WITHINTOLERANCE;
 					continue;
@@ -1150,6 +1331,15 @@ void CPredictionCopy::CopyFields( int chain_count, datamap_t *pRootMap, typedesc
 
 		case FIELD_POSITION_VECTOR:
 			Assert( 0 );
+			break;
+
+		case FIELD_VMATRIX:
+			{
+				difftype = CompareVMatrix( (VMatrix *)pOutputData, (VMatrix const *)pInputData, fieldSize );
+				CopyVMatrix( difftype, (VMatrix *)pOutputData, (VMatrix const *)pInputData, fieldSize );
+				if ( m_bErrorCheck && m_bShouldDescribe ) DescribeVMatrix( difftype, (VMatrix *)pOutputData, (VMatrix const *)pInputData, fieldSize );
+				if ( bShouldWatch ) WatchVMatrix( difftype, (VMatrix *)pOutputData, (VMatrix const *)pInputData, fieldSize );
+			}
 			break;
 
 		case FIELD_VECTOR:
@@ -1598,6 +1788,26 @@ void CPredictionDescribeData::DescribeVector( const Vector *inValue, int count )
 					inValue[0].x, inValue[0].y, inValue[0].z );
 }
 
+void CPredictionDescribeData::DescribeVMatrix( const VMatrix &inValue )
+{
+	Describe("vmatrix(%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f)\n",
+		inValue.m[0][0], inValue.m[0][1], inValue.m[0][2], inValue.m[0][3],
+		inValue.m[1][0], inValue.m[1][1], inValue.m[1][2], inValue.m[1][3],
+		inValue.m[2][0], inValue.m[2][1], inValue.m[2][2], inValue.m[2][3],
+		inValue.m[3][0], inValue.m[3][1], inValue.m[3][2], inValue.m[3][3]
+		);
+}
+
+void CPredictionDescribeData::DescribeVMatrix( const VMatrix *inValue, int count )
+{
+	Describe("vmatrix(%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f)\n",
+		inValue[0].m[0][0], inValue[0].m[0][1], inValue[0].m[0][2], inValue[0].m[0][3],
+		inValue[0].m[1][0], inValue[0].m[1][1], inValue[0].m[1][2], inValue[0].m[1][3],
+		inValue[0].m[2][0], inValue[0].m[2][1], inValue[0].m[2][2], inValue[0].m[2][3],
+		inValue[0].m[3][0], inValue[0].m[3][1], inValue[0].m[3][2], inValue[0].m[3][3]		
+		);
+}
+
 void CPredictionDescribeData::DescribeQuaternion( const Quaternion &inValue )
 {
 	Describe( "quaternion (%f %f %f %f)\n", 
@@ -1734,6 +1944,9 @@ void CPredictionDescribeData::DescribeFields_R( int chain_count, datamap_t *pRoo
 		case FIELD_CHARACTER:
 			DescribeData( fieldSize, (const char *)pInputData );
 			break;
+
+		case FIELD_VMATRIX:
+			DescribeVMatrix( (const VMatrix *)pInputData, fieldSize );
 			
 		case FIELD_EHANDLE:
 			DescribeEHandle( (EHANDLE const *)pInputData, fieldSize );

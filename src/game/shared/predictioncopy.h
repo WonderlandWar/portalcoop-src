@@ -14,6 +14,7 @@
 #include <memory.h>
 #include "datamap.h"
 #include "ehandle.h"
+#include "../../public/mathlib/vmatrix.h"
 #include "tier1/utlstring.h"
 
 #if defined( CLIENT_DLL )
@@ -65,6 +66,8 @@ public:
 	void	CopyString( difftype_t dt, char *outstring, const char *instring );			// Copy a null-terminated string
 	void	CopyVector( difftype_t dt, Vector& outValue, const Vector &inValue );				// Copy a vector
 	void	CopyVector( difftype_t dt, Vector* outValue, const Vector *inValue, int count );	// Copy a vector array
+	void	CopyVMatrix( difftype_t dt, VMatrix& outValue, const VMatrix &inValue );				// Copy a VMatrix
+	void	CopyVMatrix( difftype_t dt, VMatrix* outValue, const VMatrix *inValue, int count );		// Copy a VMatrix array
 	void	CopyQuaternion( difftype_t dt, Quaternion& outValue, const Quaternion &inValue );				// Copy a quaternion
 	void	CopyQuaternion( difftype_t dt, Quaternion* outValue, const Quaternion *inValue, int count );				// Copy a quaternion array
 	void	CopyEHandle( difftype_t dt, EHANDLE *outvalue, EHANDLE const *invalue, int count );
@@ -97,6 +100,8 @@ private:
 	difftype_t	CompareString( char *outstring, const char *instring );			// Compare a null-terminated string
 	difftype_t	CompareVector( Vector& outValue, const Vector &inValue );				// Compare a vector
 	difftype_t	CompareVector( Vector* outValue, const Vector *inValue, int count );	// Compare a vector array
+	difftype_t	CompareVMatrix( VMatrix& outValue, const VMatrix &inValue );			// Compare a vmatrix
+	difftype_t	CompareVMatrix( VMatrix* outValue, const VMatrix *inValue, int count );	// Compare a vmatrix array
 	difftype_t	CompareQuaternion( Quaternion& outValue, const Quaternion &inValue );				// Compare a Quaternion
 	difftype_t	CompareQuaternion( Quaternion* outValue, const Quaternion *inValue, int count );	// Compare a Quaternion array
 	difftype_t	CompareEHandle( EHANDLE *outvalue, EHANDLE const *invalue, int count );
@@ -109,6 +114,8 @@ private:
 	void	DescribeString( difftype_t dt, char *outstring, const char *instring );			// Compare a null-terminated string
 	void	DescribeVector( difftype_t dt, Vector& outValue, const Vector &inValue );				// Compare a vector
 	void	DescribeVector( difftype_t dt, Vector* outValue, const Vector *inValue, int count );	// Compare a vector array
+	void	DescribeVMatrix( difftype_t dt, VMatrix& outValue, const VMatrix &inValue );				// Compare a vmatrix
+	void	DescribeVMatrix( difftype_t dt, VMatrix* outValue, const VMatrix *inValue, int count );	// Compare a vmatrix array
 	void	DescribeQuaternion( difftype_t dt, Quaternion& outValue, const Quaternion &inValue );				// Compare a Quaternion
 	void	DescribeQuaternion( difftype_t dt, Quaternion* outValue, const Quaternion *inValue, int count );	// Compare a Quaternion array
 	void	DescribeEHandle( difftype_t dt, EHANDLE *outvalue, EHANDLE const *invalue, int count );
@@ -121,6 +128,8 @@ private:
 	void	WatchString( difftype_t dt, char *outstring, const char *instring );			// Compare a null-terminated string
 	void	WatchVector( difftype_t dt, Vector& outValue, const Vector &inValue );				// Compare a vector
 	void	WatchVector( difftype_t dt, Vector* outValue, const Vector *inValue, int count );	// Compare a vector array
+	void	WatchVMatrix( difftype_t dt, VMatrix& outValue, const VMatrix &inValue );				// Compare a VMatrix
+	void	WatchVMatrix( difftype_t dt, VMatrix* outValue, const VMatrix *inValue, int count );	// Compare a VMatrix array
 	void	WatchQuaternion( difftype_t dt, Quaternion& outValue, const Quaternion &inValue );				// Compare a Quaternion
 	void	WatchQuaternion( difftype_t dt, Quaternion* outValue, const Quaternion *inValue, int count );	// Compare a Quaternion array
 	void	WatchEHandle( difftype_t dt, EHANDLE *outvalue, EHANDLE const *invalue, int count );
@@ -178,6 +187,8 @@ public:
 	void	DescribeString( const char *instring );			
 	void	DescribeVector( const Vector &inValue );
 	void	DescribeVector( const Vector *inValue, int count );
+	void	DescribeVMatrix( const VMatrix &inValue );
+	void	DescribeVMatrix( const VMatrix *inValue, int count );
 	void	DescribeQuaternion( const Quaternion &inValue );
 	void	DescribeQuaternion( const Quaternion *inValue, int count );
 	void	DescribeEHandle( EHANDLE const *invalue, int count );

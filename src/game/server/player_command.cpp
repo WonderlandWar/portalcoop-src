@@ -366,7 +366,7 @@ void CPlayerMove::RunCommand ( CBasePlayer *player, CUserCmd *ucmd, IMoveHelper 
 
 	g_pGameMovement->StartTrackPredictionErrors( player );
 
-	CommentarySystem_PePlayerRunCommand( player, ucmd );
+	CommentarySystem_PePlayerRunCommand( player, &player->m_LastCmd );
 
 	// Do weapon selection
 	if ( ucmd->weaponselect != 0 )
@@ -450,6 +450,7 @@ void CPlayerMove::RunCommand ( CBasePlayer *player, CUserCmd *ucmd, IMoveHelper 
 	RunPostThink( player );
 
 	g_pGameMovement->FinishTrackPredictionErrors( player );
+	g_pGameMovement->Reset();
 
 	FinishCommand( player );
 

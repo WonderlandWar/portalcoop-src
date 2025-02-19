@@ -1,0 +1,773 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_breakableprop.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_breakableprop.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cdll_util.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\cdll_util.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\shared\\portal\\PhysicsCloneArea.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\shared\\portal\\PhysicsCloneArea.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2mp\\ui\\hl2mpclientscoreboard.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2mp\\ui\\hl2mpclientscoreboard.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\common\\imageutils.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:common\\imageutils.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\shared\\gamerules.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\shared\\gamerules.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\shared\\gamerules.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\shared\\gamerules.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_baseplayer.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_baseplayer.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_hl2_playerlocaldata.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\c_hl2_playerlocaldata.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_basehlplayer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\c_basehlplayer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_basehlplayer.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\c_basehlplayer.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_npc_manhack.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\c_npc_manhack.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_npc_rollermine.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\c_npc_rollermine.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_prop_combine_ball.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\c_prop_combine_ball.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_prop_combine_ball.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\c_prop_combine_ball.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_weapon_stunstick.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\c_weapon_stunstick.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\hud_bonusprogress.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\hud_bonusprogress.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\viewrender.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\viewrender.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\viewangleanim.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\viewangleanim.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\view_effects.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\view_effects.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\ragdoll.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\ragdoll.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\prediction.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\prediction.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\physics.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\physics.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\interpolatedvar.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\interpolatedvar.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\in_mouse.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\in_mouse.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\in_main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\in_main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\iclientmode.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\iclientmode.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hud_voicestatus.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hud_voicestatus.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hud_basechat.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hud_basechat.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\glow_overlay.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\glow_overlay.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\fx_tracer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\fx_tracer.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\entity_client_tools.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\entity_client_tools.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\clientmode_shared.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\clientmode_shared.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cliententitylist.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\cliententitylist.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cliententitylist.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\cliententitylist.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cdll_util.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\cdll_util.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cdll_client_int.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\cdll_client_int.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\clientmode_hlnormal.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\hl2\\clientmode_hlnormal.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_weapon__stubs.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_weapon__stubs.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_te_playerdecal.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_te_playerdecal.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_sceneentity.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_sceneentity.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_props.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_props.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_props.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_props.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{559FBE07-C5E0-ED65-7E48-F725B1CBD743}|game\\server\\server_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\server\\props.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{559FBE07-C5E0-ED65-7E48-F725B1CBD743}|game\\server\\server_win64_portal.vcxproj|solutionrelative:game\\server\\props.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_prop_vehicle.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_prop_vehicle.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_playerresource.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_playerresource.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_playerresource.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{61F67307-0422-37C7-A7C3-FDF90CF8EE4F}|game\\client\\client_win64_portal.vcxproj|solutionrelative:game\\client\\c_playerresource.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 4,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "PhysicsCloneArea.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\shared\\portal\\PhysicsCloneArea.h",
+              "RelativeDocumentMoniker": "game\\shared\\portal\\PhysicsCloneArea.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\shared\\portal\\PhysicsCloneArea.h",
+              "RelativeToolTip": "game\\shared\\portal\\PhysicsCloneArea.h",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAewA8AAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:55:46.732Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "imageutils.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\common\\imageutils.cpp",
+              "RelativeDocumentMoniker": "common\\imageutils.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\common\\imageutils.cpp",
+              "RelativeToolTip": "common\\imageutils.cpp",
+              "ViewState": "AgIAAFMIAAAAAAAAAAAewGAIAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:55:33.539Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "gamerules.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\shared\\gamerules.h",
+              "RelativeDocumentMoniker": "game\\shared\\gamerules.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\shared\\gamerules.h",
+              "RelativeToolTip": "game\\shared\\gamerules.h",
+              "ViewState": "AgIAAKABAAAAAAAAAAAewLIBAAAbAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:54:57.106Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "gamerules.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\shared\\gamerules.cpp",
+              "RelativeDocumentMoniker": "game\\shared\\gamerules.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\shared\\gamerules.cpp",
+              "RelativeToolTip": "game\\shared\\gamerules.cpp",
+              "ViewState": "AgIAALIAAAAAAAAAAAAewL4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:54:42.683Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "c_breakableprop.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_breakableprop.h",
+              "RelativeDocumentMoniker": "game\\client\\c_breakableprop.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_breakableprop.h",
+              "RelativeToolTip": "game\\client\\c_breakableprop.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAewBAAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:54:26.174Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "c_baseplayer.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_baseplayer.h",
+              "RelativeDocumentMoniker": "game\\client\\c_baseplayer.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_baseplayer.h",
+              "RelativeToolTip": "game\\client\\c_baseplayer.h",
+              "ViewState": "AgIAAIoAAAAAAAAAAAAewJwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:54:04.606Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "c_hl2_playerlocaldata.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_hl2_playerlocaldata.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\c_hl2_playerlocaldata.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_hl2_playerlocaldata.cpp",
+              "RelativeToolTip": "game\\client\\hl2\\c_hl2_playerlocaldata.cpp",
+              "ViewState": "AgIAAC8AAAAAAAAAAAAhwDsAAAAaAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:51:43.165Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "c_basehlplayer.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_basehlplayer.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\c_basehlplayer.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_basehlplayer.cpp",
+              "RelativeToolTip": "game\\client\\hl2\\c_basehlplayer.cpp",
+              "ViewState": "AgIAAJACAAAAAAAAAAAAAJ4CAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:50:05.684Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "c_basehlplayer.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_basehlplayer.h",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\c_basehlplayer.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_basehlplayer.h",
+              "RelativeToolTip": "game\\client\\hl2\\c_basehlplayer.h",
+              "ViewState": "AgIAAC4AAAAAAAAAAAAAAEQAAABfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:49:20.488Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "cdll_util.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cdll_util.cpp",
+              "RelativeDocumentMoniker": "game\\client\\cdll_util.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cdll_util.cpp",
+              "RelativeToolTip": "game\\client\\cdll_util.cpp",
+              "ViewState": "AgIAABIAAAAAAAAAAAAAAB0AAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:12:06.974Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "hl2mpclientscoreboard.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2mp\\ui\\hl2mpclientscoreboard.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hl2mp\\ui\\hl2mpclientscoreboard.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2mp\\ui\\hl2mpclientscoreboard.cpp",
+              "RelativeToolTip": "game\\client\\hl2mp\\ui\\hl2mpclientscoreboard.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:55:35.339Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "c_npc_manhack.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_npc_manhack.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\c_npc_manhack.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_npc_manhack.cpp",
+              "RelativeToolTip": "game\\client\\hl2\\c_npc_manhack.cpp",
+              "ViewState": "AgIAADUAAAAAAAAAAAAhwEAAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:49:00.521Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "c_npc_rollermine.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_npc_rollermine.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\c_npc_rollermine.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_npc_rollermine.cpp",
+              "RelativeToolTip": "game\\client\\hl2\\c_npc_rollermine.cpp",
+              "ViewState": "AgIAAB0AAAAAAAAAAAAhwCoAAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:48:48.05Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "c_prop_combine_ball.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_prop_combine_ball.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\c_prop_combine_ball.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_prop_combine_ball.cpp",
+              "RelativeToolTip": "game\\client\\hl2\\c_prop_combine_ball.cpp",
+              "ViewState": "AgIAABIAAAAAAAAAAAAAACMAAAAMAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:47:08.483Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "c_prop_combine_ball.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_prop_combine_ball.h",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\c_prop_combine_ball.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_prop_combine_ball.h",
+              "RelativeToolTip": "game\\client\\hl2\\c_prop_combine_ball.h",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAAAC4AAAAzAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:47:08.039Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "c_weapon_stunstick.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_weapon_stunstick.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\c_weapon_stunstick.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\c_weapon_stunstick.cpp",
+              "RelativeToolTip": "game\\client\\hl2\\c_weapon_stunstick.cpp",
+              "ViewState": "AgIAAKgAAAAAAAAAAAAhwLUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:46:33.108Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 45,
+              "Title": "c_playerresource.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_playerresource.cpp",
+              "RelativeDocumentMoniker": "game\\client\\c_playerresource.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_playerresource.cpp",
+              "RelativeToolTip": "game\\client\\c_playerresource.cpp",
+              "ViewState": "AgIAAP8AAAAAAAAAAAAAAAwBAAADAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:05:22.384Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "hud_bonusprogress.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\hud_bonusprogress.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\hud_bonusprogress.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\hud_bonusprogress.cpp",
+              "RelativeToolTip": "game\\client\\hl2\\hud_bonusprogress.cpp",
+              "ViewState": "AgIAALIAAAAAAAAAAAAAAMYAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:45:53.679Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "viewrender.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\viewrender.cpp",
+              "RelativeDocumentMoniker": "game\\client\\viewrender.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\viewrender.cpp",
+              "RelativeToolTip": "game\\client\\viewrender.cpp",
+              "ViewState": "AgIAABYRAAAAAAAAAAAAACkRAAAhAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:44:50.018Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "viewangleanim.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\viewangleanim.cpp",
+              "RelativeDocumentMoniker": "game\\client\\viewangleanim.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\viewangleanim.cpp",
+              "RelativeToolTip": "game\\client\\viewangleanim.cpp",
+              "ViewState": "AgIAAHEAAAAAAAAAAAAhwIQAAAAjAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:44:35.219Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "view_effects.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\view_effects.cpp",
+              "RelativeDocumentMoniker": "game\\client\\view_effects.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\view_effects.cpp",
+              "RelativeToolTip": "game\\client\\view_effects.cpp",
+              "ViewState": "AgIAAJcAAAAAAAAAAAAhwKwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:44:17.208Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "ragdoll.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\ragdoll.cpp",
+              "RelativeDocumentMoniker": "game\\client\\ragdoll.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\ragdoll.cpp",
+              "RelativeToolTip": "game\\client\\ragdoll.cpp",
+              "ViewState": "AgIAAOABAAAAAAAAAAAhwPEBAAADAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:43:59.052Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "prediction.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\prediction.cpp",
+              "RelativeDocumentMoniker": "game\\client\\prediction.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\prediction.cpp",
+              "RelativeToolTip": "game\\client\\prediction.cpp",
+              "ViewState": "AgIAAJ8DAAAAAAAAAAAAALADAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:35:08.077Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "physics.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\physics.cpp",
+              "RelativeDocumentMoniker": "game\\client\\physics.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\physics.cpp",
+              "RelativeToolTip": "game\\client\\physics.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:34:50.182Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "interpolatedvar.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\interpolatedvar.h",
+              "RelativeDocumentMoniker": "game\\client\\interpolatedvar.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\interpolatedvar.h",
+              "RelativeToolTip": "game\\client\\interpolatedvar.h",
+              "ViewState": "AgIAACEGAAAAAAAAAAAAACsGAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:27:10.2Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "in_mouse.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\in_mouse.cpp",
+              "RelativeDocumentMoniker": "game\\client\\in_mouse.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\in_mouse.cpp",
+              "RelativeToolTip": "game\\client\\in_mouse.cpp",
+              "ViewState": "AgIAAL0CAAAAAAAAAAAAAMsCAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:25:44.106Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "in_main.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\in_main.cpp",
+              "RelativeDocumentMoniker": "game\\client\\in_main.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\in_main.cpp",
+              "RelativeToolTip": "game\\client\\in_main.cpp",
+              "ViewState": "AgIAAOgBAAAAAAAAAAAAAPoBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:25:08.355Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "iclientmode.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\iclientmode.h",
+              "RelativeDocumentMoniker": "game\\client\\iclientmode.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\iclientmode.h",
+              "RelativeToolTip": "game\\client\\iclientmode.h",
+              "ViewState": "AgIAAHcAAAAAAAAAAAAhwIgAAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:24:54.292Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "hud_voicestatus.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hud_voicestatus.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hud_voicestatus.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hud_voicestatus.cpp",
+              "RelativeToolTip": "game\\client\\hud_voicestatus.cpp",
+              "ViewState": "AgIAADQAAAAAAAAAAAAAAD8AAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:23:41.047Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "hud_basechat.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hud_basechat.cpp",
+              "RelativeDocumentMoniker": "game\\client\\hud_basechat.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hud_basechat.cpp",
+              "RelativeToolTip": "game\\client\\hud_basechat.cpp",
+              "ViewState": "AgIAAGEFAAAAAAAAAAAAAHQFAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:22:58.401Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 29,
+              "Title": "glow_overlay.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\glow_overlay.cpp",
+              "RelativeDocumentMoniker": "game\\client\\glow_overlay.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\glow_overlay.cpp",
+              "RelativeToolTip": "game\\client\\glow_overlay.cpp",
+              "ViewState": "AgIAAHQAAAAAAAAAAAAAAIMAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:21:38.009Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 30,
+              "Title": "fx_tracer.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\fx_tracer.cpp",
+              "RelativeDocumentMoniker": "game\\client\\fx_tracer.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\fx_tracer.cpp",
+              "RelativeToolTip": "game\\client\\fx_tracer.cpp",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAAAC4AAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:20:38.366Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "entity_client_tools.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\entity_client_tools.cpp",
+              "RelativeDocumentMoniker": "game\\client\\entity_client_tools.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\entity_client_tools.cpp",
+              "RelativeToolTip": "game\\client\\entity_client_tools.cpp",
+              "ViewState": "AgIAACMCAAAAAAAAAAAAADICAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:20:13.894Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 33,
+              "Title": "cliententitylist.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cliententitylist.h",
+              "RelativeDocumentMoniker": "game\\client\\cliententitylist.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cliententitylist.h",
+              "RelativeToolTip": "game\\client\\cliententitylist.h",
+              "ViewState": "AgIAACABAAAAAAAAAAAhwCsBAAAHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:18:30.603Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 34,
+              "Title": "cliententitylist.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cliententitylist.cpp",
+              "RelativeDocumentMoniker": "game\\client\\cliententitylist.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cliententitylist.cpp",
+              "RelativeToolTip": "game\\client\\cliententitylist.cpp",
+              "ViewState": "AgIAAHoAAAAAAAAAAAAAAIgAAAAWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:17:46.413Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 35,
+              "Title": "cdll_util.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cdll_util.h",
+              "RelativeDocumentMoniker": "game\\client\\cdll_util.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cdll_util.h",
+              "RelativeToolTip": "game\\client\\cdll_util.h",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAhwCEAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:12:53.116Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 36,
+              "Title": "cdll_client_int.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cdll_client_int.cpp",
+              "RelativeDocumentMoniker": "game\\client\\cdll_client_int.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\cdll_client_int.cpp",
+              "RelativeToolTip": "game\\client\\cdll_client_int.cpp",
+              "ViewState": "AgIAAPUIAAAAAAAAAAAhwAYJAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:10:04.693Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 37,
+              "Title": "clientmode_hlnormal.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\clientmode_hlnormal.h",
+              "RelativeDocumentMoniker": "game\\client\\hl2\\clientmode_hlnormal.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\hl2\\clientmode_hlnormal.h",
+              "RelativeToolTip": "game\\client\\hl2\\clientmode_hlnormal.h",
+              "ViewState": "AgIAABgAAAAAAAAAAAAhwCUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:10:02.306Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 38,
+              "Title": "c_weapon__stubs.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_weapon__stubs.h",
+              "RelativeDocumentMoniker": "game\\client\\c_weapon__stubs.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_weapon__stubs.h",
+              "RelativeToolTip": "game\\client\\c_weapon__stubs.h",
+              "ViewState": "AgIAABAAAAAAAAAAAAAhwCAAAAAqAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:09:23.311Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 39,
+              "Title": "c_te_playerdecal.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_te_playerdecal.cpp",
+              "RelativeDocumentMoniker": "game\\client\\c_te_playerdecal.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_te_playerdecal.cpp",
+              "RelativeToolTip": "game\\client\\c_te_playerdecal.cpp",
+              "ViewState": "AgIAABUAAAAAAAAAAAAhwCgAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:08:58.766Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 40,
+              "Title": "c_sceneentity.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_sceneentity.cpp",
+              "RelativeDocumentMoniker": "game\\client\\c_sceneentity.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_sceneentity.cpp",
+              "RelativeToolTip": "game\\client\\c_sceneentity.cpp",
+              "ViewState": "AgIAAG0AAAAAAAAAAAAhwH4AAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:08:41.902Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 42,
+              "Title": "c_props.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_props.h",
+              "RelativeDocumentMoniker": "game\\client\\c_props.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_props.h",
+              "RelativeToolTip": "game\\client\\c_props.h",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABsAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:08:06.599Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 41,
+              "Title": "c_props.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_props.cpp",
+              "RelativeDocumentMoniker": "game\\client\\c_props.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_props.cpp",
+              "RelativeToolTip": "game\\client\\c_props.cpp",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABcAAAA9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:06:36.269Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 43,
+              "Title": "props.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\server\\props.cpp",
+              "RelativeDocumentMoniker": "game\\server\\props.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\server\\props.cpp",
+              "RelativeToolTip": "game\\server\\props.cpp",
+              "ViewState": "AgIAAKkAAAAAAAAAAAAhwLcAAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T05:06:25.501Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 44,
+              "Title": "c_prop_vehicle.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_prop_vehicle.h",
+              "RelativeDocumentMoniker": "game\\client\\c_prop_vehicle.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_prop_vehicle.h",
+              "RelativeToolTip": "game\\client\\c_prop_vehicle.h",
+              "ViewState": "AgIAAEEAAAAAAAAAAAAhwEsAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:06:10.888Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 32,
+              "Title": "clientmode_shared.cpp",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\clientmode_shared.cpp",
+              "RelativeDocumentMoniker": "game\\client\\clientmode_shared.cpp",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\clientmode_shared.cpp",
+              "RelativeToolTip": "game\\client\\clientmode_shared.cpp",
+              "ViewState": "AgIAAB4DAAAAAAAAAAAhwC0DAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-02-19T02:10:52.251Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 46,
+              "Title": "c_playerresource.h",
+              "DocumentMoniker": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_playerresource.h",
+              "RelativeDocumentMoniker": "game\\client\\c_playerresource.h",
+              "ToolTip": "E:\\Program Files (x86)\\Steam\\steamapps\\git\\portalcoop-src\\src\\game\\client\\c_playerresource.h",
+              "RelativeToolTip": "game\\client\\c_playerresource.h",
+              "ViewState": "AgIAACQAAAAAAAAAAAAAADkAAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2025-02-19T05:05:22.967Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

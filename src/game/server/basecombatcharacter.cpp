@@ -194,9 +194,6 @@ END_SEND_TABLE();
 // This table encodes the CBaseCombatCharacter
 //-----------------------------------------------------------------------------
 IMPLEMENT_SERVERCLASS_ST(CBaseCombatCharacter, DT_BaseCombatCharacter)
-#ifdef GLOWS_ENABLE
-	SendPropBool( SENDINFO( m_bGlowEnabled ) ),
-#endif // GLOWS_ENABLE
 	// Data that only gets sent to the local player.
 	SendPropDataTable( "bcc_localdata", 0, &REFERENCE_SEND_TABLE(DT_BCCLocalPlayerExclusive), SendProxy_SendBaseCombatCharacterLocalDataTable ),
 
@@ -747,10 +744,6 @@ CBaseCombatCharacter::CBaseCombatCharacter( void )
 	m_impactEnergyScale = 1.0f;
 
 	m_bForceServerRagdoll = ai_force_serverside_ragdoll.GetBool();
-
-#ifdef GLOWS_ENABLE
-	m_bGlowEnabled.Set( false );
-#endif // GLOWS_ENABLE
 }
 
 //------------------------------------------------------------------------------
@@ -1233,7 +1226,11 @@ CBaseEntity *CBaseCombatCharacter::CheckTraceHullAttack( const Vector &vStart, c
 	ray.Init( vStart, vEnd, mins, maxs );
 
 	trace_t tr;
+#ifdef PORTAL
+	UTIL_Portal_TraceRay( ray, MASK_SHOT_HULL, &traceFilter, &tr );
+#else
 	enginetrace->TraceRay( ray, MASK_SHOT_HULL, &traceFilter, &tr );
+#endif
 
 	CBaseEntity *pEntity = traceFilter.m_pHit;
 	
@@ -1547,9 +1544,13 @@ bool CBaseCombatCharacter::BecomeRagdoll( const CTakeDamageInfo &info, const Vec
 #ifdef HL2_DLL	
 
 	bool bMegaPhyscannonActive = false;
-#if !defined( HL2MP )
+#if !defined( HL2MP ) && !defined (PORTAL)
 	bMegaPhyscannonActive = HL2GameRules()->MegaPhyscannonActive();
-#endif // !HL2MP
+#endif // !HL2MP || !PORTAL
+
+#ifdef PORTAL
+	bMegaPhyscannonActive = PortalGameRules()->MegaPhyscannonActive();
+#endif
 
 	// Mega physgun requires everything to be a server-side ragdoll
 	if ( m_bForceServerRagdoll == true || ( ( bMegaPhyscannonActive == true ) && !IsPlayer() && Classify() != CLASS_PLAYER_ALLY_VITAL && Classify() != CLASS_PLAYER_ALLY ) )
@@ -3131,12 +3132,19 @@ void CBaseCombatCharacter::VPhysicsShadowCollision( int index, gamevcollisioneve
 	// which can occur owing to ordering issues it appears.
 	float flOtherAttackerTime = 0.0f;
 
-#if defined( HL2_DLL ) && !defined( HL2MP )
+#if defined( HL2_DLL ) && !defined( HL2MP ) && !defined(PORTAL)
 	if ( HL2GameRules()->MegaPhyscannonActive() == true )
 	{
 		flOtherAttackerTime = 1.0f;
 	}
-#endif // HL2_DLL && !HL2MP
+#else
+#ifdef PORTAL
+	if (PortalGameRules()->MegaPhyscannonActive() == true)
+	{
+		flOtherAttackerTime = 1.0f;
+	}
+#endif // PORTAL
+#endif // HL2_DLL && !HL2MP && !PORTAL
 
 	if ( this == pOther->HasPhysicsAttacker( flOtherAttackerTime ) )
 		return;
@@ -3258,33 +3266,6 @@ float CBaseCombatCharacter::GetSpreadBias( CBaseCombatWeapon *pWeapon, CBaseEnti
 		return pWeapon->GetSpreadBias(GetCurrentWeaponProficiency());
 	return 1.0;
 }
-
-#ifdef GLOWS_ENABLE
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CBaseCombatCharacter::AddGlowEffect( void )
-{
-	SetTransmitState( FL_EDICT_ALWAYS );
-	m_bGlowEnabled.Set( true );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CBaseCombatCharacter::RemoveGlowEffect( void )
-{
-	m_bGlowEnabled.Set( false );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-bool CBaseCombatCharacter::IsGlowEffectActive( void )
-{
-	return m_bGlowEnabled;
-}
-#endif // GLOWS_ENABLE
 
 //-----------------------------------------------------------------------------
 // Assume everyone is average with every weapon. Override this to make exceptions.

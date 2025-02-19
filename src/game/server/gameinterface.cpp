@@ -2874,12 +2874,12 @@ int TestAreaPortalVisibilityThroughPortals ( CFuncAreaPortalBase* pAreaPortal, e
 	for ( int i = 0; i != iPortalCount; ++i )
 	{
 		CProp_Portal* pLocalPortal = pPortals[ i ];
-		if ( pLocalPortal && pLocalPortal->m_bActivated )
+		if ( pLocalPortal && pLocalPortal->IsActive() )
 		{
 			CProp_Portal* pRemotePortal = pLocalPortal->m_hLinkedPortal.Get();
 
 			// Make sure this portal's linked portal is in the PVS before we add what it can see
-			if ( pRemotePortal && pRemotePortal->m_bActivated && pRemotePortal->NetworkProp() && 
+			if ( pRemotePortal && pRemotePortal->IsActive() && pRemotePortal->NetworkProp() && 
 				pRemotePortal->NetworkProp()->IsInPVS( pViewEntity, pvs, pvssize ) )
 			{
 				bool bIsOpenOnClient = true;
@@ -3003,7 +3003,7 @@ void CServerGameClients::ClientSetupVisibility( edict_t *pViewEntity, edict_t *p
 
 #ifdef PORTAL 
 		// *After* the player's view has updated its area bits, add on any other areas seen by portals
-		CPortal_Player* pPortalPlayer = dynamic_cast<CPortal_Player*>( pPlayer );
+		CPortal_Player* pPortalPlayer = (CPortal_Player*)( pPlayer );
 		if ( pPortalPlayer )
 		{
 			pPortalPlayer->UpdatePortalViewAreaBits( pvs, pvssize );

@@ -87,6 +87,7 @@ public:
 	}
 
 	Vector					m_vecLastFacing;
+	virtual bool			IsViewModel() const { return true; }
 
 	// Only support prediction in TF2 for now
 #if defined( INVASION_DLL ) || defined( INVASION_CLIENT_DLL )
@@ -158,7 +159,6 @@ public:
 
 	// (inherited from C_BaseAnimating)
 	virtual void			FormatViewModelAttachment( int nAttachment, matrix3x4_t &attachmentToWorld );
-	virtual bool			IsViewModel() const;
 	
 	CBaseCombatWeapon		*GetWeapon() const { return m_hWeapon.Get(); }
 
@@ -206,5 +206,19 @@ private:
 	typedef CHandle<CVGuiScreen>	ScreenHandle_t;
 	CUtlVector<ScreenHandle_t>	m_hScreens;
 };
+
+inline CBaseViewModel *ToBaseViewModel( CBaseAnimating *pAnim )
+{
+	if ( pAnim && pAnim->IsViewModel() )
+		return assert_cast<CBaseViewModel *>(pAnim);
+	return NULL;
+}
+
+inline CBaseViewModel *ToBaseViewModel( CBaseEntity *pEntity )
+{
+	if ( !pEntity )
+		return NULL;
+	return ToBaseViewModel(pEntity->GetBaseAnimating());
+}
 
 #endif // BASEVIEWMODEL_SHARED_H

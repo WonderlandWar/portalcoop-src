@@ -115,6 +115,9 @@ abstract_class CGameRules : public CAutoGameSystemPerFrame
 {
 public:
 	DECLARE_CLASS_GAMEROOT( CGameRules, CAutoGameSystemPerFrame );
+	
+	DECLARE_NETWORKCLASS_NOBASE();
+	DECLARE_SIMPLE_DATADESC();
 
 	virtual char const *Name() { return "CGameRules"; }
 
@@ -184,9 +187,13 @@ public:
 	// cvars with the FCVAR_NOT_CONNECTED rule if it returns true
 	virtual bool IsConnectedUserInfoChangeAllowed( CBasePlayer *pPlayer )
 	{ 
+#ifndef PORTAL
 		Assert( !IsMultiplayer() );
+#endif
 		return true; 
 	}
+	
+	virtual bool CanEntityBeUsePushed( CBaseEntity *pEnt ) { return true; }
 
 #ifdef CLIENT_DLL
 
@@ -391,8 +398,6 @@ public:
 	// Whether props that are on fire should get a DLIGHT.
 	virtual bool ShouldBurningPropsEmitLight() { return false; }
 
-	virtual bool CanEntityBeUsePushed( CBaseEntity *pEnt ) { return true; }
-
 	virtual void CreateCustomNetworkStringTables( void ) { }
 
 	// Game Achievements (server version)
@@ -421,6 +426,22 @@ public:
 	virtual bool IsHolidayActive( /*EHoliday*/ int eHoliday ) const { return false; }
 
 	virtual bool IsManualMapChangeOkay( const char **pszReason ){ return true; }
+
+	// Bonus Logic
+	
+#ifdef GAME_DLL
+	bool	m_bPauseBonusProgress;
+#endif
+
+	// Never let the client set its own progress, it's networked
+#ifdef GAME_DLL
+	void					PauseBonusProgress( bool bPause = true );
+	void					SetBonusProgress( int iBonusProgress );
+	void					SetBonusChallenge( int iBonusChallenge );
+#endif
+
+	int						GetBonusProgress() const;
+	int						GetBonusChallenge() const;
 
 	virtual void RegisterScriptFunctions() { }
 

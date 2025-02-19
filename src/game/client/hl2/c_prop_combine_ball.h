@@ -41,5 +41,10 @@ protected:
 	IMaterial	*m_pBlurMaterial;
 };
 
+// Query function to find out if a physics object is a combine ball (used for collision checks)
+bool UTIL_IsCombineBall( CBaseEntity *pEntity );
+bool UTIL_IsCombineBallDefinite( CBaseEntity *pEntity );
+bool UTIL_IsAR2CombineBall( CBaseEntity *pEntity );
+
 
 #endif

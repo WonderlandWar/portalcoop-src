@@ -25,7 +25,7 @@
 	#include "sourcevr/isourcevirtualreality.h"
 
 #else
-
+	#include "../../public/vphysics/player_controller.h"
 	#include "iservervehicle.h"
 	#include "trains.h"
 	#include "world.h"
@@ -56,7 +56,6 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-#if defined(GAME_DLL) && !defined(_XBOX)
 	extern ConVar sv_pushaway_max_force;
 	extern ConVar sv_pushaway_force;
 	extern ConVar sv_turbophysics;
@@ -85,7 +84,6 @@
 			return g_pGameRules->CanEntityBeUsePushed( pEntity );
 		}
 	};
-#endif
 
 #ifdef CLIENT_DLL
 ConVar mp_usehwmmodels( "mp_usehwmmodels", "0", NULL, "Enable the use of the hw morph models. (-1 = never, 1 = always, 0 = based upon GPU)" ); // -1 = never, 0 = if hasfastvertextextures, 1 = always
@@ -552,7 +550,7 @@ void CBasePlayer::UpdateStepSound( surfacedata_t *psurface, const Vector &vecOri
 	// In Portal we MUST play footstep sounds even when the player is moving very slowly
 	// This is used to count the number of footsteps they take in the challenge mode
 	// -Jeep
-	moving_fast_enough = true;
+	//moving_fast_enough = true;
 #endif
 
 	// To hear step sounds you must be either on a ladder or moving along the ground AND
@@ -1268,25 +1266,39 @@ CBaseEntity *CBasePlayer::FindUseEntity()
 	return pNearest;
 }
 
+bool CBasePlayer::ClearUseEntity()
+{
+	if ( m_hUseEntity != NULL )
+	{
+		// Stop controlling the train/object
+		// TODO: Send HUD Update
+		m_hUseEntity->Use( this, this, USE_OFF, 0 );
+		m_hUseEntity = NULL;
+		return true;
+	}
+
+	return false;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: Handles USE keypress
 //-----------------------------------------------------------------------------
-void CBasePlayer::PlayerUse ( void )
+bool CBasePlayer::PlayerUse ( void )
 {
-#ifdef GAME_DLL
 	// Was use pressed or released?
 	if ( ! ((m_nButtons | m_afButtonPressed | m_afButtonReleased) & IN_USE) )
-		return;
+		return false;
 
 	if ( IsObserver() )
 	{
+#ifdef GAME_DLL
 		// do special use operation in oberserver mode
 		if ( m_afButtonPressed & IN_USE )
 			ObserverUse( true );
 		else if ( m_afButtonReleased & IN_USE )
 			ObserverUse( false );
-		
-		return;
+#endif
+		return true;
 	}
 
 #if !defined(_XBOX)
@@ -1333,15 +1345,16 @@ void CBasePlayer::PlayerUse ( void )
 		// Controlling some latched entity?
 		if ( ClearUseEntity() )
 		{
-			return;
+			return true;
 		}
+#ifdef GAME_DLL
 		else
 		{
 			if ( m_afPhysicsFlags & PFLAG_DIROVERRIDE )
 			{
 				m_afPhysicsFlags &= ~PFLAG_DIROVERRIDE;
 				m_iTrain = TRAIN_NEW|TRAIN_OFF;
-				return;
+				return true;
 			}
 			else
 			{	// Start controlling the train!
@@ -1352,10 +1365,11 @@ void CBasePlayer::PlayerUse ( void )
 					m_iTrain = TrainSpeed(pTrain->m_flSpeed, ((CFuncTrackTrain*)pTrain)->GetMaxSpeed());
 					m_iTrain |= TRAIN_NEW;
 					EmitSound( "Player.UseTrain" );
-					return;
+					return true;
 				}
 			}
 		}
+#endif
 	}
 
 	CBaseEntity *pUseEntity = FindUseEntity();
@@ -1364,8 +1378,8 @@ void CBasePlayer::PlayerUse ( void )
 	if ( pUseEntity )
 	{
 
-		//!!!UNDONE: traceline here to prevent +USEing buttons through walls			
-
+		//!!!UNDONE: traceline here to prevent +USEing buttons through walls
+#ifdef GAME_DLL
 		int caps = pUseEntity->ObjectCaps();
 		variant_t emptyVariant;
 		if ( ( (m_nButtons & IN_USE) && (caps & FCAP_CONTINUOUS_USE) ) || ( (m_afButtonPressed & IN_USE) && (caps & (FCAP_IMPULSE_USE|FCAP_ONOFF_USE)) ) )
@@ -1389,15 +1403,20 @@ void CBasePlayer::PlayerUse ( void )
 		{
 			pUseEntity->AcceptInput( "Use", this, this, emptyVariant, USE_OFF );
 		}
+#endif
 	}
 	else if ( m_afButtonPressed & IN_USE )
 	{
+#ifdef GAME_DLL
 		PlayUseDenySound();
-	}
 #endif
+		return false;
+	}
+
+	return pUseEntity != NULL;
 }
 
-ConVar	sv_suppress_viewpunch( "sv_suppress_viewpunch", "0", FCVAR_REPLICATED | FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
+ConVar	sv_suppress_viewpunch( "sv_suppress_viewpunch", "0", FCVAR_REPLICATED );
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -1844,6 +1863,8 @@ void CBasePlayer::SharedSpawn()
 	else
 		SetCollisionBounds( VEC_HULL_MIN, VEC_HULL_MAX );
 
+	m_hUseEntity = NULL;
+
 	// dont let uninitialized value here hurt the player
 	m_Local.m_flFallVelocity = 0;
 
@@ -2071,6 +2092,58 @@ void CBasePlayer::SetPreviouslyPredictedOrigin( const Vector &vecAbsOrigin )
 const Vector &CBasePlayer::GetPreviouslyPredictedOrigin() const
 {
 	return m_vecPreviouslyPredictedOrigin;
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose: Strips off IN_xxx flags from the player's input
+//-----------------------------------------------------------------------------
+void CBasePlayer::ForceButtons( int nButtons )
+{
+	m_afButtonForced |= nButtons;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Re-enables stripped IN_xxx flags to the player's input
+//-----------------------------------------------------------------------------
+void CBasePlayer::UnforceButtons( int nButtons )
+{
+	m_afButtonForced &= ~nButtons;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CBasePlayer::SetVCollisionState( const Vector &vecAbsOrigin, const Vector &vecAbsVelocity, int collisionState )
+{
+#ifdef GAME_DLL
+	m_vphysicsCollisionState = collisionState;
+	switch( collisionState )
+	{
+	case VPHYS_WALK:
+ 		m_pShadowStand->SetPosition( vecAbsOrigin, vec3_angle, true );
+		m_pShadowStand->SetVelocity( &vecAbsVelocity, NULL );
+		m_pShadowCrouch->EnableCollisions( false );
+		m_pPhysicsController->SetObject( m_pShadowStand );
+		VPhysicsSwapObject( m_pShadowStand );
+		m_pShadowStand->EnableCollisions( true );
+		break;
+
+	case VPHYS_CROUCH:
+		m_pShadowCrouch->SetPosition( vecAbsOrigin, vec3_angle, true );
+		m_pShadowCrouch->SetVelocity( &vecAbsVelocity, NULL );
+		m_pShadowStand->EnableCollisions( false );
+		m_pPhysicsController->SetObject( m_pShadowCrouch );
+		VPhysicsSwapObject( m_pShadowCrouch );
+		m_pShadowCrouch->EnableCollisions( true );
+		break;
+	
+	case VPHYS_NOCLIP:
+		m_pShadowCrouch->EnableCollisions( false );
+		m_pShadowStand->EnableCollisions( false );
+		break;
+	}
+#endif
 }
 
 bool fogparams_t::operator !=( const fogparams_t& other ) const

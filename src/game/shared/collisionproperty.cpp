@@ -458,6 +458,18 @@ int CCollisionProperty::GetCollisionGroup() const
 	return m_pOuter->GetCollisionGroup();
 }
 
+uint CCollisionProperty::GetRequiredTriggerFlags() const
+{
+	// debris only touches certain triggers
+	if ( GetCollisionGroup() == COLLISION_GROUP_DEBRIS )
+		return FSOLID_TRIGGER_TOUCH_DEBRIS;
+
+	// triggers don't touch other triggers (might be solid to other ents as well as trigger)
+	if ( IsSolidFlagSet( FSOLID_TRIGGER ) )
+		return 0;
+
+	return FSOLID_TRIGGER;
+}
 
 bool CCollisionProperty::ShouldTouchTrigger( int triggerSolidFlags ) const
 {

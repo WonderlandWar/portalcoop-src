@@ -18,6 +18,9 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
+IMPLEMENT_CLIENTCLASS_DT( C_BaseProp, DT_BaseProp, CBaseProp)
+END_RECV_TABLE()
+
 IMPLEMENT_NETWORKCLASS_ALIASED( DynamicProp, DT_DynamicProp )
 
 BEGIN_NETWORK_TABLE( CDynamicProp, DT_DynamicProp )
@@ -219,9 +222,9 @@ IMPLEMENT_CLIENTCLASS_DT( CPhysBoxMultiplayer, DT_PhysBoxMultiplayer, CPhysBoxMu
 END_RECV_TABLE()
 
 
-class CPhysicsPropMultiplayer : public CPhysicsProp, public IMultiplayerPhysics
+class C_PhysicsPropMultiplayer : public CPhysicsProp, public IMultiplayerPhysics
 {
-	DECLARE_CLASS( CPhysicsPropMultiplayer, CPhysicsProp );
+	DECLARE_CLASS( C_PhysicsPropMultiplayer, CPhysicsProp );
 
 	virtual int GetMultiplayerPhysicsMode()
 	{
@@ -258,10 +261,12 @@ class CPhysicsPropMultiplayer : public CPhysicsProp, public IMultiplayerPhysics
 	DECLARE_CLIENTCLASS();
 };
 
-IMPLEMENT_CLIENTCLASS_DT( CPhysicsPropMultiplayer, DT_PhysicsPropMultiplayer, CPhysicsPropMultiplayer )
+IMPLEMENT_CLIENTCLASS_DT( C_PhysicsPropMultiplayer, DT_PhysicsPropMultiplayer, CPhysicsPropMultiplayer )
 	RecvPropInt( RECVINFO( m_iPhysicsMode ) ),
 	RecvPropFloat( RECVINFO( m_fMass ) ),
 	RecvPropVector( RECVINFO( m_collisionMins ) ),
 	RecvPropVector( RECVINFO( m_collisionMaxs ) ),
 END_RECV_TABLE()
+
+LINK_ENTITY_TO_CLASS(prop_physics_multiplayer, C_PhysicsPropMultiplayer)
 #endif

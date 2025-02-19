@@ -202,6 +202,14 @@ IMPLEMENT_CLIENTCLASS_DT(C_BaseAnimating, DT_BaseAnimating, CBaseAnimating)
 	RecvPropFloat( RECVINFO( m_fadeMinDist ) ), 
 	RecvPropFloat( RECVINFO( m_fadeMaxDist ) ), 
 	RecvPropFloat( RECVINFO( m_flFadeScale ) ), 
+	
+	
+#ifdef GLOWS_ENABLE
+	RecvPropBool( RECVINFO( m_bGlowEnabled ) ),
+	RecvPropFloat(RECVINFO(m_flGlowR)),
+	RecvPropFloat(RECVINFO(m_flGlowG)),
+	RecvPropFloat(RECVINFO(m_flGlowB)),
+#endif // GLOWS_ENABLE
 
 END_RECV_TABLE()
 
@@ -253,7 +261,7 @@ BEGIN_PREDICTION_DATA( C_BaseAnimating )
 
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( client_ragdoll, C_ClientRagdoll );
+LINK_ENTITY_TO_CLASS_CLIENTONLY( client_ragdoll, C_ClientRagdoll );
 
 BEGIN_DATADESC( C_ClientRagdoll )
 	DEFINE_FIELD( m_bFadeOut, FIELD_BOOLEAN ),
@@ -734,6 +742,16 @@ C_BaseAnimating::C_BaseAnimating() :
 	m_flOldModelScale = 0.0f;
 
 	m_pAttachedTo = NULL;
+	
+#ifdef GLOWS_ENABLE
+	m_flGlowR = 0.76f;
+	m_flGlowG = 0.76f;
+	m_flGlowB = 0.76f;
+	m_pGlowEffect = NULL;
+	m_bGlowEnabled = false;
+	m_bOldGlowEnabled = false;
+	m_bClientSideGlowEnabled = false;
+#endif // GLOWS_ENABLE
 
 	m_bDynamicModelAllowed = false;
 	m_bDynamicModelPending = false;
@@ -778,6 +796,10 @@ C_BaseAnimating::~C_BaseAnimating()
 
 	// Kill off anything bone attached to us.
 	DestroyBoneAttachments();
+
+#ifdef GLOWS_ENABLE
+	DestroyGlowEffect();
+#endif // GLOWS_ENABLE
 
 	// If we are bone attached to something, remove us from the list.
 	if ( m_pAttachedTo )
@@ -1120,8 +1142,8 @@ CStudioHdr *C_BaseAnimating::OnNewModel()
 	}
 
 	Assert( hdr->GetNumPoseParameters() <= ARRAYSIZE( m_flPoseParameter ) );
-
-	m_iv_flPoseParameter.SetMaxCount( hdr->GetNumPoseParameters() );
+	
+	m_iv_flPoseParameter.SetMaxCount( gpGlobals->curtime, hdr->GetNumPoseParameters() );
 	
 	int i;
 	for ( i = 0; i < hdr->GetNumPoseParameters() ; i++ )
@@ -1138,8 +1160,8 @@ CStudioHdr *C_BaseAnimating::OnNewModel()
 	}
 
 	int boneControllerCount = MIN( hdr->numbonecontrollers(), ARRAYSIZE( m_flEncodedController ) );
-
-	m_iv_flEncodedController.SetMaxCount( boneControllerCount );
+	
+	m_iv_flEncodedController.SetMaxCount( gpGlobals->curtime, boneControllerCount );
 
 	for ( i = 0; i < boneControllerCount ; i++ )
 	{
@@ -4574,6 +4596,76 @@ void C_BaseAnimating::GetRenderBounds( Vector& theMins, Vector& theMaxs )
 	theMins *= flScale;
 }
 
+#ifdef GLOWS_ENABLE
+
+ConVar g_debug_gloweeffect("g_debug_gloweeffect", "0", FCVAR_CHEAT, "Debugs glow effect color");
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_BaseAnimating::GetGlowEffectColor( float *r, float *g, float *b )
+{
+	*r = m_flGlowR;
+	*g = m_flGlowG;
+	*b = m_flGlowB;
+
+	if (g_debug_gloweeffect.GetBool())
+	{
+		Msg("m_flGlowR: %f\n", m_flGlowR);
+		Msg("m_flGlowG: %f\n", m_flGlowG);
+		Msg("m_flGlowB: %f\n", m_flGlowB);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+/*
+void C_BaseAnimating::EnableGlowEffect( float r, float g, float b )
+{
+	// destroy the existing effect
+	if ( m_pGlowEffect )
+	{
+		DestroyGlowEffect();
+	}
+
+	m_pGlowEffect = new CGlowObject( this, Vector( r, g, b ), 1.0, true );
+}
+*/
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_BaseAnimating::UpdateGlowEffect( void )
+{
+	// destroy the existing effect
+	if ( m_pGlowEffect )
+	{
+		DestroyGlowEffect();
+	}
+
+	// create a new effect
+	if ( m_bGlowEnabled || m_bClientSideGlowEnabled )
+	{
+		float r, g, b;
+		GetGlowEffectColor( &r, &g, &b );
+
+		m_pGlowEffect = new CGlowObject( this, Vector( r, g, b ), 1.0, true );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_BaseAnimating::DestroyGlowEffect( void )
+{
+	if ( m_pGlowEffect )
+	{
+		delete m_pGlowEffect;
+		m_pGlowEffect = NULL;
+	}
+}
+#endif // GLOWS_ENABLE
 
 //-----------------------------------------------------------------------------
 // implements these so ragdolls can handle frustum culling & leaf visibility
@@ -4744,7 +4836,7 @@ void C_BaseAnimating::PostDataUpdate( DataUpdateType_t updateType )
 		CStudioHdr *hdr = GetModelPtr();
 		if ( hdr && !( hdr->flags() & STUDIOHDR_FLAGS_STATIC_PROP ) )
 		{
-			m_iv_flCycle.Reset();
+			m_iv_flCycle.Reset( gpGlobals->curtime );
 		}
 	}
 }
@@ -4756,6 +4848,10 @@ void C_BaseAnimating::PostDataUpdate( DataUpdateType_t updateType )
 void C_BaseAnimating::OnPreDataChanged( DataUpdateType_t updateType )
 {
 	BaseClass::OnPreDataChanged( updateType );
+	
+#ifdef GLOWS_ENABLE
+	m_bOldGlowEnabled = m_bGlowEnabled;
+#endif // GLOWS_ENABLE
 
 	m_bLastClientSideFrameReset = m_bClientSideFrameReset;
 }
@@ -4985,7 +5081,13 @@ void C_BaseAnimating::OnDataChanged( DataUpdateType_t updateType )
 		m_nPrevSequence = -1;
 		m_nRestoreSequence = -1;
 	}
-
+	
+#ifdef GLOWS_ENABLE
+	if ( m_bOldGlowEnabled != m_bGlowEnabled )
+	{
+		UpdateGlowEffect();
+	}
+#endif // GLOWS_ENABLE
 
 
 	bool modelchanged = false;

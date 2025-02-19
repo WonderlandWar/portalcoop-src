@@ -271,7 +271,8 @@ public:
 	inline	bool	MessageToAll( void ) { return (m_spawnflags & SF_ENVTEXT_ALLPLAYERS); }
 	inline	void	MessageSet( const char *pMessage ) { m_iszMessage = AllocPooledString(pMessage); }
 	inline	const char *MessageGet( void )	{ return STRING( m_iszMessage ); }
-
+	
+	void InputSetMessage( inputdata_t &inputdata );
 	void InputDisplay( inputdata_t &inputdata );
 	void Display( CBaseEntity *pActivator );
 
@@ -306,6 +307,7 @@ BEGIN_DATADESC( CGameText )
 	DEFINE_ARRAY( m_textParms, FIELD_CHARACTER, sizeof(hudtextparms_t) ),
 
 	// Inputs
+	DEFINE_INPUTFUNC( FIELD_CHARACTER, "SetMessage", InputSetMessage ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Display", InputDisplay ),
 
 END_DATADESC()
@@ -338,6 +340,12 @@ bool CGameText::KeyValue( const char *szKeyName, const char *szValue )
 	return true;
 }
 
+void CGameText::InputSetMessage(inputdata_t &inputdata)
+{
+	const char *sNewMessage = inputdata.value.String();
+
+	m_iszMessage = AllocPooledString(sNewMessage);
+}
 
 void CGameText::InputDisplay( inputdata_t &inputdata )
 {

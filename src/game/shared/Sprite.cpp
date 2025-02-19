@@ -28,8 +28,6 @@
 const float MAX_SPRITE_SCALE = 64.0f;
 const float MAX_GLOW_PROXY_SIZE = 64.0f;
 
-LINK_ENTITY_TO_CLASS( env_sprite, CSprite );
-LINK_ENTITY_TO_CLASS( env_sprite_oriented, CSpriteOriented );
 #if !defined( CLIENT_DLL )
 LINK_ENTITY_TO_CLASS( env_glow, CSprite ); // For backwards compatibility, remove when no longer needed.
 #endif
@@ -173,6 +171,7 @@ BEGIN_NETWORK_TABLE( CSprite, DT_Sprite )
 #endif
 END_NETWORK_TABLE()
 
+LINK_ENTITY_TO_CLASS_ALIASED( env_sprite, Sprite );
 
 CSprite::CSprite()
 {
@@ -848,6 +847,8 @@ IMPLEMENT_CLIENTCLASS_DT(C_SpriteOriented, DT_SpriteOriented, CSpriteOriented)
 #define CSpriteOriented C_SpriteOriented
 END_RECV_TABLE()
 #endif
+
+LINK_ENTITY_TO_CLASS_ALIASED( env_sprite_oriented, SpriteOriented );
 
 #if !defined( CLIENT_DLL )
 

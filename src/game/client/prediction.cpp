@@ -25,6 +25,10 @@
 #include "c_basehlplayer.h"
 #endif
 
+#ifdef PORTAL
+#include "c_portal_player.h"
+#endif
+
 #include "tier0/vprof.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -460,21 +464,24 @@ void CPrediction::PostNetworkDataReceived( int commands_acknowledged )
 
 		// Transfer intermediate data from other predictables
 		int c = predictables->GetPredictableCount();
+		bool *bHadErrors = (bool *)stackalloc( sizeof( bool ) * c );
 		int i;
 		for ( i = 0; i < c; i++ )
 		{
 			C_BaseEntity *ent = predictables->GetPredictable( i );
 			if ( !ent )
 				continue;
+			
+			if ( !ent->GetPredictable() )
+				continue;
+			
+			bHadErrors[i] = ent->PostNetworkDataReceived( m_nServerCommandsAcknowledged );
 
-			if ( ent->GetPredictable() )
+			if ( bHadErrors[i] )
 			{
-				if ( ent->PostNetworkDataReceived( m_nServerCommandsAcknowledged ) )
-				{
-					m_bPreviousAckHadErrors = true;
-					m_bPreviousAckErrorTriggersFullLatchReset |= ent->PredictionErrorShouldResetLatchedForAllPredictables() ? 1 : 0;
-					m_EntsWithPredictionErrorsInLastAck.AddToTail( ent );
-				}
+				m_bPreviousAckHadErrors = true;
+				m_bPreviousAckErrorTriggersFullLatchReset |= ent->PredictionErrorShouldResetLatchedForAllPredictables() ? 1 : 0;
+				m_EntsWithPredictionErrorsInLastAck.AddToTail( ent );
 			}
 
 			if ( showlist )
@@ -524,6 +531,37 @@ void CPrediction::PostNetworkDataReceived( int commands_acknowledged )
 				dump->DumpEntity( ent, m_nServerCommandsAcknowledged );
 			}
 #endif
+		}
+		
+		//Give entities with predicted fields that are not networked a chance to fix their current values for those fields.
+		//We do this in two passes. One pass to fix the fields, then another to save off the changes after they've all finished (to handle interdependancies, portals)
+		if( m_bPreviousAckHadErrors )
+		{
+			//give each predicted entity a chance to fix up its non-networked predicted fields
+			for ( i = 0; i < c; i++ )
+			{
+				C_BaseEntity *ent = predictables->GetPredictable(i);
+				if ( !ent )
+					continue;
+
+				if ( !ent->GetPredictable() )
+					continue;
+
+				ent->HandlePredictionError( bHadErrors[i] );
+			}
+
+			//save off any changes
+			for ( i = 0; i < c; i++ )
+			{
+				C_BaseEntity *ent = predictables->GetPredictable(i);
+				if ( !ent )
+					continue;
+
+				if ( !ent->GetPredictable() )
+					continue;
+
+				ent->SaveData( "PostNetworkDataReceived() Ack Errors", C_BaseEntity::SLOT_ORIGINALDATA, PC_EVERYTHING );
+			}
 		}
 
 		if ( showlist >= 2 )
@@ -675,6 +713,14 @@ void CPrediction::SetupMove( C_BasePlayer *player, CUserCmd *ucmd, IMoveHelper *
 	move->m_flConstraintRadius = player->m_flConstraintRadius;
 	move->m_flConstraintWidth = player->m_flConstraintWidth;
 	move->m_flConstraintSpeedFactor = player->m_flConstraintSpeedFactor;
+
+#ifdef PORTAL
+	C_Portal_Player* pPortalPlayer = (C_Portal_Player*)(player);
+
+	if (pPortalPlayer)
+			pPortalPlayer->SetupMove( ucmd, pHelper );
+
+#endif
 
 #ifdef HL2_CLIENT_DLL
 	// Convert to HL2 data.
@@ -893,6 +939,9 @@ void CPrediction::RunCommand( C_BasePlayer *player, CUserCmd *ucmd, IMoveHelper 
 	// Set globals appropriately
 	gpGlobals->curtime		= player->m_nTickBase * TICK_INTERVAL;
 	gpGlobals->frametime	= m_bEnginePaused ? 0 : TICK_INTERVAL;
+	
+	// Add and subtract buttons we're forcing on the player
+	ucmd->buttons |= player->m_afButtonForced;
 
 	g_pGameMovement->StartTrackPredictionErrors( player );
 

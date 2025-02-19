@@ -88,6 +88,7 @@ public:
 	virtual int				GetSolidFlags() const;
 	virtual IClientUnknown*	GetIClientUnknown();
 	virtual int				GetCollisionGroup() const;
+	virtual uint			GetRequiredTriggerFlags() const;
 	virtual void			WorldSpaceSurroundingBounds( Vector *pVecMins, Vector *pVecMaxs );
 	virtual bool			ShouldTouchTrigger( int triggerSolidFlags ) const;
 	virtual const matrix3x4_t *GetRootParentToWorldTransform() const;

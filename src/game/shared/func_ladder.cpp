@@ -455,7 +455,7 @@ BEGIN_NETWORK_TABLE( CFuncLadder, DT_FuncLadder )
 #endif
 END_NETWORK_TABLE()
 
-LINK_ENTITY_TO_CLASS( func_useableladder, CFuncLadder );
+LINK_ENTITY_TO_CLASS_ALIASED(func_useableladder, FuncLadder);
 
 //---------------------------------------------------------
 // Save/Restore
@@ -509,7 +509,7 @@ IMPLEMENT_NETWORKCLASS_ALIASED( InfoLadderDismount, DT_InfoLadderDismount );
 BEGIN_NETWORK_TABLE( CInfoLadderDismount, DT_InfoLadderDismount )
 END_NETWORK_TABLE()
 
-LINK_ENTITY_TO_CLASS( info_ladder_dismount, CInfoLadderDismount );
+LINK_ENTITY_TO_CLASS_ALIASED(info_ladder_dismount, InfoLadderDismount);
 
 CInfoLadderDismount::CInfoLadderDismount()
 {

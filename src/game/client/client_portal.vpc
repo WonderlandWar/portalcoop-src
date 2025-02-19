@@ -210,9 +210,6 @@ $Project "Client (Portal)"
 			$File	"portal\tf_hud_annotationspanel.cpp"
 			$File	"portal\tf_hud_annotationspanel.h"
 			
-			$File	"econ\econ_controls.cpp"
-			$File	"econ\econ_controls.h"
-			
 			$File	"$SRCDIR\game\shared\portal\physicsshadowclone.cpp"
 			$File	"$SRCDIR\game\shared\portal\physicsshadowclone.h"
 			$File	"$SRCDIR\game\shared\portal\PhysicsCloneArea.cpp"

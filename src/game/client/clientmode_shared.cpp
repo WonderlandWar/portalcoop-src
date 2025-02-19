@@ -37,6 +37,7 @@
 #include "hud_vote.h"
 #include "ienginevgui.h"
 #include "sourcevr/isourcevirtualreality.h"
+#include "clienteffectprecachesystem.h"
 #if defined( _X360 )
 #include "xbox/xbox_console.h"
 #endif
@@ -89,6 +90,11 @@ extern ConVar cl_enable_text_chat;
 
 extern bool IsInCommentaryMode( void );
 extern const char* GetWearLocalizationString( float flWear );
+
+CLIENTEFFECT_REGISTER_BEGIN( PrecachePostProcessingEffectsGlow )
+CLIENTEFFECT_MATERIAL( "dev/glow_color" )
+CLIENTEFFECT_MATERIAL( "dev/halo_add_to_screen" )
+CLIENTEFFECT_REGISTER_END_CONDITIONAL( engine->GetDXSupportLevel() >= 90 )
 
 CON_COMMAND( cl_reload_localization_files, "Reloads all localization files" )
 {
@@ -803,6 +809,8 @@ int ClientModeShared::HudElementKeyInput( int down, ButtonCode_t keynum, const c
 //-----------------------------------------------------------------------------
 bool ClientModeShared::DoPostScreenSpaceEffects( const CViewSetup *pSetup )
 {
+	g_GlowObjectManager.RenderGlowEffects( pSetup, 0 );
+
 #if defined( REPLAY_ENABLED )
 	if ( engine->IsPlayingDemo() )
 	{

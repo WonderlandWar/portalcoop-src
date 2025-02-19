@@ -41,6 +41,9 @@
 #include "physics_collisionevent.h"
 #include "gamestats.h"
 #include "vehicle_base.h"
+#ifdef PORTAL
+#include "portal_player.h"
+#endif
 
 #ifdef TF_DLL
 #include "nav_mesh/tf_nav_mesh.h"
@@ -176,6 +179,9 @@ float GetBreakableDamage( const CTakeDamageInfo &inputInfo, IBreakableWithPropDa
 //=============================================================================================================
 // BASE PROP
 //=============================================================================================================
+
+IMPLEMENT_SERVERCLASS_ST( CBaseProp, DT_BaseProp)
+END_SEND_TABLE()
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -734,6 +740,10 @@ static ConCommand prop_debug("prop_debug", CC_Prop_Debug, "Toggle prop debug mod
 // BREAKABLE PROPS
 //=============================================================================================================
 IMPLEMENT_SERVERCLASS_ST(CBreakableProp, DT_BreakableProp)
+
+	SendPropBool( SENDINFO( m_bHasPreferredCarryAngles ) ),
+	SendPropQAngles( SENDINFO( m_preferredCarryAngles ) ),
+
 END_SEND_TABLE()
 
 BEGIN_DATADESC( CBreakableProp )
@@ -805,6 +815,8 @@ BEGIN_DATADESC( CBreakableProp )
 	// Damage
 	DEFINE_FIELD( m_hLastAttacker, FIELD_EHANDLE ),
 	DEFINE_FIELD( m_hFlareEnt,	FIELD_EHANDLE ),
+
+	DEFINE_FIELD( m_bHasPreferredCarryAngles, FIELD_BOOLEAN ),
 
 END_DATADESC()
 
@@ -2404,7 +2416,7 @@ void COrnamentProp::InputDetach( inputdata_t &inputdata )
 //=============================================================================
 LINK_ENTITY_TO_CLASS( physics_prop, CPhysicsProp );
 LINK_ENTITY_TO_CLASS( prop_physics, CPhysicsProp );	
-LINK_ENTITY_TO_CLASS( prop_physics_override, CPhysicsProp );	
+LINK_ENTITY_TO_CLASS( prop_physics_override, CPhysicsPropOverride );	
 
 BEGIN_DATADESC( CPhysicsProp )
 
@@ -2441,6 +2453,10 @@ BEGIN_DATADESC( CPhysicsProp )
 END_DATADESC()
 
 IMPLEMENT_SERVERCLASS_ST( CPhysicsProp, DT_PhysicsProp )
+	SendPropBool( SENDINFO( m_bAwake ) ),
+END_SEND_TABLE()
+
+IMPLEMENT_SERVERCLASS_ST( CPhysicsPropOverride, DT_PhysicsPropOverride )
 	SendPropBool( SENDINFO( m_bAwake ) ),
 END_SEND_TABLE()
 
@@ -2902,6 +2918,15 @@ void CPhysicsProp::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE 
 		}
 
 		pPlayer->PickupObject( this );
+		
+#ifdef PORTAL
+		CPortal_Player *pPortalPlayer = (CPortal_Player*)pPlayer;
+		if (pPortalPlayer)
+		{
+			pPortalPlayer->SetLookingForUseEntity(false);
+			pPortalPlayer->SetLookForUseEntity(false);
+		}
+#endif
 	}
 }
 
@@ -5707,6 +5732,7 @@ END_SEND_TABLE()
 class CPhysicsPropRespawnable : public CPhysicsProp
 {
 	DECLARE_CLASS( CPhysicsPropRespawnable, CPhysicsProp );
+	DECLARE_SERVERCLASS();
 	DECLARE_DATADESC();
 
 public:
@@ -5728,6 +5754,10 @@ private:
 
 	float m_flRespawnTime;
 };
+
+IMPLEMENT_SERVERCLASS_ST(CPhysicsPropRespawnable, DT_PhysicsPropRespawnable)
+	SendPropBool(SENDINFO(m_bAwake)),
+END_SEND_TABLE()
 
 LINK_ENTITY_TO_CLASS( prop_physics_respawnable, CPhysicsPropRespawnable );
 

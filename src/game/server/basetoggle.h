@@ -15,6 +15,7 @@
 class CBaseToggle : public CBaseEntity
 {
 	DECLARE_CLASS( CBaseToggle, CBaseEntity );
+	DECLARE_SERVERCLASS();
 public:
 	CBaseToggle();
 
@@ -36,10 +37,12 @@ public:
 
 	float				m_flHeight;
 	EHANDLE				m_hActivator;
-	Vector				m_vecFinalDest;
+	CNetworkVector(	m_vecFinalDest );
 	QAngle				m_vecFinalAngle;
-
-	int					m_movementType;
+	
+	CNetworkVar( int, m_movementType );
+	
+	CNetworkVar( float, m_flMoveTargetTime ); //absolute time, not local time
 
 	DECLARE_DATADESC();
 
@@ -52,6 +55,8 @@ public:
 	void AngularMoveDone( void );
 	bool IsLockedByMaster( void );
 	virtual void MoveDone( void );
+	
+	virtual void GetGroundVelocityToApply( Vector &vecGroundVel );
 
 	static float AxisValue( int flags, const QAngle &angles );
 	void AxisDir( void );

@@ -16,6 +16,7 @@
 #include "view.h"
 #include "view_scene.h"
 #include "beamdraw.h"
+#include "hl2_shareddefs.h"
 
 // Precache our effects
 CLIENTEFFECT_REGISTER_BEGIN( PrecacheEffectCombineBall )
@@ -34,6 +35,8 @@ IMPLEMENT_CLIENTCLASS_DT( C_PropCombineBall, DT_PropCombineBall, CPropCombineBal
 	RecvPropBool( RECVINFO( m_bHeld ) ),
 	RecvPropBool( RECVINFO( m_bLaunched ) ),
 END_RECV_TABLE()
+
+LINK_ENTITY_TO_CLASS(prop_combine_ball, C_PropCombineBall)
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -337,4 +340,47 @@ void CombineBallExplosionCallback( const CEffectData &data )
 	FX_ElectricSpark( data.m_vOrigin, 4, 1, &normal );
 }
 
+
 DECLARE_CLIENT_EFFECT( "cball_explode", CombineBallExplosionCallback );
+
+//-----------------------------------------------------------------------------
+// Purpose: Determines whether a physics object is a combine ball or not
+// Input  : *pObj - Object to test
+// Output : Returns true on success, false on failure.
+// Notes  : This function cannot identify a combine ball that is held by
+//			the physcannon because any object held by the physcannon is
+//			COLLISIONGROUP_DEBRIS.
+//-----------------------------------------------------------------------------
+bool UTIL_IsCombineBall( CBaseEntity *pEntity )
+{
+	// Must be the correct collision group
+	if ( pEntity->GetCollisionGroup() != HL2COLLISION_GROUP_COMBINE_BALL )
+		return false;
+
+	//NOTENOTE: This allows ANY combine ball to pass the test
+
+	/*
+	CPropCombineBall *pBall = dynamic_cast<CPropCombineBall *>(pEntity);
+
+	if ( pBall && pBall->WasWeaponLaunched() )
+		return false;
+	*/
+
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Uses a deeper casting check to determine if pEntity is a combine
+//			ball. This function exists because the normal (much faster) check
+//			in UTIL_IsCombineBall() can never identify a combine ball held by
+//			the physcannon because the physcannon changes the held entity's
+//			collision group.
+// Input  : *pEntity - Entity to check 
+// Output : Returns true on success, false on failure.
+//-----------------------------------------------------------------------------
+bool UTIL_IsCombineBallDefinite( CBaseEntity *pEntity )
+{
+	C_PropCombineBall *pBall = dynamic_cast<C_PropCombineBall *>(pEntity);
+
+	return pBall != NULL;
+}

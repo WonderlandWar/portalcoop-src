@@ -24,6 +24,20 @@ IMPLEMENT_CLIENTCLASS_DT(C_PhysicsProp, DT_PhysicsProp, CPhysicsProp)
 	RecvPropBool( RECVINFO( m_bAwake ) ),
 END_RECV_TABLE()
 
+IMPLEMENT_CLIENTCLASS_DT(C_PhysicsPropRespawnable, DT_PhysicsPropRespawnable, CPhysicsPropRespawnable)
+	RecvPropBool( RECVINFO( m_bAwake ) ),
+END_RECV_TABLE()
+
+IMPLEMENT_CLIENTCLASS_DT(C_PhysicsPropOverride, DT_PhysicsPropOverride, CPhysicsPropOverride)
+	RecvPropBool( RECVINFO( m_bAwake ) ),
+END_RECV_TABLE()
+
+#if 1
+LINK_ENTITY_TO_CLASS(prop_physics, C_PhysicsProp)
+LINK_ENTITY_TO_CLASS(prop_physics_respawnable, C_PhysicsPropRespawnable)
+LINK_ENTITY_TO_CLASS(prop_physics_override, C_PhysicsPropOverride)
+#endif
+
 ConVar r_PhysPropStaticLighting( "r_PhysPropStaticLighting", "1" );
 
 
@@ -92,4 +106,66 @@ bool C_PhysicsProp::OnInternalDrawModel( ClientModelRenderInfo_t *pInfo )
 	m_bAwakeLastTime = m_bAwake;
 
 	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Get the specified key's angles for this prop from the QC's physgun_interactions
+//-----------------------------------------------------------------------------
+bool C_PhysicsProp::GetPropDataAngles( const char *pKeyName, QAngle &vecAngles )
+{
+	KeyValues *modelKeyValues = new KeyValues("");
+	if ( modelKeyValues->LoadFromBuffer( modelinfo->GetModelName( GetModel() ), modelinfo->GetModelKeyValueText( GetModel() ) ) )
+	{
+		KeyValues *pkvPropData = modelKeyValues->FindKey( "physgun_interactions" );
+		if ( pkvPropData )
+		{
+			char const *pszBase = pkvPropData->GetString( pKeyName );
+			if ( pszBase && pszBase[0] )
+			{
+				UTIL_StringToVector( vecAngles.Base(), pszBase );
+				modelKeyValues->deleteThis();
+				return true;
+			}
+		}
+	}
+
+	modelKeyValues->deleteThis();
+	return false;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+float C_PhysicsProp::GetCarryDistanceOffset( void )
+{
+	KeyValues *modelKeyValues = new KeyValues("");
+	if ( modelKeyValues->LoadFromBuffer( modelinfo->GetModelName( GetModel() ), modelinfo->GetModelKeyValueText( GetModel() ) ) )
+	{
+		KeyValues *pkvPropData = modelKeyValues->FindKey( "physgun_interactions" );
+		if ( pkvPropData )
+		{
+			float flDistance = pkvPropData->GetFloat( "carry_distance_offset", 0 );
+			modelKeyValues->deleteThis();
+			return flDistance;
+		}
+	}
+
+	modelKeyValues->deleteThis();
+	return 0;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : *pActivator - 
+//			*pCaller - 
+//			useType - 
+//			value - 
+//-----------------------------------------------------------------------------
+void C_PhysicsProp::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
+{
+	CBasePlayer *pPlayer = ToBasePlayer( pActivator );
+	if ( pPlayer )
+	{
+		pPlayer->PickupObject( this );
+	}
 }

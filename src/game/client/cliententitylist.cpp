@@ -14,7 +14,10 @@
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
-
+#include "cliententitylist.h"
+#ifdef PORTAL
+#include "PortalSimulation.h"
+#endif
 //-----------------------------------------------------------------------------
 // Globals
 //-----------------------------------------------------------------------------
@@ -131,6 +134,16 @@ int CClientEntityList::GetMaxEntities( void )
 	return m_iMaxServerEnts;
 }
 
+void IClientEntityListener::OnEntityDeleted(CBaseEntity *pEntity)
+{
+#ifdef PORTAL //make sure entities are in the primary physics environment for the portal mod, this code should be safe even if the entity is in neither extra environment
+	CPortalSimulator::Pre_UTIL_Remove(pEntity);
+#endif
+
+#ifdef PORTAL //make sure entities are in the primary physics environment for the portal mod, this code should be safe even if the entity is in neither extra environment
+	CPortalSimulator::Post_UTIL_Remove(pEntity);
+#endif
+}
 
 //-----------------------------------------------------------------------------
 // Convenience methods to convert between entindex + ClientEntityHandle_t

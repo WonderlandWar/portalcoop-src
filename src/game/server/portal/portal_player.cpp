@@ -335,7 +335,6 @@ DEFINE_SOUNDPATCH(m_pWooshSound),
 	DEFINE_FIELD(m_qPrePortalledViewAngles, FIELD_VECTOR),
 	DEFINE_FIELD(m_bFixEyeAnglesFromPortalling, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_matLastPortalled, FIELD_VMATRIX_WORLDSPACE),
-	DEFINE_FIELD(m_vWorldSpaceCenterHolder, FIELD_POSITION_VECTOR),
 	DEFINE_FIELD(m_hSurroundingLiquidPortal, FIELD_EHANDLE),
 	DEFINE_FIELD(m_flLastPingTime, FIELD_FLOAT),
 	DEFINE_FIELD(m_iCustomPortalColorSet, FIELD_INTEGER),
@@ -2036,13 +2035,6 @@ bool CPortal_Player::BumpWeapon(CBaseCombatWeapon* pWeapon)
 void CPortal_Player::ShutdownUseEntity(void)
 {
 	ShutdownPickupController(m_hUseEntity);
-}
-
-const Vector& CPortal_Player::WorldSpaceCenter() const
-{
-	m_vWorldSpaceCenterHolder = GetAbsOrigin();
-	m_vWorldSpaceCenterHolder.z += ((IsDucked()) ? (VEC_DUCK_HULL_MAX.z) : (VEC_HULL_MAX.z)) * 0.5f;
-	return m_vWorldSpaceCenterHolder;
 }
 
 void CPortal_Player::Teleport( const Vector* newPosition, const QAngle* newAngles, const Vector* newVelocity )

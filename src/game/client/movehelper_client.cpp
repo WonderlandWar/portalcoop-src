@@ -151,12 +151,16 @@ void CMoveHelperClient::ProcessImpacts( void )
 {
 	if ( !cl_movehelper_process.GetBool() )
 		return;
+	
+	C_BasePlayer *pPlayer = C_BasePlayer::GetLocalPlayer();
+	if ( !pPlayer )
+		return;
 
 	// Relink in order to build absorigin and absmin/max to reflect any changes
 	//  from prediction.  Relink will early out on SOLID_NOT
 
 	// TODO: Touch triggers on the client
-	//pPlayer->PhysicsTouchTriggers();
+	pPlayer->PhysicsTouchTriggers();
 
 	// Don't bother if the player ain't solid
 	if ( m_pHost->IsSolidFlagSet( FSOLID_NOT_SOLID ) )

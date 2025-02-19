@@ -7,6 +7,18 @@
     <Filter Include="game_controls Header Files">
       <UniqueIdentifier>{075E9BD6-7A3F-540B-08F1-EC3FC8A83147}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GameUI">
+      <UniqueIdentifier>{583B3367-E894-4157-B2E8-E93444225EF2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameUI\Controls">
+      <UniqueIdentifier>{6A69BD2B-10B4-5B7F-15A6-3F74C7C40312}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameUI\Dialogs">
+      <UniqueIdentifier>{F2117D50-3323-CE0E-DC35-891D7B8682DC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GameUI\Options Dialog">
+      <UniqueIdentifier>{CDA49A75-6E04-8D06-403B-5652269F5673}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{922C6F41-C460-59B1-3A59-D4FA6DDC9C37}</UniqueIdentifier>
     </Filter>
@@ -64,6 +76,12 @@
       <Filter>Link Libraries</Filter>
     </Library>
     <Library Include="..\..\lib\public\x64\dmxloader.lib">
+      <Filter>Link Libraries</Filter>
+    </Library>
+    <Library Include="..\..\lib\common\x64\2015\release\libjpeg.lib">
+      <Filter>Link Libraries</Filter>
+    </Library>
+    <Library Include="..\..\lib\public\x64\libpng.lib">
       <Filter>Link Libraries</Filter>
     </Library>
     <Library Include="..\..\thirdparty\protobuf-2.6.1\bin\win64\2015\staticcrt\release\libprotobuf.lib">
@@ -488,6 +506,114 @@
     <ClInclude Include="game_controls\vguitextwindow.h">
       <Filter>game_controls Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\gameui\BonusMapsDatabase.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\EngineInterface.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\GameUI.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\GameUIPanel.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\GameUI\IGameUI.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\imageutils.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\ModInfo.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\MouseMessageForwardingPanel.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\PanelListPanel.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\GameUI\scriptobject.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\Sys_Utils.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\TGAImagePanel.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\vcontrolslistpanel.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\VGuiSystemModuleLoader.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\BitmapImagePanel.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\CommandCheckButton.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\CvarNegateCheckButton.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\GameUI\cvarslider.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\CvarTextEntry.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\CvarToggleCheckButton.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\HapticControlBox.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\KeyToggleCheckButton.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\LabeledCommandComboBox.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\URLButton.h">
+      <Filter>GameUI\Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\BonusMapsDialog.h">
+      <Filter>GameUI\Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\MultiplayerAdvancedDialog.h">
+      <Filter>GameUI\Dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsDialog.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubAudio.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubDifficulty.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubGame.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubKeyboard.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubMouse.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubMultiplayer.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubPortal.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubVideo.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubVoice.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
     <ClInclude Include="animationlayer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -630,6 +756,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="c_tracer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="c_triggers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="c_user_message_register.h">
@@ -1778,6 +1907,9 @@
     <ClInclude Include="..\shared\baseprojectile.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="c_basetoggle.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="c_point_worldtext.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -1803,6 +1935,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="clientsteamcontext.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="clienttouch.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="commentary_modelviewer.h">
@@ -1926,9 +2061,6 @@
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
     <ClInclude Include="portal\clientmode_portal.h">
-      <Filter>Source Files\Portal</Filter>
-    </ClInclude>
-    <ClInclude Include="econ\econ_controls.h">
       <Filter>Source Files\Portal</Filter>
     </ClInclude>
     <ClInclude Include="..\shared\portal\env_lightrail_endpoint_shared.h">
@@ -2056,6 +2188,102 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup >
+    <ClCompile Include="..\shared\gameui\BonusMapsDatabase.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\imageutils.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\ModInfo.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\MouseMessageForwardingPanel.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\PanelListPanel.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\GameUI\scriptobject.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\Sys_Utils.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\TGAImagePanel.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\vcontrolslistpanel.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\VGuiSystemModuleLoader.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\BitmapImagePanel.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\CommandCheckButton.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\CvarNegateCheckButton.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\common\GameUI\cvarslider.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\CvarTextEntry.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\CvarToggleCheckButton.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\HapticControlBox.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\KeyToggleCheckButton.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\LabeledCommandComboBox.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\URLButton.cpp">
+      <Filter>GameUI\Controls</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\BonusMapsDialog.cpp">
+      <Filter>GameUI\Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\MultiplayerAdvancedDialog.cpp">
+      <Filter>GameUI\Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsDialog.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubAudio.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubDifficulty.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubGame.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubKeyboard.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubMouse.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubMultiplayer.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubPortal.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubVideo.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubVoice.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
     <ClCompile Include="mp3player.cpp">
       <Filter>MP3</Filter>
     </ClCompile>
@@ -2183,6 +2411,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="c_baseplayer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="c_basetoggle.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="c_baseviewmodel.cpp">
@@ -2353,6 +2584,9 @@
     <ClCompile Include="c_test_proxytoggle.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="c_triggers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="c_user_message_register.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -2432,6 +2666,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="clientsteamcontext.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="clienttouch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\collisionproperty.cpp">
@@ -3407,9 +3644,6 @@
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
     <ClCompile Include="portal\clientmode_portal.cpp">
-      <Filter>Source Files\Portal</Filter>
-    </ClCompile>
-    <ClCompile Include="econ\econ_controls.cpp">
       <Filter>Source Files\Portal</Filter>
     </ClCompile>
     <ClCompile Include="portal\fx_portal.cpp">

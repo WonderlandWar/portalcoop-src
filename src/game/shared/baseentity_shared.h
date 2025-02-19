@@ -11,6 +11,30 @@
 #pragma once
 #endif
 
+#ifdef PORTAL
+enum PINGICON
+{
+	PING_ICON_DEFAULT,
+	PING_ICON_DOOR,
+	PING_ICON_BOX,
+	PING_ICON_SPHERE,
+	PING_ICON_FLOORBUTTON,
+	PING_ICON_SWITCH,
+	PING_ICON_ENERGYBALL_LAUNCHER,
+	PING_ICON_ENERGYBALL_CATCHER,
+
+	// Extra, probably will go unused
+	PING_ICON_PISTON_VERTICAL,
+	PING_ICON_PISTON_HORIZONTAL,
+
+	//Hard Coded
+	PING_ICON_PORTAL,
+	PING_ICON_TURRET,
+	PING_ICON_GLADOS_CORE,
+
+};
+#endif
+
 extern ConVar hl2_episodic;
 
 // Simple shared header file for common base entities

@@ -120,7 +120,7 @@ void C_SceneEntity::ResetActorFlexesForScene()
 		}
 
 		// Reset the prediction interpolation values.
-		pFlexActor->m_iv_flexWeight.Reset();
+		pFlexActor->m_iv_flexWeight.Reset( gpGlobals->curtime );
 	}
 }
 

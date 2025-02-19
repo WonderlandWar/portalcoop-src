@@ -300,7 +300,7 @@ class IClientEntityListener
 public:
 	virtual void OnEntityCreated( C_BaseEntity *pEntity ) {};
 	//virtual void OnEntitySpawned( C_BaseEntity *pEntity ) {};
-	virtual void OnEntityDeleted( C_BaseEntity *pEntity ) {};
+	virtual void OnEntityDeleted( C_BaseEntity *pEntity );
 };
 
 

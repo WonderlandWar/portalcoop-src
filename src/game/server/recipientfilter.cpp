@@ -233,16 +233,7 @@ void CRecipientFilter::RemovePlayersFromBitMask( CBitVec< ABSOLUTE_PLAYER_LIMIT 
 
 void CRecipientFilter::AddRecipientsByPVS( const Vector& origin )
 {
-	if ( gpGlobals->maxClients == 1 )
-	{
-		AddAllPlayers();
-	}
-	else
-	{
-		CBitVec< ABSOLUTE_PLAYER_LIMIT > playerbits;
-		engine->Message_DetermineMulticastRecipients( false, origin, playerbits );
-		AddPlayersFromBitMask( playerbits );
-	}
+	AddAllPlayers();
 }
 
 void CRecipientFilter::RemoveRecipientsByPVS( const Vector& origin )
@@ -263,16 +254,7 @@ void CRecipientFilter::RemoveRecipientsByPVS( const Vector& origin )
 
 void CRecipientFilter::AddRecipientsByPAS( const Vector& origin )
 {
-	if ( gpGlobals->maxClients == 1 )
-	{
-		AddAllPlayers();
-	}
-	else
-	{
-		CBitVec< ABSOLUTE_PLAYER_LIMIT > playerbits;
-		engine->Message_DetermineMulticastRecipients( true, origin, playerbits );
-		AddPlayersFromBitMask( playerbits );
-	}
+	AddAllPlayers();
 }
 
 bool CRecipientFilter::IsInitMessage( void ) const
@@ -366,6 +348,7 @@ CTeamRecipientFilter::CTeamRecipientFilter( int team, bool isReliable )
 //-----------------------------------------------------------------------------
 void CPASAttenuationFilter::Filter( const Vector& origin, float attenuation /*= ATTN_NORM*/ )
 {
+	/*
 	// Don't crop for attenuation in single player
 	if ( gpGlobals->maxClients == 1 )
 		return;
@@ -412,4 +395,5 @@ void CPASAttenuationFilter::Filter( const Vector& origin, float attenuation /*= 
 
 		RemoveRecipient( player );
 	}
+	*/
 }

@@ -45,10 +45,13 @@ public:
 	virtual void		ExitLadder();
 	bool				IsSprinting() const { return m_fIsSprinting; }
 	
+	virtual void		ForceDropOfCarriedPhysObjects( CBaseEntity *pOnlyIfHoldindThis );
+	
 	// Input handling
 	virtual bool	CreateMove( float flInputSampleTime, CUserCmd *pCmd );
 	void			PerformClientSideObstacleAvoidance( float flFrameTime, CUserCmd *pCmd );
 	void			PerformClientSideNPCSpeedModifiers( float flFrameTime, CUserCmd *pCmd );
+	virtual void			PlayUseDenySound() { m_bPlayUseDenySound = true; }
 
 	bool				IsWeaponLowered( void ) { return m_HL2Local.m_bWeaponLowered; }
 
@@ -61,6 +64,9 @@ public:
 	EHANDLE				m_hClosestNPC;
 	float				m_flSpeedModTime;
 	bool				m_fIsSprinting;
+	
+protected:
+	bool				m_bPlayUseDenySound;		// Signaled by PlayerUse, but can be unset by HL2 ladder code...
 
 private:
 	C_BaseHLPlayer( const C_BaseHLPlayer & ); // not defined, not accessible
@@ -72,7 +78,6 @@ private:
 	float				m_flZoomRate;
 	float				m_flZoomStartTime;
 
-	bool				m_bPlayUseDenySound;		// Signaled by PlayerUse, but can be unset by HL2 ladder code...
 	float				m_flSpeedMod;
 	float				m_flExitSpeedMod;
 

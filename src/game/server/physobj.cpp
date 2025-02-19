@@ -1235,6 +1235,7 @@ void CPhysImpact::InputImpact( inputdata_t &inputdata )
 class CSimplePhysicsBrush : public CBaseEntity
 {
 	DECLARE_CLASS( CSimplePhysicsBrush, CBaseEntity );
+	DECLARE_SERVERCLASS()
 public:
 	void Spawn()
 	{
@@ -1244,12 +1245,15 @@ public:
 		m_takedamage = DAMAGE_EVENTS_ONLY;
 	}
 };
+IMPLEMENT_SERVERCLASS_ST( CSimplePhysicsBrush, DT_SimplePhysicsBrush )
+END_SEND_TABLE()
 
 LINK_ENTITY_TO_CLASS( simple_physics_brush, CSimplePhysicsBrush );
 
 class CSimplePhysicsProp : public CBaseProp
 {
 	DECLARE_CLASS( CSimplePhysicsProp, CBaseProp );
+	DECLARE_SERVERCLASS()
 
 public:
 	void Spawn()
@@ -1281,6 +1285,9 @@ public:
 		}
 	}
 };
+
+IMPLEMENT_SERVERCLASS_ST( CSimplePhysicsProp, DT_SimplePhysicsProp )
+END_SEND_TABLE()
 
 LINK_ENTITY_TO_CLASS( simple_physics_prop, CSimplePhysicsProp );
 

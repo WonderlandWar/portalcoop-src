@@ -100,12 +100,6 @@ void C_BaseViewModel::FormatViewModelAttachment( int nAttachment, matrix3x4_t &a
 	PositionMatrix( vecOrigin, attachmentToWorld );
 }
 
-
-bool C_BaseViewModel::IsViewModel() const
-{
-	return true;
-}
-
 void C_BaseViewModel::UncorrectViewModelAttachment( Vector &vOrigin )
 {
 	// Unformat the attachment.

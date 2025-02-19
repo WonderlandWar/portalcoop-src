@@ -1,6 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup >
+    <Filter Include="GameUI">
+      <UniqueIdentifier>{583B3367-E894-4157-B2E8-E93444225EF2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{922C6F41-C460-59B1-3A59-D4FA6DDC9C37}</UniqueIdentifier>
     </Filter>
@@ -77,6 +80,9 @@
     </Library>
   </ItemGroup>
   <ItemGroup >
+    <ClInclude Include="..\shared\gameui\BonusMapsDatabase.h">
+      <Filter>GameUI</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\public\mathlib\amd3dx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1013,6 +1019,9 @@
     <ClInclude Include="..\..\public\collisionutils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="CommentarySystem.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="CRagdollMagnet.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -1140,6 +1149,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="game.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="game_player_manager.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="gameinterface.h">
@@ -1326,9 +1338,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="player_command.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="player_pickup.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\shared\player_pickup.h">
@@ -1909,6 +1918,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup >
+    <ClCompile Include="..\shared\gameui\BonusMapsDatabase.cpp">
+      <Filter>GameUI</Filter>
+    </ClCompile>
     <ClCompile Include="gamedll_replay.cpp">
       <Filter>Replay</Filter>
     </ClCompile>
@@ -2431,6 +2443,9 @@
     <ClCompile Include="game.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="game_player_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="game_ui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -2699,9 +2714,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="player_lagcompensation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="player_pickup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\player_pickup.cpp">

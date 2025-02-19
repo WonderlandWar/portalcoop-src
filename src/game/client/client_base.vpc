@@ -175,7 +175,99 @@ $Project
 			$File	"$SRCDIR\public\movieobjects\timeutils.h"
 		}
 	}
+	
+	//Have to create copies of EVERY option panel INCLUDING other GameUI code just to get a new
+	//options menu so I can then fix the playermodel selector, thanks Valve for supporting perfectionists!
+	$Folder	"GameUI"
+	{
+		$File	"gameui\EngineInterface.h"
+		$File	"gameui\ModInfo.cpp"	
+		$File	"gameui\ModInfo.h"
+		$File	"gameui\GameUIPanel.h"
+		$File	"gameui\GameUI.h"
+		$File	"gameui\VGuiSystemModuleLoader.cpp"
+		$File	"gameui\VGuiSystemModuleLoader.h"
+		$File	"gameui\vcontrolslistpanel.cpp"
+		$File	"gameui\vcontrolslistpanel.h"
+		$File	"gameui\Sys_Utils.cpp"
+		$File	"gameui\Sys_Utils.h"
+		$File	"$SRCDIR\common\GameUI\scriptobject.cpp"
+		$File	"$SRCDIR\common\GameUI\scriptobject.h"
+		$File	"gameui\PanelListPanel.cpp"
+		$File	"gameui\PanelListPanel.h"
+		$File	"$SRCDIR\common\GameUI\IGameUI.h"
+		$File	"gameui/TGAImagePanel.cpp"
+		$File	"gameui/TGAImagePanel.h"
+		$File	"gameui/MouseMessageForwardingPanel.cpp"
+		$File	"gameui/MouseMessageForwardingPanel.h"
 		
+		$File	"$SRCDIR\common\imageutils.cpp"
+		$File	"$SRCDIR\common\imageutils.h"
+		
+		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.cpp"
+		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.h"
+		
+
+		$Folder	"Controls"
+		{
+			$File	"gameui\BitmapImagePanel.cpp"
+			$File	"gameui\BitmapImagePanel.h"
+			$File	"$SRCDIR\common\GameUI\cvarslider.cpp"
+			$File	"$SRCDIR\common\GameUI\cvarslider.h"
+			$File	"gameui\CvarTextEntry.cpp"
+			$File	"gameui\CvarTextEntry.h"
+			$File	"gameui\CommandCheckButton.cpp"
+			$File	"gameui\CommandCheckButton.h"
+			$File	"gameui\CvarNegateCheckButton.cpp"
+			$File	"gameui\CvarNegateCheckButton.h"
+			$File	"gameui\KeyToggleCheckButton.cpp"
+			$File	"gameui\KeyToggleCheckButton.h"
+			$File	"gameui\CvarToggleCheckButton.cpp"
+			$File	"gameui\CvarToggleCheckButton.h"
+			$File	"gameui\LabeledCommandComboBox.cpp"
+			$File	"gameui\LabeledCommandComboBox.h"
+			$File	"gameui\HapticControlBox.cpp"
+			$File	"gameui\HapticControlBox.h"
+			$File	"gameui\URLButton.cpp"
+			$File	"gameui\URLButton.h"
+		}
+		
+		$Folder "Dialogs"
+		{
+			$File	"gameui\MultiplayerAdvancedDialog.cpp"
+			$File	"gameui\MultiplayerAdvancedDialog.h"
+					
+			$File	"gameui/BonusMapsDialog.cpp"
+			$File	"gameui/BonusMapsDialog.h"
+		}
+		
+		$Folder	"Options Dialog"
+		{
+			$File	"gameui\OptionsDialog.cpp"
+			$File	"gameui\OptionsDialog.h"
+			$File	"gameui\OptionsSubAudio.cpp"
+			$File	"gameui\OptionsSubAudio.h"
+			$File	"gameui\OptionsSubDifficulty.cpp"
+			$File	"gameui\OptionsSubDifficulty.h"
+			$File	"gameui\OptionsSubGame.cpp"
+			$File	"gameui\OptionsSubGame.h"
+			$File	"gameui\OptionsSubHaptics.cpp"	[$WIN32]
+			$File	"gameui\OptionsSubHaptics.h"	[$WIN32]
+			$File	"gameui\OptionsSubKeyboard.cpp"
+			$File	"gameui\OptionsSubKeyboard.h"
+			$File	"gameui\OptionsSubMouse.cpp"
+			$File	"gameui\OptionsSubMouse.h"
+			$File	"gameui\OptionsSubMultiplayer.cpp"
+			$File	"gameui\OptionsSubMultiplayer.h"
+			$File	"gameui\OptionsSubPortal.cpp"
+			$File	"gameui\OptionsSubPortal.h"
+			$File	"gameui\OptionsSubVideo.cpp"
+			$File	"gameui\OptionsSubVideo.h"
+			$File	"gameui\OptionsSubVoice.cpp"
+			$File	"gameui\OptionsSubVoice.h"
+		}		
+	}
+
 	$Folder	"Source Files"
 	{
 		$File	"hl2\C_Func_Monitor.cpp"
@@ -228,6 +320,8 @@ $Project
 		$File	"c_baseentity.cpp"
 		$File	"c_baseflex.cpp"
 		$File	"c_baseplayer.cpp"
+		$File	"c_basetoggle.cpp"
+		$File	"c_basetoggle.h"
 		$File	"c_baseviewmodel.cpp"
 		$File	"c_breakableprop.cpp"
 		$File	"c_colorcorrection.cpp"
@@ -285,6 +379,7 @@ $Project
 		$File	"c_team.cpp"
 		$File	"c_tesla.cpp"
 		$File	"c_test_proxytoggle.cpp"
+		$File	"c_triggers.cpp"
 		$File	"c_user_message_register.cpp"
 		$File	"c_vehicle_choreo_generic.cpp"
 		$File	"c_vehicle_jeep.cpp"
@@ -315,6 +410,8 @@ $Project
 		$File	"clientsideeffects_test.cpp"
 		$File	"clientsteamcontext.cpp"
 		$File	"clientsteamcontext.h"
+		$File	"clienttouch.cpp"
+		$File	"clienttouch.h"
 		$File	"colorcorrectionmgr.cpp"
 		$File	"commentary_modelviewer.cpp"
 		$File	"commentary_modelviewer.h"
@@ -735,6 +832,7 @@ $Project
 		$File	"c_team.h"
 		$File	"c_tesla.h"
 		$File	"c_tracer.h"
+		$File	"c_triggers.h"
 		$File	"c_vehicle_jeep.h"
 		$File	"c_user_message_register.h"
 		$File	"c_vguiscreen.h"
@@ -1266,9 +1364,11 @@ $Project
 		$Lib		tier3
 		$Lib		vgui_controls
 		$Lib		vtf
-
+		$Lib  	"$LIBCOMMON/libjpeg"		[!$DEDICATED]
 		$ImpLibexternal steam_api	[!$WIN64]
 		$ImpLibexternal steam_api64	[$WIN64]
+		$Lib libpng [!$VS2015&&!$DEDICATED]
+		$Lib $LIBCOMMON/libpng [$VS2015&&!$DEDICATED]
 		
 		$Libexternal $LIBCOMMON/libcrypto [$OSXALL]
 		$Libexternal "$SRCDIR\lib\common\$CRYPTOPPDIR\libcryptopp" [$LINUXALL&&!$SOURCESDK]

@@ -32,7 +32,7 @@ struct dlight_t;
 class C_DynamicLight;
 class CPhysicsCloneArea;
 
-class C_Prop_Portal : public CPortalRenderable_FlatBasic, public CPortalSimulatorEventCallbacks, public CClientTouchable
+class C_Prop_Portal : public CPortalRenderable_FlatBasic, public CPortalSimulatorEventCallbacks
 {
 public:
 	DECLARE_CLASS( C_Prop_Portal, CPortalRenderable_FlatBasic );
@@ -209,8 +209,6 @@ public:
 	CPhysicsCloneArea		*m_pAttachedCloningArea;
 
 private:
-
-	void HandleClientSidedTouching();
 
 	bool m_bDoRenderThink;
 

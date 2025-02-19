@@ -59,6 +59,9 @@ class CEntityMapData;
 class ConVar;
 class CDmgAccumulator;
 class IHasAttributes;
+class C_GrabController;
+class C_WeaponPhysCannon;
+class C_PhysicsShadowClone;
 
 struct CSoundParameters;
 
@@ -169,6 +172,229 @@ struct thinkfunc_t
 #define ENTCLIENTFLAG_DONTUSEIK					0x0002		// Don't use IK on this entity even if its model has IK.
 #define ENTCLIENTFLAG_ALWAYS_INTERPOLATE		0x0004		// Used by view models.
 
+enum entity_list_ids_t
+{
+	ENTITY_LIST_INTERPOLATE = 0,
+	ENTITY_LIST_TELEPORT,
+	ENTITY_LIST_PRERENDER,
+	ENTITY_LIST_SIMULATE,
+	ENTITY_LIST_DELETE,
+
+	NUM_ENTITY_LISTS
+};
+
+
+template< typename Type >
+class CDiscontinuousInterpolatedVar : public CInterpolatedVar<Type>
+{
+public:
+	explicit CDiscontinuousInterpolatedVar( const char *pDebugName = NULL )
+		: CInterpolatedVar<Type>(pDebugName)
+	{
+
+	}
+
+	// Returns 1 if the value will always be the same if currentTime is always increasing.
+	virtual int Interpolate( float currentTime )
+	{
+		int iRetVal = CInterpolatedVar<Type>::Interpolate(currentTime);
+		if( m_Discontinuities.Count() == 0 )
+		{
+			return iRetVal;
+		}
+
+		ClearOldDiscontinuities();
+
+		float fInterpolatedTime = currentTime - this->m_InterpolationAmount;
+
+		for( int i = m_Discontinuities.Count(); --i >= 0; )
+		{
+			if( m_Discontinuities[i].fBeforeTime < fInterpolatedTime )
+			{
+				break;
+			}
+
+			TransformValue( m_Discontinuities[i].matTransform, *(this->m_pValue) );
+			iRetVal = 0;
+		}
+
+		return iRetVal;
+	}
+
+	virtual void Reset( float flCurrentTime )
+	{
+		CInterpolatedVar<Type>::Reset(flCurrentTime);
+		ClearOldDiscontinuities();
+	}
+
+	//transforms all history prior to fDiscontinuityTime by matTransform (with the assumption that newer entries are in the new space)
+	//base interpolation is applied in the new space, with the inverse of matTransform applied to values interpolated to a time prior to fDiscontinuityTime
+	void InsertDiscontinuity( const matrix3x4_t &matTransform, float fDiscontinuityTime )
+	{
+		ClearOldDiscontinuities();
+
+		TransformBefore( matTransform, fDiscontinuityTime );
+
+		int iInsertAfter;
+		for( iInsertAfter = m_Discontinuities.Count(); --iInsertAfter >= 0; )
+		{
+			if( m_Discontinuities[iInsertAfter].fBeforeTime <= fDiscontinuityTime )
+				break;
+		}
+		if( iInsertAfter < 0 )
+		{
+			iInsertAfter = m_Discontinuities.AddToTail();
+		}
+		else
+		{
+			iInsertAfter = m_Discontinuities.InsertAfter( iInsertAfter );
+		}
+
+		MatrixInvert( matTransform, m_Discontinuities[iInsertAfter].matTransform );
+		m_Discontinuities[iInsertAfter].fBeforeTime = fDiscontinuityTime;
+	}
+
+	bool RemoveDiscontinuity( float fDiscontinuityTime, const matrix3x4_t *pFailureTransform = NULL )
+	{
+		//assume the general case for this is rolling back in time for prediction
+		for( int i = m_Discontinuities.Count(); --i >= 0; )
+		{
+			if( m_Discontinuities[i].fBeforeTime == fDiscontinuityTime )
+			{
+				TransformBefore( m_Discontinuities[i].matTransform, fDiscontinuityTime );
+				m_Discontinuities.Remove( i );
+				return true;
+			}
+		}
+
+		if( pFailureTransform )
+		{
+			TransformBefore( *pFailureTransform, fDiscontinuityTime );
+		}
+		return false;
+	}
+
+	float GetInterpolationAmount( void ) { return this->m_InterpolationAmount; }
+	float GetInterpolatedTime( float fCurTime ) //What's the timestamp on the value we'll use.
+	{
+		float fTargetTime = fCurTime - this->m_InterpolationAmount;
+		float fOldestEntryTime = this->GetOldestEntry();
+		fOldestEntryTime = MIN( fOldestEntryTime, fCurTime ); //pull entries in the future to now
+		return MAX( fTargetTime, fOldestEntryTime );
+	}
+
+	bool HasDiscontinuityForTime( float fCurTime )
+	{
+		if( m_Discontinuities.Count() == 0 )
+			return false;
+
+		float fTargetTime = GetInterpolatedTime( fCurTime );
+
+		return ( fTargetTime < m_Discontinuities[m_Discontinuities.Count()-1].fBeforeTime );
+	}
+
+	bool GetDiscontinuityTransform( float fCurTime, matrix3x4_t &matOut )
+	{		
+		if( m_Discontinuities.Count() == 0 )
+			return false;
+
+		float fTargetTime = GetInterpolatedTime( fCurTime );
+
+		if( fTargetTime >= m_Discontinuities[m_Discontinuities.Count()-1].fBeforeTime )
+			return false;
+
+		//common case is exactly 0 or 1 transforms. 0's handled above. Do a copy of the first transform now and skip it in the iterator below
+		matOut = m_Discontinuities[m_Discontinuities.Count() - 1].matTransform;
+
+		matrix3x4_t matTemp;
+		matrix3x4_t *pSwapMatrices[2] = { &matOut, &matTemp };
+		int iSwapRead = 0; //which of the swap indices has the newest value
+		for( int i = m_Discontinuities.Count() - 1; --i >= 0; )
+		{
+			if( m_Discontinuities[i].fBeforeTime < fTargetTime )
+			{
+				break;
+			}
+
+			ConcatTransforms( m_Discontinuities[i].matTransform, *pSwapMatrices[iSwapRead], *pSwapMatrices[1 - iSwapRead] );
+			iSwapRead = 1 - iSwapRead;
+		}
+
+		if( iSwapRead == 1 ) //matTemp has the most recent value one final copy necessary to output matrix
+			matOut = matTemp;
+
+		return true;			
+	}
+
+protected:
+	struct Discontinuity_t
+	{
+		matrix3x4_t matTransform; //from current space to previous space
+		float fBeforeTime;
+	};
+
+	void ClearOldDiscontinuities( void )
+	{
+		if( m_Discontinuities.Count() == 0 )
+			return;
+
+		float fOldestEntry = this->GetOldestEntry();
+		while( fOldestEntry >= m_Discontinuities[0].fBeforeTime )
+		{
+			m_Discontinuities.Remove( 0 );
+			if( m_Discontinuities.Count() == 0 )
+				break;
+		}
+	}
+
+	void TransformBefore( const matrix3x4_t &matTransform, float fDiscontinuityTime )
+	{
+		int iHead = this->GetHead();
+		if( !this->IsValidIndex( iHead ) )
+			return;
+
+#ifdef _DEBUG
+		float fHeadTime;
+		this->GetHistoryValue( iHead, fHeadTime );
+#endif
+
+		float fTime;
+		Type *pCurrent;
+		int iCurrent;
+
+		iCurrent = iHead;
+
+		while( (pCurrent = this->GetHistoryValue( iCurrent, fTime )) != NULL )
+		{
+			Assert( (fTime <= fHeadTime) || (iCurrent == iHead) ); //asserting that head is always newest
+
+			if( fTime < fDiscontinuityTime )
+				TransformValue( matTransform, *pCurrent );
+
+			iCurrent = this->GetNext( iCurrent );
+			if( iCurrent == iHead )
+				break;
+		}
+	}
+
+	static void TransformValue( const matrix3x4_t &matTransform, Type &Value );
+
+	CUtlVector<Discontinuity_t> m_Discontinuities;	
+};
+
+template<>
+inline void CDiscontinuousInterpolatedVar<Vector>::TransformValue( const matrix3x4_t &matTransform, Vector &Value )
+{
+	Vector vTemp = Value;
+	VectorTransform( vTemp, matTransform, Value );
+}
+
+template<>
+inline void CDiscontinuousInterpolatedVar<QAngle>::TransformValue( const matrix3x4_t &matTransform, QAngle &Value )
+{
+	Value = TransformAnglesToWorldSpace( Value, matTransform );
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: Base client side entity object
 //-----------------------------------------------------------------------------
@@ -212,6 +438,7 @@ public:
 	virtual void					SpawnClientEntity( void );
 	virtual void					Precache( void );
 	virtual void					Activate();
+	virtual void					Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value ) {}
 
 	virtual void					ParseMapData( CEntityMapData *mapData );
 	virtual bool					KeyValue( const char *szKeyName, const char *szValue );
@@ -633,7 +860,7 @@ public:
 // C_BaseEntity local functions
 public:
 
-	void UpdatePartitionListEntry();
+	virtual void UpdatePartitionListEntry();
 
 	// This can be used to setup the entity as a client-only entity. 
 	// Override this to perform per-entity clientside setup
@@ -715,6 +942,9 @@ public:
 	
 	float							GetInterpolationAmount( int flags );
 	float							GetLastChangeTime( int flags );
+	
+	//Get the time we would pass as an input to our interpolators
+	float							GetEffectiveInterpolationCurTime( float currentTime );
 
 	// Interpolate the position for rendering
 	virtual bool					Interpolate( float currentTime );
@@ -799,6 +1029,8 @@ public:
 	// Prediction stuff
 	/////////////////
 	void							CheckInitPredictable( const char *context );
+	void							CheckShutdownPredictable( const char *context );
+	virtual C_BasePlayer			*GetPredictionOwner( void );
 
 	void							AllocateIntermediateData( void );
 	void							DestroyIntermediateData( void );
@@ -816,6 +1048,7 @@ public:
 	void							PreEntityPacketReceived( int commands_acknowledged );
 	void							PostEntityPacketReceived( void );
 	bool							PostNetworkDataReceived( int commands_acknowledged );
+	virtual void					HandlePredictionError( bool bErrorInThisEntity ); //we just processed a network update with errors, bErrorInThisEntity is false if the prediction errors were entirely in other entities and not this one
 	virtual bool					PredictionErrorShouldResetLatchedForAllPredictables( void ) { return true; } //legacy behavior is that any prediction error causes all predictables to reset latched
 	bool							GetPredictionEligible( void ) const;
 	void							SetPredictionEligible( bool canpredict );
@@ -927,6 +1160,7 @@ public:
 	void					PhysicsImpact( C_BaseEntity *other, trace_t &trace );
  	void					PhysicsMarkEntitiesAsTouching( C_BaseEntity *other, trace_t &trace );
 	void					PhysicsMarkEntitiesAsTouchingEventDriven( C_BaseEntity *other, trace_t &trace );
+	void					PhysicsTouchTriggers( const Vector *pPrevAbsOrigin = NULL );
 
 	// Physics helper
 	static void				PhysicsRemoveTouchedList( C_BaseEntity *ent );
@@ -1034,6 +1268,9 @@ public:
 	// Called by physics to see if we should avoid a collision test....
 	virtual bool		ShouldCollide( int collisionGroup, int contentsMask ) const;
 
+	// FIXME: Figure out what to do about this
+	virtual void	GetVelocity(Vector *vVelocity, AngularImpulse *vAngVelocity = NULL);
+
 	// Sets physics parameters
 	void				SetFriction( float flFriction );
 
@@ -1094,6 +1331,7 @@ public:
 	ClientRenderHandle_t	GetRenderHandle() const;
 
 	void				SetRemovalFlag( bool bRemove );
+	bool				HasSpawnFlags( int nFlags ) const;
 
 	// Effects...
 	bool				IsEffectActive( int nEffectMask ) const;
@@ -1240,6 +1478,16 @@ public:
 	int GetCollisionGroup() const;
 	void SetCollisionGroup( int collisionGroup );
 	void							CollisionRulesChanged();
+	
+	//Grab Controller
+	C_GrabController *m_pGrabController;
+	C_GrabController *GetGrabController() { return m_pGrabController; }
+	void SetGrabController(C_GrabController *pGrabController) { m_pGrabController = pGrabController; }
+	
+	//Physgun
+	C_WeaponPhysCannon *m_pPhysgun;
+	C_WeaponPhysCannon *GetPhysgun() { return m_pPhysgun; }
+	void SetPhysgun(C_WeaponPhysCannon *pPhysgun) { m_pPhysgun = pPhysgun; }
 
 	static C_BaseEntity				*Instance( int iEnt );
 	// Doesn't do much, but helps with trace results
@@ -1385,9 +1633,9 @@ public:
 	virtual bool					GetShadowCastDirection( Vector *pDirection, ShadowType_t shadowType ) const;
 	virtual C_BaseEntity 			*GetShadowUseOtherEntity( void ) const;
 	virtual void					SetShadowUseOtherEntity( C_BaseEntity *pEntity );
-
-	CInterpolatedVar< QAngle >& GetRotationInterpolator();
-	CInterpolatedVar< Vector >& GetOriginInterpolator();
+	
+	CDiscontinuousInterpolatedVar< QAngle >& GetRotationInterpolator();
+	CDiscontinuousInterpolatedVar< Vector >& GetOriginInterpolator();
 	virtual bool					AddRagdollToFadeQueue( void ) { return true; }
 
 	// Dirty bits
@@ -1427,6 +1675,8 @@ protected:
 
 	int								m_nSimulationTick;
 
+	int								m_spawnflags;
+
 	// Think contexts
 	int								GetIndexForThinkContext( const char *pszContext );
 	CUtlVector< thinkfunc_t >		m_aThinkFunctions;
@@ -1448,6 +1698,10 @@ public:
 	bool InitializeAsClientEntityByIndex( int iIndex, RenderGroup_t renderGroup );
 
 	void TrackAngRotation( bool bTrack );
+	
+	virtual PINGICON GetPingIcon() { return m_iPingIcon; }
+
+	PINGICON m_iPingIcon;
 
 private:
 	friend void OnRenderStart();
@@ -1612,9 +1866,9 @@ private:
 	QAngle							m_vecOldAngRotation;
 
 	Vector							m_vecOrigin;
-	CInterpolatedVar< Vector >		m_iv_vecOrigin;
+	CDiscontinuousInterpolatedVar< Vector >		m_iv_vecOrigin;
 	QAngle							m_angRotation;
-	CInterpolatedVar< QAngle >		m_iv_angRotation;
+	CDiscontinuousInterpolatedVar< QAngle >		m_iv_angRotation;
 
 	// Specifies the entity-to-world transform
 	matrix3x4_t						m_rgflCoordinateFrame;
@@ -2216,6 +2470,11 @@ inline bool C_BaseEntity::ShouldRecordInTools() const
 #else
 	return true;
 #endif
+}
+
+inline bool C_BaseEntity::HasSpawnFlags( int nFlags ) const
+{ 
+	return (m_spawnflags & nFlags) != 0; 
 }
 
 C_BaseEntity *CreateEntityByName( const char *className );

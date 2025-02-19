@@ -18,6 +18,7 @@
 #include "hintsystem.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
 #include "util_shared.h"
+#include "CommentarySystem.h"
 
 #if defined USES_ECON_ITEMS
 #include "game_item_schema.h"
@@ -161,12 +162,6 @@ enum PlayerPhysFlag_e
 #define DOT_25DEGREE  0.9063077870367
 #define DOT_30DEGREE  0.866025403784
 #define DOT_45DEGREE  0.707106781187
-enum
-{
-	VPHYS_WALK = 0,
-	VPHYS_CROUCH,
-	VPHYS_NOCLIP,
-};
 
 
 enum PlayerConnectedState
@@ -332,13 +327,6 @@ public:
 	virtual void			DamageEffect(float flDamage, int fDamageType);
 
 	virtual void			OnDamagedByExplosion( const CTakeDamageInfo &info );
-
-	void					PauseBonusProgress( bool bPause = true );
-	void					SetBonusProgress( int iBonusProgress );
-	void					SetBonusChallenge( int iBonusChallenge );
-
-	int						GetBonusProgress() const { return m_iBonusProgress; }
-	int						GetBonusChallenge() const { return m_iBonusChallenge; }
 
 	virtual Vector			EyePosition( );			// position of eyes
 	const QAngle			&EyeAngles( );
@@ -553,14 +541,17 @@ public:
 	bool					IsPlayerUnderwater( void ) { return m_bPlayerUnderwater; }
 
 	virtual bool			CanBreatheUnderwater() const { return false; }
-	virtual void			PlayerUse( void );
+	virtual bool			PlayerUse( void );
 	virtual void			PlayUseDenySound() {}
 
 	virtual CBaseEntity		*FindUseEntity( void );
 	virtual bool			IsUseableEntity( CBaseEntity *pEntity, unsigned int requiredCaps );
 	bool					ClearUseEntity();
 	CBaseEntity				*DoubleCheckUseNPC( CBaseEntity *pNPC, const Vector &vecSrc, const Vector &vecDir );
+	
+	CPointCommentaryNode *GetNodeUnderCrosshair();
 
+	CPointCommentaryNode *m_pOldNode;
 
 	// physics interactions
 	// mass/size limit set to zero for none
@@ -918,6 +909,10 @@ public:
 	const CEconWearable		*GetWearable( int i ) const { return m_hMyWearables[i]; }
 	int						GetNumWearables( void ) const { return m_hMyWearables.Count(); }
 #endif
+	
+	// Last received usercmd (in case we drop a lot of packets )
+	CUserCmd				m_LastCmd;
+	CUserCmd				*m_pCurrentCommand;
 
 private:
 
@@ -955,10 +950,6 @@ protected:
 	int						m_iVehicleAnalogBias;
 
 	void					UpdateButtonState( int nUserCmdButtonMask );
-
-	bool	m_bPauseBonusProgress;
-	CNetworkVar( int, m_iBonusProgress );
-	CNetworkVar( int, m_iBonusChallenge );
 
 	int						m_lastDamageAmount;		// Last damage taken
 
@@ -1080,9 +1071,6 @@ protected:
 	typedef CHandle<CBaseViewModel> CBaseViewModelHandle;
 	CNetworkArray( CBaseViewModelHandle, m_hViewModel, MAX_VIEWMODELS );
 
-	// Last received usercmd (in case we drop a lot of packets )
-	CUserCmd				m_LastCmd;
-	CUserCmd				*m_pCurrentCommand;
 	int						m_iLockViewanglesTickNumber;
 	QAngle					m_qangLockViewangles;
 

@@ -1,8 +1,8 @@
 [vpc crc file version 3]
 _.HOST_WIN64.HOST_WINDOWS.SOURCESDK.VS2022.WINDOWS_/vpcgame:portal_
 PROJECT.client.GAME.portal.PLATFORM.win64
-3333b2c8 client_portal.vpc
-70b5347f ..\..\game\client\client_base.vpc
+6b430133 client_portal.vpc
+ce920245 ..\..\game\client\client_base.vpc
 2093e423 ..\..\vpc_scripts\source_dll_base.vpc
 8ef6e028 ..\..\vpc_scripts\platform_dirs.vpc
 a75746b9 ..\..\vpc_scripts\source_base.vpc

@@ -29,6 +29,7 @@ class CSpotlightEnd;
 class CNPC_CScanner : public CNPC_BaseScanner
 {
 	DECLARE_CLASS( CNPC_CScanner, CNPC_BaseScanner );
+	DECLARE_SERVERCLASS();
 
 public:
 	CNPC_CScanner();

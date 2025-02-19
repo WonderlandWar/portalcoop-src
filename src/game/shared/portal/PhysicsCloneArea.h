@@ -29,7 +29,7 @@ class CPortalSimulator;
 #ifdef GAME_DLL
 class CPhysicsCloneArea : public CBaseEntity
 #else
-class CPhysicsCloneArea : public C_BaseEntity, public CClientTouchable	
+class CPhysicsCloneArea : public C_BaseEntity
 #endif
 {
 public:
@@ -41,8 +41,6 @@ public:
 	~CPhysicsCloneArea();
 
 	virtual void ClientThink( void );
-
-	virtual bool TouchCondition( C_BaseEntity *pOther );
 
 #endif
 

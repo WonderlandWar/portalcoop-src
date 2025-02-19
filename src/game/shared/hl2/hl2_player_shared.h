@@ -18,4 +18,8 @@
 #include "hl2_player.h"
 #endif
 
+extern ConVar hl2_walkspeed;
+extern ConVar hl2_normspeed;
+extern ConVar hl2_sprintspeed;
+
 #endif // HL2_PLAYER_SHARED_H

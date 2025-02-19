@@ -8,6 +8,10 @@
 #include "c_playerresource.h"
 #include "c_team.h"
 #include "gamestringpool.h"
+#ifdef PORTAL
+	#include "c_weapon_portalgun.h"
+	#include "c_prop_portal.h"
+#endif
 
 #ifdef HL2MP
 #include "hl2mp_gamerules.h"
@@ -181,6 +185,99 @@ int C_PlayerResource::GetTeam(int iIndex )
 		return m_iTeam[iIndex];
 	}
 }
+
+extern ConVar sv_allow_customized_portal_colors;
+
+#ifdef PORTAL
+const Color C_PlayerResource::GetPortalgunColor(int iIndex)
+{
+	C_Portal_Player *pPlayer = ToPortalPlayer(ClientEntityList().GetEnt(iIndex));
+
+	int iPortalColorSet = 0;
+	Color color = Color(255, 160, 32, 255);
+	
+	if (!pPlayer)
+	{
+		return color;
+	}
+	
+	CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>( pPlayer->Weapon_OwnsThisType("weapon_portalgun") );
+	
+	if ( sv_allow_customized_portal_colors.GetBool() )
+	{
+		if (pPortalgun)
+		{
+			iPortalColorSet = pPortalgun->m_iPortalColorSet;
+		}
+		else if ( pPlayer->m_iCustomPortalColorSet != 0 ) // This means the player is not letting the Portal ID decide what the color set is
+		{
+			iPortalColorSet = pPlayer->m_iCustomPortalColorSet - 1; // Use this for consistency
+		}
+		else
+		{
+			iPortalColorSet = pPlayer->entindex();
+		}
+	}
+	else
+	{
+		if (pPortalgun)
+		{
+			iPortalColorSet = pPortalgun->m_iPortalColorSet;
+		}
+		else // We don't have a portalgun, but this should theoretically accurately get our colors
+		{
+			iPortalColorSet = pPlayer->entindex(); // The linkage group ID of the portalgun is equal to the player's ent index, so use that instead
+		}
+	}
+	
+	if (iPortalColorSet == 1)
+		color = Color(128, 0, 255, 255);
+	else if ( iPortalColorSet == 2 )
+		color = Color(255, 0, 0, 255);
+	else if ( iPortalColorSet == 3 )
+		color = Color(0, 255, 0, 255);
+
+	return color;
+}
+
+const Color C_PlayerResource::GetPortalColor(int iIndex)
+{
+	C_Prop_Portal *pPortal = dynamic_cast<C_Prop_Portal*>(ClientEntityList().GetEnt(iIndex));
+	
+	if (!pPortal)
+		return COLOR_GREY;
+				
+	
+	if (pPortal->m_iPortalColorSet == 1)
+	{
+		if (pPortal->m_bIsPortal2)
+			return Color(128, 0, 255, 255); // purple
+
+		return Color(0, 255, 255, 255); // light blue
+	}
+	else if (pPortal->m_iPortalColorSet == 2)
+	{
+		if (pPortal->m_bIsPortal2)
+			return Color(255, 0, 0, 255); //red
+
+		return Color(255, 255, 0, 255); //yellow
+	}
+	else if (pPortal->m_iPortalColorSet == 3)
+	{
+		if (pPortal->m_bIsPortal2)
+			return Color(255, 0, 255, 255); //pink
+			
+		return Color(0, 255, 0, 255); //green
+	}
+	
+
+	if (!pPortal->m_bIsPortal2)
+		return Color(64, 160, 255, 255); // Default Blue
+
+	return Color(255, 160, 32, 255);
+
+}
+#endif
 
 const char * C_PlayerResource::GetTeamName(int index_)
 {

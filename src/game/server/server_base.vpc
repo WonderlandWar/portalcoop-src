@@ -290,6 +290,7 @@ $Project
 		$File	"colorcorrection.cpp"
 		$File	"colorcorrectionvolume.cpp"
 		$File	"CommentarySystem.cpp"
+		$File	"CommentarySystem.h"
 		$File	"controlentities.cpp"
 		$File	"cplane.cpp"
 		$File	"CRagdollMagnet.cpp"
@@ -398,6 +399,8 @@ $Project
 		$File	"game_ui.cpp"
 		$File	"gameinterface.cpp"
 		$File	"gameinterface.h"
+		$File	"game_player_manager.cpp"
+		$File	"game_player_manager.h"
 		$File	"$SRCDIR\game\shared\gamemovement.cpp"
 		$File	"$SRCDIR\game\shared\gamemovement.h"
 		$File	"$SRCDIR\game\shared\gamerules.cpp"
@@ -522,8 +525,6 @@ $Project
 		$File	"player_command.cpp"
 		$File	"player_command.h"
 		$File	"player_lagcompensation.cpp"
-		$File	"player_pickup.cpp"
-		$File	"player_pickup.h"
 		$File	"player_resource.cpp"
 		$File	"player_resource.h"
 		$File	"playerinfomanager.cpp"
@@ -1026,6 +1027,12 @@ $Project
 		$File	"$SRCDIR\game\shared\econ\ihasowner.h"
 		//Haptics
 		$File	"$SRCDIR\public\haptics\haptic_utils.h"	[$WINDOWS]
+	}
+	
+	$Folder "GameUI"
+	{	
+		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.cpp"
+		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.h"
 	}
 
 	$Folder	"Tools Framework"
