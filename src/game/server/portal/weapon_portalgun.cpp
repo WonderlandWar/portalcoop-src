@@ -184,10 +184,10 @@ void CWeaponPortalgun::FizzleOwnedPortals()
 
 		bool bPortal2 = i == 1;
 
-		if ( bPortal2 && CanFirePortal2() )
+		if ( bPortal2 && !CanFirePortal2() )
 			continue;
 
-		if ( !bPortal2 && CanFirePortal1() )
+		if ( !bPortal2 && !CanFirePortal1() )
 			continue;
 		
 		CProp_Portal *pPortal = CProp_Portal::FindPortal(m_iPortalLinkageGroupID, bPortal2 );

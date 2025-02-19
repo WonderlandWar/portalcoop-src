@@ -497,7 +497,7 @@ void CTFAnnotationsPanelCallout::ApplySchemeSettings( vgui::IScheme *pScheme )
 
 		//m_pBackground->SetImage("../hud/color_panel_blu");
 
-		m_pAnnotationLabel = dynamic_cast<CExLabel *>( FindChildByName( "CalloutLabel" ) );
+		m_pAnnotationLabel = dynamic_cast<Label *>( FindChildByName( "CalloutLabel" ) );
 		m_pAnnotationLabel->SetParent( m_pBackground );
 	
 		m_pAnnotationImage = dynamic_cast<ImagePanel*>( FindChildByName( "CalloutImage" ) );
