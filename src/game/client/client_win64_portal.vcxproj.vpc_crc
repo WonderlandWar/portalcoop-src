@@ -2,12 +2,12 @@
 _.HOST_WIN64.HOST_WINDOWS.SOURCESDK.VS2022.WINDOWS_/vpcgame:portal_
 PROJECT.client.GAME.portal.PLATFORM.win64
 6b430133 client_portal.vpc
-ce920245 ..\..\game\client\client_base.vpc
+4e94b714 ..\..\game\client\client_base.vpc
 2093e423 ..\..\vpc_scripts\source_dll_base.vpc
 8ef6e028 ..\..\vpc_scripts\platform_dirs.vpc
 a75746b9 ..\..\vpc_scripts\source_base.vpc
 ef326a62 ..\..\vpc_scripts\definitions\win32_2010.def
-3530f9c4 ..\..\vpc_scripts\source_dll_win32_base.vpc
+4567807b ..\..\vpc_scripts\source_dll_win32_base.vpc
 0218a46e ..\..\vpc_scripts\version.vpc
 eab33351 ..\..\vpc_scripts\loadaddress.vpc
 0c8d4e68 ..\..\vpc_scripts\source_dll_win32_debug.vpc

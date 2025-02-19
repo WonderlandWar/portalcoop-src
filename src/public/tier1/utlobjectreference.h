@@ -63,6 +63,11 @@ public:
 	FORCEINLINE T * operator()(void) const
 	{
 		return m_pObject;
+	}	
+
+	FORCEINLINE bool IsValid( void) const
+	{
+		return ( m_pObject != NULL );
 	}
 
 	FORCEINLINE operator T*()

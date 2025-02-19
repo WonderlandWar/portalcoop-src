@@ -45,6 +45,9 @@
     <Library Include="..\..\lib\public\x64\choreoobjects.lib">
       <Filter>Link Libraries</Filter>
     </Library>
+    <Library Include="..\..\lib\public\x64\discord-rpc.lib">
+      <Filter>Link Libraries</Filter>
+    </Library>
     <Library Include="..\..\lib\public\x64\dmxloader.lib">
       <Filter>Link Libraries</Filter>
     </Library>

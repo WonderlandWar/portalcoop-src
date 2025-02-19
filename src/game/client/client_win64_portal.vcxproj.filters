@@ -75,13 +75,10 @@
     <Library Include="..\..\lib\public\x64\choreoobjects.lib">
       <Filter>Link Libraries</Filter>
     </Library>
+    <Library Include="..\..\lib\public\x64\discord-rpc.lib">
+      <Filter>Link Libraries</Filter>
+    </Library>
     <Library Include="..\..\lib\public\x64\dmxloader.lib">
-      <Filter>Link Libraries</Filter>
-    </Library>
-    <Library Include="..\..\lib\common\x64\2015\release\libjpeg.lib">
-      <Filter>Link Libraries</Filter>
-    </Library>
-    <Library Include="..\..\lib\public\x64\libpng.lib">
       <Filter>Link Libraries</Filter>
     </Library>
     <Library Include="..\..\thirdparty\protobuf-2.6.1\bin\win64\2015\staticcrt\release\libprotobuf.lib">
@@ -521,9 +518,6 @@
     <ClInclude Include="..\..\common\GameUI\IGameUI.h">
       <Filter>GameUI</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\common\imageutils.h">
-      <Filter>GameUI</Filter>
-    </ClInclude>
     <ClInclude Include="gameui\ModInfo.h">
       <Filter>GameUI</Filter>
     </ClInclude>
@@ -543,9 +537,6 @@
       <Filter>GameUI</Filter>
     </ClInclude>
     <ClInclude Include="gameui\vcontrolslistpanel.h">
-      <Filter>GameUI</Filter>
-    </ClInclude>
-    <ClInclude Include="gameui\VGuiSystemModuleLoader.h">
       <Filter>GameUI</Filter>
     </ClInclude>
     <ClInclude Include="gameui\BitmapImagePanel.h">
@@ -594,6 +585,9 @@
       <Filter>GameUI\Options Dialog</Filter>
     </ClInclude>
     <ClInclude Include="gameui\OptionsSubGame.h">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="gameui\OptionsSubHaptics.h">
       <Filter>GameUI\Options Dialog</Filter>
     </ClInclude>
     <ClInclude Include="gameui\OptionsSubKeyboard.h">
@@ -1937,9 +1931,6 @@
     <ClInclude Include="clientsteamcontext.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="clienttouch.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="commentary_modelviewer.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -2191,9 +2182,6 @@
     <ClCompile Include="..\shared\gameui\BonusMapsDatabase.cpp">
       <Filter>GameUI</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\common\imageutils.cpp">
-      <Filter>GameUI</Filter>
-    </ClCompile>
     <ClCompile Include="gameui\ModInfo.cpp">
       <Filter>GameUI</Filter>
     </ClCompile>
@@ -2213,9 +2201,6 @@
       <Filter>GameUI</Filter>
     </ClCompile>
     <ClCompile Include="gameui\vcontrolslistpanel.cpp">
-      <Filter>GameUI</Filter>
-    </ClCompile>
-    <ClCompile Include="gameui\VGuiSystemModuleLoader.cpp">
       <Filter>GameUI</Filter>
     </ClCompile>
     <ClCompile Include="gameui\BitmapImagePanel.cpp">
@@ -2264,6 +2249,9 @@
       <Filter>GameUI\Options Dialog</Filter>
     </ClCompile>
     <ClCompile Include="gameui\OptionsSubGame.cpp">
+      <Filter>GameUI\Options Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="gameui\OptionsSubHaptics.cpp">
       <Filter>GameUI\Options Dialog</Filter>
     </ClCompile>
     <ClCompile Include="gameui\OptionsSubKeyboard.cpp">
@@ -2666,9 +2654,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="clientsteamcontext.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="clienttouch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\shared\collisionproperty.cpp">

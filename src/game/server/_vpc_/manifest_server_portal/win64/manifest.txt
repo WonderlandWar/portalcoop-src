@@ -1052,6 +1052,12 @@ Release output file:    E:\Program Files (x86)\Steam\steamapps\git\portalcoop-sr
 Containing unity file:  
 PCH file:               cbase.h
 
+Source file:            E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\server\game_player_manager.cpp
+Debug output file:      E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\server\game_player_manager.cpp
+Release output file:    E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\server\game_player_manager.cpp
+Containing unity file:  
+PCH file:               cbase.h
+
 Source file:            E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\server\game_ui.cpp
 Debug output file:      E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\server\game_ui.cpp
 Release output file:    E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\server\game_ui.cpp
@@ -1589,6 +1595,12 @@ PCH file:               cbase.h
 Source file:            E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\server\player_lagcompensation.cpp
 Debug output file:      E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\server\player_lagcompensation.cpp
 Release output file:    E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\server\player_lagcompensation.cpp
+Containing unity file:  
+PCH file:               cbase.h
+
+Source file:            E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\shared\player_pickup.cpp
+Debug output file:      E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\shared\player_pickup.cpp
+Release output file:    E:\Program Files (x86)\Steam\steamapps\git\portalcoop-src\src\game\shared\player_pickup.cpp
 Containing unity file:  
 PCH file:               cbase.h
 

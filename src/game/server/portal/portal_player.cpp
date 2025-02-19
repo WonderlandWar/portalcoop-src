@@ -1480,8 +1480,9 @@ void CPortal_Player::PreThink(void)
 	//if ( GameRules()->IsMultiplayer() )
 	{
 		// Send a ping
-		if ( m_afButtonPressed & IN_COOP_PING && sv_portal_coop_allow_ping.GetBool())
+		if ( (m_afButtonPressed & IN_COOP_PING) && sv_portal_coop_allow_ping.GetBool())
 		{
+			Msg("Do Ping!\n");
 			if ( ( m_flLastPingTime + sv_portal_coop_ping_cooldown_time.GetFloat() ) < gpGlobals->curtime && IsAlive() )
 			{
 				PlayCoopPingEffect();
@@ -2673,7 +2674,7 @@ int CPortal_Player::OnTakeDamage_Alive(const CTakeDamageInfo& info)
 	if (event)
 	{
 		event->SetInt("userid", GetUserID());
-		event->SetInt("health", max(0, m_iHealth));
+		event->SetInt("health", MAX(0, m_iHealth));
 		event->SetInt("priority", 5);	// HLTV event priority, not transmitted
 
 		if (attacker->IsPlayer())

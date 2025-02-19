@@ -22,6 +22,7 @@ ipch
 *.vsidx
 *.VC*
 *.pdb
+*.vpc_cache
 DocumentLayout.json
 
 # OSX/Linux build products

@@ -185,8 +185,6 @@ $Project
 		$File	"gameui\ModInfo.h"
 		$File	"gameui\GameUIPanel.h"
 		$File	"gameui\GameUI.h"
-		$File	"gameui\VGuiSystemModuleLoader.cpp"
-		$File	"gameui\VGuiSystemModuleLoader.h"
 		$File	"gameui\vcontrolslistpanel.cpp"
 		$File	"gameui\vcontrolslistpanel.h"
 		$File	"gameui\Sys_Utils.cpp"
@@ -201,8 +199,8 @@ $Project
 		$File	"gameui/MouseMessageForwardingPanel.cpp"
 		$File	"gameui/MouseMessageForwardingPanel.h"
 		
-		$File	"$SRCDIR\common\imageutils.cpp"
-		$File	"$SRCDIR\common\imageutils.h"
+		//$File	"$SRCDIR\common\imageutils.cpp"
+		//$File	"$SRCDIR\common\imageutils.h"
 		
 		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.cpp"
 		$File	"$SRCDIR\game\shared\gameui\BonusMapsDatabase.h"
@@ -251,8 +249,8 @@ $Project
 			$File	"gameui\OptionsSubDifficulty.h"
 			$File	"gameui\OptionsSubGame.cpp"
 			$File	"gameui\OptionsSubGame.h"
-			$File	"gameui\OptionsSubHaptics.cpp"	[$WIN32]
-			$File	"gameui\OptionsSubHaptics.h"	[$WIN32]
+			$File	"gameui\OptionsSubHaptics.cpp"
+			$File	"gameui\OptionsSubHaptics.h"
 			$File	"gameui\OptionsSubKeyboard.cpp"
 			$File	"gameui\OptionsSubKeyboard.h"
 			$File	"gameui\OptionsSubMouse.cpp"
@@ -410,8 +408,6 @@ $Project
 		$File	"clientsideeffects_test.cpp"
 		$File	"clientsteamcontext.cpp"
 		$File	"clientsteamcontext.h"
-		$File	"clienttouch.cpp"
-		$File	"clienttouch.h"
 		$File	"colorcorrectionmgr.cpp"
 		$File	"commentary_modelviewer.cpp"
 		$File	"commentary_modelviewer.h"
@@ -1364,11 +1360,11 @@ $Project
 		$Lib		tier3
 		$Lib		vgui_controls
 		$Lib		vtf
-		$Lib  	"$LIBCOMMON/libjpeg"		[!$DEDICATED]
+		//$Lib  	"$LIBCOMMON/libjpeg"		[!$DEDICATED]
 		$ImpLibexternal steam_api	[!$WIN64]
 		$ImpLibexternal steam_api64	[$WIN64]
-		$Lib libpng [!$VS2015&&!$DEDICATED]
-		$Lib $LIBCOMMON/libpng [$VS2015&&!$DEDICATED]
+		//$Lib libpng [!$VS2015&&!$DEDICATED]
+		//$Lib $LIBCOMMON/libpng [$VS2015&&!$DEDICATED]
 		
 		$Libexternal $LIBCOMMON/libcrypto [$OSXALL]
 		$Libexternal "$SRCDIR\lib\common\$CRYPTOPPDIR\libcryptopp" [$LINUXALL&&!$SOURCESDK]

@@ -847,7 +847,7 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 				if (pHeldPhysics)
 				{
 
-					const AngularImpulse angImpulse;
+					AngularImpulse angImpulse;
 
 					pHeldPhysics->SetPosition(ptNewOrigin, qNewAngles, true);
 					pHeldPhysics->SetVelocity(&vec3_origin, &angImpulse);
@@ -868,7 +868,7 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 				if ( pHeldPhysics )
 				{
 
-					const AngularImpulse angImpulse;
+					AngularImpulse angImpulse;
 
 					pHeldPhysics->SetPosition( ptNewOrigin, qNewAngles, true );
 					pHeldPhysics->SetVelocity( &vec3_origin, &angImpulse );

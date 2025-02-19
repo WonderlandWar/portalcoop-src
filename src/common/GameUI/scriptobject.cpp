@@ -7,6 +7,7 @@
 //===========================================================================//
 // CScriptObject and CDescription class definitions
 // 
+#include "cbase.h"
 #include "scriptobject.h"
 #include <time.h>
 #include <stdio.h>

@@ -119,8 +119,6 @@ public:
 
 	CNetworkVar( bool, m_bHasPreferredCarryAngles );
 
-	QAngle			m_preferredCarryAngles;
-
 public:
 // IBreakableWithPropData
 	void			SetDmgModBullet( float flDmgMod ) { m_flDmgModBullet = flDmgMod; }

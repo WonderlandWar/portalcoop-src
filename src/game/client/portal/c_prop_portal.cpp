@@ -594,69 +594,10 @@ void C_Prop_Portal::Activate( void )
 
 	BaseClass::Activate();
 }
-#if 1
-void C_Prop_Portal::HandleClientSidedTouching( void )
-{
-	// The way normal client sided teleportation is done is very complicated, when you walk through, your position in space is technically not actually changed which is evident when you try to use
-	// a predicted weapon that shoots bullets, like the shotgun, you'll be able to see that no bullets appear before the client knows that it was teleported by the server.
-	// What really happens is that you walk through it and through clever rendering tricks, it gives the illusion that you walked through, but you are technically just moving beyond the portal plane.
-
-
-	// Copied from c_triggers.cpp
-	C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPortalPlayer();
-
-	if ( !pPlayer || !IsActive() || ( m_hLinkedPortal && !m_hLinkedPortal->IsActive() ) )
-	{
-		//SetNextClientThink(gpGlobals->curtime);
-		return;
-	}
-
-	// We don't use AbsOrigin because CalcPortalView transforms our view origin, not abs origin.
-	Vector vPlayerMins = pPlayer->GetPlayerMins() + MainViewOrigin() - GetViewOffset(); //pPlayer->GetAbsOrigin()
-	Vector vPlayerMaxs = pPlayer->GetPlayerMaxs() + MainViewOrigin() - GetViewOffset(); //pPlayer->GetAbsOrigin()
-
-	Vector vMins; //= CProp_Portal_Shared::vLocalMins + m_ptOrigin;
-	Vector vMaxs; //= CProp_Portal_Shared::vLocalMaxs + m_ptOrigin;
-	
-	CollisionProp()->WorldSpaceAABB( &vMins, &vMaxs );
-	
-	ConVarRef cam_command("cam_command"); // Doing extern ConVar cam_command won't work, for some reason...
-	
-	Vector vViewOrigin = cam_command.GetInt() == 0 ? MainViewOrigin() : GetAbsOrigin() + GetViewOffset();
-
-	if ( IsPointInBox(vViewOrigin, vMins, vMaxs) &&
-		IsActive() &&
-		m_hLinkedPortal.Get() &&
-		m_hLinkedPortal.Get()->IsActive() )
-	{
-		m_bEyePositionIsInPortalEnvironment = true;
-	}
-	else
-	{
-		m_bEyePositionIsInPortalEnvironment = false;
-	}
-	
-	if ( IsPointInBox(pPlayer->GetLocalOrigin(), vMins, vMaxs) && IsActive() && m_hLinkedPortal.Get() && m_hLinkedPortal.Get()->IsActive()  )
-	{
-		m_bPlayerOriginIsInPortalEnvironment = true;
-	}
-	else
-	{
-		m_bPlayerOriginIsInPortalEnvironment = false;
-	}
-}
-#endif
 
 void C_Prop_Portal::ClientThink( void )
-{
-	HandleClientSidedTouching();
-	HandleFakeTouch();
-	//HandleFakePhysicsTouch();
-	
+{	
 	SetupPortalColorSet();
-
-	if (m_pAttachedCloningArea)
-		m_pAttachedCloningArea->ClientThink();
 
 	if (m_bDoRenderThink)
 	{

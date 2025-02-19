@@ -15,7 +15,6 @@
 #include "baseentity_shared.h"
 #ifdef CLIENT_DLL
 #include "c_prop_portal.h"
-#include "clienttouch.h"
 
 //#define CPhysicsCloneArea C_PhysicsCloneArea
 #endif
@@ -36,11 +35,8 @@ public:
 	DECLARE_CLASS( CPhysicsCloneArea, CBaseEntity );
 		
 #ifdef CLIENT_DLL
-	DECLARE_TOUCHABLE()
 	CPhysicsCloneArea();
 	~CPhysicsCloneArea();
-
-	virtual void ClientThink( void );
 
 #endif
 

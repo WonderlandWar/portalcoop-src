@@ -13,7 +13,9 @@
 
 #include <vgui_controls/PropertyPage.h>
 #include <vgui_controls/ImagePanel.h>
-#include "imageutils.h"
+//#include "imageutils.h"
+
+#define DISABLE_SPRAYS
 
 class CLabeledCommandComboBox;
 class CBitmapImagePanel;
@@ -64,23 +66,24 @@ private:
 	void InitLogoList(CLabeledCommandComboBox *cb);
 
 	void RemapModel();
+#ifndef DISABLE_SPRAYS
 	void RemapLogo();
-
 	void ConversionError( ConversionErrorType nError );
-
+#endif
 	MESSAGE_FUNC_PTR( OnTextChanged, "TextChanged", panel );
+#ifndef DISABLE_SPRAYS
 	MESSAGE_FUNC_CHARPTR( OnFileSelected, "FileSelected", fullpath );
-
+#endif
 	void ColorForName(char const *pszColorName, int &r, int &g, int &b);
 
 	CBitmapImagePanel *m_pModelImage;
 	CLabeledCommandComboBox *m_pModelList;
 	char m_ModelName[128];
-
+#ifndef DISABLE_SPRAYS
 	vgui::ImagePanel *m_pLogoImage;
 	CLabeledCommandComboBox *m_pLogoList;
     char m_LogoName[128];
-
+#endif
     CCvarSlider *m_pPrimaryColorSlider;
     CCvarSlider *m_pSecondaryColorSlider;
 	CCvarToggleCheckButton *m_pHighQualityModelCheckBox;
@@ -97,7 +100,7 @@ private:
 
 	// --- client download filter
 	vgui::ComboBox	*m_pDownloadFilterCombo;
-
+#ifndef DISABLE_SPRAYS
 	// Begin Spray Import Functions
 	ConversionErrorType WriteSprayVMT(const char *vtfPath);
 	void SelectLogo(const char *logoName);
@@ -106,11 +109,13 @@ private:
 	int	m_nLogoR;
 	int	m_nLogoG;
 	int	m_nLogoB;
-
+#endif
 #ifndef _XBOX
 	vgui::DHANDLE<CMultiplayerAdvancedDialog> m_hMultiplayerAdvancedDialog;
 #endif
+#ifndef DISABLE_SPRAYS
 	vgui::FileOpenDialog *m_hImportSprayDialog;
+#endif
 };
 
 #endif // OPTIONSSUBMULTIPLAYER_H

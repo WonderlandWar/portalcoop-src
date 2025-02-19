@@ -3263,13 +3263,6 @@ void C_Portal_Player::GetToolRecordingState( KeyValues *msg )
 	}
 
 	m_bToolMode_EyeHasPortalled_LastRecord = m_bEyePositionIsTransformedByPortal;
-
-	//record if the eye is on the opposite side of the portal from the body
-	{
-		CameraRecordingState_t dummyState;
-		CameraRecordingState_t *pState = (CameraRecordingState_t *)msg->GetPtr( "camera", &dummyState );
-		pState->m_bPlayerEyeIsPortalled = m_bEyePositionIsTransformedByPortal;
-	}
 }
 
 extern float g_fMaxViewModelLag;

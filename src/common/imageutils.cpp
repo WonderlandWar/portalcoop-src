@@ -12,6 +12,8 @@
 #endif // POSIX
 #endif
 
+#include "cbase.h"
+
 #if defined( WIN32 ) && !defined( _X360 )
 #include <windows.h> // SRC only!!
 #elif defined( POSIX )

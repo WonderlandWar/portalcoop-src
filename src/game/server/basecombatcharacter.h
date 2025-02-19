@@ -422,13 +422,6 @@ public:
 	virtual HalloweenBossType GetBossType() const { return HALLOWEEN_BOSS_INVALID; }
 #endif // TF_DLL
 
-#ifdef GLOWS_ENABLE
-	// Glows
-	void				AddGlowEffect( void );
-	void				RemoveGlowEffect( void );
-	bool				IsGlowEffectActive( void );
-#endif // GLOWS_ENABLE
-
 #ifdef INVASION_DLL
 public:
 
@@ -465,11 +458,6 @@ protected:
 
 public:
 	CNetworkVar( float, m_flNextAttack );			// cannot attack again until this time
-
-#ifdef GLOWS_ENABLE
-protected:
-	CNetworkVar( bool, m_bGlowEnabled );
-#endif // GLOWS_ENABLE
 
 private:
 	Hull_t		m_eHull;

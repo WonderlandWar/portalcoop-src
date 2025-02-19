@@ -1492,6 +1492,8 @@ int CInput::GetButtonBits( int bResetState )
 	CalcButtonBits( bits, IN_GRENADE1, s_ClearInputState, &in_grenade1, bResetState );
 	CalcButtonBits( bits, IN_GRENADE2, s_ClearInputState, &in_grenade2, bResetState );
 	CalcButtonBits( bits, IN_ATTACK3, s_ClearInputState, &in_attack3, bResetState );
+	CalcButtonBits( bits, IN_COOP_PING, s_ClearInputState, &in_coop_ping, bResetState );
+	CalcButtonBits( bits, IN_GLOW_PLAYERS, s_ClearInputState, &in_glow_players, bResetState );
 
 	if ( KeyState(&in_ducktoggle) )
 	{

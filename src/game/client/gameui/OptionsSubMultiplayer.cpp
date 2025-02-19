@@ -1087,9 +1087,9 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 
 	Button *importSprayImage = new Button( this, "ImportSprayImage", "#GameUI_ImportSprayEllipsis" );
 	importSprayImage->SetCommand("ImportSprayImage");
-
+#ifndef DISABLE_SPRAYS
 	m_hImportSprayDialog = NULL;
-
+#endif
 	m_pPrimaryColorSlider = new CCvarSlider( this, "Primary Color Slider", "#GameUI_PrimaryColor",
 		0.0f, 255.0f, "topcolor" );
 
@@ -1105,12 +1105,13 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 	m_ModelName[0] = 0;
 	InitModelList( m_pModelList );
 
+	m_pModelImage = new CBitmapImagePanel( this, "ModelImage", NULL );
+	m_pModelImage->AddActionSignalTarget( this );
+
+#ifndef DISABLE_SPRAYS
 	m_pLogoList = new CLabeledCommandComboBox( this, "SpraypaintList" );
     m_LogoName[0] = 0;
 	InitLogoList( m_pLogoList );
-
-	m_pModelImage = new CBitmapImagePanel( this, "ModelImage", NULL );
-	m_pModelImage->AddActionSignalTarget( this );
 
 	m_pLogoImage = new ImagePanel( this, "LogoImage" );
 	m_pLogoImage->AddActionSignalTarget( this );
@@ -1118,7 +1119,7 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 	m_nLogoR = 255;
 	m_nLogoG = 255;
 	m_nLogoB = 255;
-
+#endif
 	m_pCrosshairImage = NULL;
 	switch ( ModInfo().AdvCrosshairLevel() )
 	{
@@ -1228,6 +1229,7 @@ void COptionsSubMultiplayer::OnCommand( const char *command )
 		m_hMultiplayerAdvancedDialog->Activate();
 #endif
 	}
+#ifndef DISABLE_SPRAYS
 	else if (!stricmp( command, "ImportSprayImage" ) )
 	{
 		if (m_hImportSprayDialog == NULL)
@@ -1249,7 +1251,7 @@ void COptionsSubMultiplayer::OnCommand( const char *command )
 		m_hImportSprayDialog->DoModal(false);
 		m_hImportSprayDialog->Activate();
 	}
-
+#endif
 	else if ( !stricmp( command, "ResetStats" ) )
 	{
 		QueryBox *box = new QueryBox("#GameUI_ConfirmResetStatsTitle", "#GameUI_ConfirmResetStatsText", this);
@@ -1267,7 +1269,7 @@ void COptionsSubMultiplayer::OnCommand( const char *command )
 
 	BaseClass::OnCommand( command );
 }
-
+#ifndef DISABLE_SPRAYS
 void COptionsSubMultiplayer::ConversionError( ConversionErrorType nError )
 {
 	const char *pErrorText = NULL;
@@ -1352,7 +1354,7 @@ void COptionsSubMultiplayer::OnFileSelected(const char *fullpath)
 	surface()->SetCursor(dc_user);
 #endif
 }
-
+#endif
 struct ValveJpegErrorHandler_t 
 {
 	// The default manager
@@ -1431,7 +1433,7 @@ void COptionsSubMultiplayer::InitLogoList( CLabeledCommandComboBox *cb )
 	cb->SetInitialItem(initialItem);
 }
 
-
+#ifndef DISABLE_SPRAYS
 //-----------------------------------------------------------------------------
 // Purpose: Selects the given logo in the logo list.
 //-----------------------------------------------------------------------------
@@ -1461,7 +1463,7 @@ void COptionsSubMultiplayer::SelectLogo(const char *logoName)
 		m_pLogoList->ActivateItem(index);
 	}
 }
-
+#endif
 #define MODEL_MATERIAL_BASE_FOLDER "materials/vgui/playermodels/"
 
 
@@ -1572,7 +1574,7 @@ void COptionsSubMultiplayer::InitModelList( CLabeledCommandComboBox *cb )
 	FindVMTFilesInFolder( MODEL_MATERIAL_BASE_FOLDER, "", cb, i, initialItem );
 	cb->SetInitialItem( initialItem );
 }
-
+#ifndef DISABLE_SPRAYS
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -1615,7 +1617,7 @@ void COptionsSubMultiplayer::RemapLogo()
 	Q_snprintf( fullLogoName, sizeof( fullLogoName ), "logos/UI/%s", logoname );
 	m_pLogoImage->SetImage( fullLogoName );
 }
-
+#endif
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -1640,7 +1642,9 @@ void COptionsSubMultiplayer::RemapModel()
 void COptionsSubMultiplayer::OnTextChanged(vgui::Panel *panel)
 {
 	RemapModel();
+#ifndef DISABLE_SPRAYS
 	RemapLogo();
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -1804,8 +1808,10 @@ void COptionsSubMultiplayer::OnApplyChanges()
 	m_pPrimaryColorSlider->ApplyChanges();
 	m_pSecondaryColorSlider->ApplyChanges();
 //	m_pModelList->ApplyChanges();
+#ifndef DISABLE_SPRAYS
 	m_pLogoList->ApplyChanges();
     m_pLogoList->GetText(m_LogoName, sizeof(m_LogoName));
+#endif
 	m_pHighQualityModelCheckBox->ApplyChanges();
 	m_pShowPortalIDCheckBox->ApplyChanges();
 	m_pShowPortalInfoCheckBox->ApplyChanges();
@@ -1827,9 +1833,9 @@ void COptionsSubMultiplayer::OnApplyChanges()
 
 	if ( m_pCrosshairImage != NULL )
 		m_pCrosshairImage->ApplyChanges();
-
-	// save the logo name
 	char cmd[512];
+	// save the logo name
+#ifndef DISABLE_SPRAYS
 	if ( m_LogoName[ 0 ] )
 	{
 		Q_snprintf(cmd, sizeof(cmd), "cl_logofile materials/vgui/logos/%s.vtf\n", m_LogoName);
@@ -1839,6 +1845,7 @@ void COptionsSubMultiplayer::OnApplyChanges()
 		Q_strncpy( cmd, "cl_logofile \"\"\n", sizeof( cmd ) );
 	}
 	engine->ClientCmd_Unrestricted(cmd);
+#endif
 
 	if ( m_pModelList && m_pModelList->IsVisible() && m_pModelList->GetActiveItemCommand() )
 	{

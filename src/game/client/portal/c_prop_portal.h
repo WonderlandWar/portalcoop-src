@@ -19,7 +19,6 @@
 #include "PortalSimulation.h"
 #include "C_PortalGhostRenderable.h" 
 #include "PhysicsCloneArea.h"
-#include "clienttouch.h"
 
 // FIX ME
 #include "portal_shareddefs.h"
@@ -38,7 +37,6 @@ public:
 	DECLARE_CLASS( C_Prop_Portal, CPortalRenderable_FlatBasic );
 	DECLARE_CLIENTCLASS();
 	DECLARE_PREDICTABLE();
-	DECLARE_TOUCHABLE();
 							C_Prop_Portal( void );
 	virtual					~C_Prop_Portal( void );
 

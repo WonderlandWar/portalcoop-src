@@ -1690,6 +1690,8 @@ void CChangeLevel::WarnAboutActiveLead( void )
 	}
 }
 
+extern ConVar sv_bonus_challenge;
+
 void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 {
 	if ( !AllPlayersAreTouching() && m_bAllPlayersMustBeTouching )

@@ -509,7 +509,7 @@ protected:
 
 	float			m_flStepSoundTime;
 	bool			m_IsFootprintOnLeft;
-	CInterpolatedVar< Vector >	m_iv_vecViewOffset;
+	CDiscontinuousInterpolatedVar< Vector >	m_iv_vecViewOffset;
 
 private:
 	// Make sure no one calls this...

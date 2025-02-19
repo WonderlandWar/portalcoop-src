@@ -29,13 +29,12 @@ CPortalCollideableEnumerator::CPortalCollideableEnumerator( const CProp_Portal *
 
 IterationRetval_t CPortalCollideableEnumerator::EnumElement( IHandleEntity *pHandleEntity )
 {
-	EHANDLE hEnt = pHandleEntity->GetRefEHandle();
-	
-	CBaseEntity *pEnt = hEnt.Get();
+	CBaseEntity *pEnt = EntityFromEntityHandle( pHandleEntity );
+
 	if( pEnt == NULL ) //I really never thought this would be necessary
 		return ITERATION_CONTINUE;
 	
-	if( hEnt == m_hTestPortal )
+	if( pEnt == m_hTestPortal )
 		return ITERATION_CONTINUE; //ignore this portal
 
 	/*if( staticpropmgr->IsStaticProp( pHandleEntity ) )

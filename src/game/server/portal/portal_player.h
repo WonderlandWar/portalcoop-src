@@ -123,8 +123,6 @@ public:
 	virtual bool BumpWeapon( CBaseCombatWeapon *pWeapon );
 	virtual void ShutdownUseEntity( void );
 
-	virtual const Vector&	WorldSpaceCenter( ) const;
-
 	virtual void VPhysicsShadowUpdate( IPhysicsObject *pPhysics );
 
 	//virtual bool StartReplayMode( float fDelay, float fDuration, int iEntity  );

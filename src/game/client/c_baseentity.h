@@ -35,6 +35,7 @@
 #include "particle_property.h"
 #include "toolframework/itoolentity.h"
 #include "tier0/threadtools.h"
+#include "soundstartparams.h"
 
 class C_Team;
 class IPhysicsObject;
