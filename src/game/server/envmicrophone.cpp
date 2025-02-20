@@ -255,16 +255,19 @@ bool CEnvMicrophone::CanHearSound(CSound *pSound, float &flVolume)
 	CBaseEntity *pSoundOwner = pSound->m_hOwner.Get();
 	
 #ifdef PORTAL
-	bool bShouldListen = true;
 	CBaseCombatWeapon *pWeapon = dynamic_cast<CBaseCombatWeapon*>(pSoundOwner);
 
 	if (pWeapon && pWeapon->GetOwner() && pWeapon->GetOwner()->IsPlayer())
 	{
-		bShouldListen = false;
+		return false;
 	}
+
+	//if ( FClassnameIs( pSoundOwner, "trigger_ball_destroyer" ) )
+	//	return false;
+
 #endif
 
-	if (pSoundOwner && (!bShouldListen || pSoundOwner->IsPlayer()))
+	if (pSoundOwner && ( pSoundOwner->IsPlayer() ) )
 		return false;
 
 	// Cull out sounds except from specific entities
@@ -512,7 +515,18 @@ MicrophoneResult_t CEnvMicrophone::SoundPlayed( int entindex, const char *soundn
 	ep.m_nChannel = CHAN_STATIC;
 	ep.m_pSoundName = soundname;
 	ep.m_flVolume = flVolume;
+#ifdef PORTAL // Super super hacky
+	if ( soundlevel > SNDLVL_60dB )
+	{
+		ep.m_SoundLevel = SNDLVL_60dB;
+	}
+	else
+	{
+		ep.m_SoundLevel = soundlevel;
+	}
+#else
 	ep.m_SoundLevel = soundlevel;
+#endif
 	ep.m_nFlags = iFlags;
 	ep.m_nPitch = iPitch;
 	ep.m_pOrigin = &m_hSpeaker->GetAbsOrigin();

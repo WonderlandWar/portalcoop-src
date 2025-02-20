@@ -116,7 +116,6 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 
 					if ( pPortal && pPortal->IsActive() )
 					{
-						Assert(0); // Just looking for a callstack...
 						pPortal->DoFizzleEffect( PORTAL_FIZZLE_KILLED, pPortal->m_iPortalColorSet, false );
 						pPortal->Fizzle();
 						//pPortal->SetActive(false);
@@ -210,7 +209,7 @@ void CTriggerPortalCleanser::FizzleBaseAnimating( CBaseEntity *pOther, CTriggerP
 		{
 			// The portal weight box, used for puzzles in the portal mod is differentiated by its name
 			// always being 'box'. We use special logic when the cleanser dissolves a box so this is a special output for it.
-			if ( pBaseAnimating->NameMatches( "box" ) )
+			if ( pBaseAnimating->NameMatches( "box" ) || FClassnameIs( pBaseAnimating, "prop_box" ) )
 			{
 				pTrigger->m_OnDissolveBox.FireOutput( pOther, pTrigger );
 			}

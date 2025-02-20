@@ -1,10 +1,14 @@
 #include "cbase.h"
 #include "prop_box.h"
 #include "trigger_box_reflector.h"
+#include "prop_combine_ball.h"
+#include "trigger_portal_cleanser.h"
 
 ConVar sv_trigger_box_reflector_temporary_time( "sv_trigger_box_reflector_temporary_time", "2", FCVAR_CHEAT );
 
 static const char *g_pszTemporaryDetachThink = "TemporaryDetachThink";
+
+PRECACHE_REGISTER( trigger_box_reflector );
 
 BEGIN_DATADESC( CTriggerBoxReflector )
 
@@ -18,6 +22,8 @@ BEGIN_DATADESC( CTriggerBoxReflector )
 	DEFINE_OUTPUT( m_OnAttached, "OnAttached" ),
 	DEFINE_OUTPUT( m_OnDetached, "OnDetached" ),
 	DEFINE_OUTPUT( m_OnEnergyBallHit, "OnEnergyBallHit" ),
+
+	DEFINE_THINKFUNC( TemporaryDetachThink ),
 
 END_DATADESC()
 
@@ -51,7 +57,7 @@ void CTriggerBoxReflector::Precache( void )
 
 	PrecacheScriptSound( "Rexaura.BoxReflector_Attach" );
 	PrecacheScriptSound( "Rexaura.BoxReflector_Detach" );
-	PrecacheScriptSound( "Rexaura.BoxReflector_Explosion" );
+	PrecacheScriptSound( "Rexaura.Ball_Force_Explosion" );
 }
 
 void CTriggerBoxReflector::UpdateOnRemove( void )
@@ -164,7 +170,7 @@ void CTriggerBoxReflector::DetachBox( CPropBox *pAttachedBox, bool bPush /*= fal
 
 void CTriggerBoxReflector::EnergyBallHit( CBaseEntity *pBall )
 {
-	EmitSound( "Rexaura.BoxReflector_Explosion" );
+	EmitSound( "Rexaura.Ball_Force_Explosion" );
 	m_OnEnergyBallHit.FireOutput( pBall, pBall );
 }
 
@@ -173,5 +179,80 @@ void CTriggerBoxReflector::TemporaryDetachThink( void )
 	if ( m_hAttachedBox )
 	{
 		DetachBox( m_hAttachedBox, true );
+	}
+}
+
+// Global Savedata for base trigger
+BEGIN_DATADESC( CFuncBoxReflectorShield )
+
+	DEFINE_KEYFIELD( m_iszBoxReflector,	FIELD_STRING,	"BoxReflector" ),
+	DEFINE_FIELD( m_hBoxReflector,	FIELD_EHANDLE ),
+
+	DEFINE_INPUTFUNC( FIELD_VOID, "Enable", InputEnable ),
+	DEFINE_INPUTFUNC( FIELD_VOID, "Disable", InputDisable ),
+
+END_DATADESC()
+
+
+LINK_ENTITY_TO_CLASS( func_box_reflector_shield, CFuncBoxReflectorShield );
+
+void CFuncBoxReflectorShield::Spawn( void )
+{
+	SetMoveType( MOVETYPE_PUSH );  // so it doesn't get pushed by anything
+	SetSolid( SOLID_VPHYSICS );
+	AddSolidFlags( FSOLID_NOT_SOLID );
+	SetModel( STRING( GetModelName() ) );
+	AddEffects( EF_NODRAW );
+	CreateVPhysics();
+	VPhysicsGetObject()->EnableCollisions( !m_bDisabled );
+}
+
+
+bool CFuncBoxReflectorShield::CreateVPhysics( void )
+{
+	VPhysicsInitStatic();
+	return true;
+}
+
+void CFuncBoxReflectorShield::Activate( void ) 
+{ 
+	// Get a handle to my filter entity if there is one
+	if (m_iszBoxReflector != NULL_STRING)
+	{
+		m_hBoxReflector = dynamic_cast<CTriggerBoxReflector*>(gEntList.FindEntityByName(NULL, m_iszBoxReflector));
+	}
+	BaseClass::Activate();
+}
+
+bool CFuncBoxReflectorShield::ForceVPhysicsCollide( CBaseEntity *pEntity )
+{
+	if ( dynamic_cast<CPropCombineBall*>( pEntity ) != NULL )
+		return true;
+
+	return false;
+}
+
+void CFuncBoxReflectorShield::InputEnable( inputdata_t &inputdata )
+{
+	VPhysicsGetObject()->EnableCollisions(true);
+	m_bDisabled = false;
+}
+
+void CFuncBoxReflectorShield::InputDisable( inputdata_t &inputdata )
+{
+	VPhysicsGetObject()->EnableCollisions(false);
+	m_bDisabled = true;
+}
+
+void CFuncBoxReflectorShield::EnergyBallHit( CPropCombineBall *pBall )
+{
+	CTriggerBoxReflector *pReflector = m_hBoxReflector;
+	if ( pReflector )
+	{
+		CPropBox *pBox = pReflector->GetBox();
+		if ( pBox )
+		{
+			CTriggerPortalCleanser::FizzleBaseAnimating( pBox, NULL );
+		}
 	}
 }

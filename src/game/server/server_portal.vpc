@@ -354,6 +354,7 @@ $Project "Server (Portal)"
 			$File	"portal\entity_training_annotations.cpp"
 			$File	"portal\entity_training_annotations.h"
 			$File	"portal\trigger_box_reflector.cpp"
+			$File	"portal\trigger_ball_destroyer.cpp"
 			$File	"portal\prop_box.cpp"
 			$File	"portal\prop_box.h"
 

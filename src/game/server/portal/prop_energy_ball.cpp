@@ -12,6 +12,7 @@
 #include "soundenvelope.h"
 #include "physicsshadowclone.h"
 #include "prop_box.h"
+#include "trigger_box_reflector.h"
 
 // resource file names
 #define IMPACT_DECAL_NAME	"decals/smscorch1model"
@@ -75,6 +76,7 @@ BEGIN_DATADESC( CPropEnergyBall )
 	DEFINE_SOUNDPATCH( m_pAmbientSound ),
 
 	DEFINE_THINKFUNC( Think ),
+	DEFINE_THINKFUNC( ExplodeThink ),
 
 END_DATADESC()
 
@@ -248,12 +250,17 @@ void CPropEnergyBall::VPhysicsCollision( int index, gamevcollisionevent_t *pEven
 				if ( pBox->m_hAttached )
 				{
 					bDoEffects = false; // This is to mimic Rexaura's behavior
-					SetContextThink( &CPropCombineBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
+					SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
 				}
 				pBox->EnergyBallHit( this );
 			}
 			else
 			{
+				CFuncBoxReflectorShield *pShield = dynamic_cast<CFuncBoxReflectorShield*>( pEntity );
+				if ( pShield )
+				{
+					pShield->EnergyBallHit( this );
+				}
 				// Cball impact effect (using same trace as the decal placement above)
 				CEffectData data;
 				data.m_flRadius = 16;
@@ -405,7 +412,7 @@ void CPropEnergyBall::StartTouch( CBaseEntity *pOther )
 	 	pOther->OnTakeDamage( info );
 		
 		// Destruct when we hit the player
-		SetContextThink( &CPropCombineBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
+		SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
 	}
 	
 	/*CPropBox *pBox = dynamic_cast<CPropBox*>( pOther );
@@ -472,10 +479,15 @@ public:
 	virtual void Spawn();
 
 private:
+
 	float	m_fBallLifetime;
 	float	m_fMinBallLifeAfterPortal;
 
+	CUtlVector<CHandle<CPropEnergyBall>> m_AllBalls;
+
 	COutputEvent		m_OnPostSpawnBall;
+	
+	void InputExplodeAllBalls( inputdata_t &inputdata );
 
 
 };
@@ -488,6 +500,8 @@ BEGIN_DATADESC( CEnergyBallLauncher )
 	DEFINE_KEYFIELD( m_fMinBallLifeAfterPortal, FIELD_FLOAT, "MinLifeAfterPortal" ),
 
 	DEFINE_OUTPUT ( m_OnPostSpawnBall, "OnPostSpawnBall" ),
+	
+	DEFINE_INPUTFUNC( FIELD_VOID, "ExplodeAllBalls", InputExplodeAllBalls ),
 
 END_DATADESC()
 
@@ -574,9 +588,24 @@ void CEnergyBallLauncher::SpawnBall()
 	EmitSound( "EnergyBall.Launch" );
 
 	m_OnPostSpawnBall.FireOutput( this, this );
+
+	CHandle<CPropEnergyBall> hBall = pBall;
+	m_AllBalls.AddToTail( hBall );
 }
 
+void CEnergyBallLauncher::InputExplodeAllBalls( inputdata_t &inputdata )
+{
+	for ( int i = 0; i < m_AllBalls.Count(); ++i )
+	{
+		CPropCombineBall *pBall = m_AllBalls[i];
+		if ( pBall )
+		{
+			pBall->SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );;
+		}
+	}
 
+	m_AllBalls.Purge();
+}
 
 
 

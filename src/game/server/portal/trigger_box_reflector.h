@@ -25,6 +25,8 @@ public:
 	// Thinks
 	void TemporaryDetachThink( void );
 
+	CPropBox *GetBox() const { return m_hAttachedBox; }
+
 private:
 
 	string_t m_iszAttachToEntity;
@@ -37,6 +39,31 @@ private:
 	COutputEvent m_OnAttached;
 	COutputEvent m_OnDetached;
 	COutputEvent m_OnEnergyBallHit;
+};
+
+class CPropCombineBall;
+class CFuncBoxReflectorShield : public CBaseEntity
+{
+	DECLARE_DATADESC();
+	DECLARE_CLASS( CFuncBoxReflectorShield, CBaseEntity );
+
+public:
+	void Spawn();
+	void Activate();
+	bool CreateVPhysics( void );
+
+	bool ForceVPhysicsCollide( CBaseEntity *pEntity );
+
+	void InputEnable( inputdata_t &inputdata );
+	void InputDisable( inputdata_t &inputdata );
+
+	void EnergyBallHit( CPropCombineBall *pBall );
+
+private:
+
+	string_t						m_iszBoxReflector;
+	CHandle<CTriggerBoxReflector>	m_hBoxReflector;
+	bool							m_bDisabled;
 };
 
 #endif // TRIGGER_BOX_REFLECTOR_H
