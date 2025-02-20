@@ -110,7 +110,10 @@ void CTriggerBoxReflector::StartTouch( CBaseEntity *pOther )
 
 	m_hAttachedBox = pBox;
 	
-	SetContextThink( &CTriggerBoxReflector::TemporaryDetachThink, gpGlobals->curtime + sv_trigger_box_reflector_temporary_time.GetFloat(), g_pszTemporaryDetachThink );
+	if ( m_bTemporary )
+	{
+		SetContextThink( &CTriggerBoxReflector::TemporaryDetachThink, gpGlobals->curtime + sv_trigger_box_reflector_temporary_time.GetFloat(), g_pszTemporaryDetachThink );
+	}
 }
 
 
@@ -122,8 +125,11 @@ void CTriggerBoxReflector::EndTouch( CBaseEntity *pOther )
 	CPropBox *pAttachedBox = m_hAttachedBox;
 	if ( pAttachedBox && pAttachedBox != pOther )
 		return;
-
-	SetContextThink( NULL, gpGlobals->curtime, g_pszTemporaryDetachThink );
+	
+	if ( m_bTemporary )
+	{
+		SetContextThink( NULL, gpGlobals->curtime, g_pszTemporaryDetachThink );
+	}
 
 	DetachBox( pAttachedBox );
 }
