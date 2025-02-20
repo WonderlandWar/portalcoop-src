@@ -11,6 +11,7 @@
 #include "prop_portal.h"			// Special case code for passing through portals. We need the class definition.
 #include "soundenvelope.h"
 #include "physicsshadowclone.h"
+#include "prop_box.h"
 
 // resource file names
 #define IMPACT_DECAL_NAME	"decals/smscorch1model"
@@ -219,29 +220,54 @@ void CPropEnergyBall::VPhysicsCollision( int index, gamevcollisionevent_t *pEven
 	if ( !bIsEnteringPortalAndLockingAxisForward )
 	{
 		trace_t		tr;
-		UTIL_TraceLine ( GetAbsOrigin(), GetAbsOrigin() + 60*preVelocity, MASK_SHOT, 
+		UTIL_TraceLine ( GetAbsOrigin(), GetAbsOrigin() + (0.1 * m_flRadius)*preVelocity, MASK_SHOT, 
 			this, COLLISION_GROUP_NONE, &tr);
+		
+		CBaseEntity *pEntity = tr.m_pEnt;
+		
+		// Now get the real entity
+		if (  pEvent->pEntities[0] != this )
+		{
+			Assert( pEvent->pEntities[0] );
+			pEntity = pEvent->pEntities[0];
+		}
+		else if ( pEvent->pEntities[1] != this )
+		{
+			Assert( pEvent->pEntities[1] );
+			pEntity = pEvent->pEntities[1];
+		}
+
+		bool bDoEffects = true;
 
 		// Only place decals and draw effects if we hit something valid
-		if ( tr.m_pEnt )
+		if ( pEntity )
 		{
-
-			// Cball impact effect (using same trace as the decal placement above)
-			CEffectData data;
-			data.m_flRadius = 16;
-			data.m_vNormal	= tr.plane.normal;
-			data.m_vOrigin	= tr.endpos + tr.plane.normal * 1.0f;
-
-
-			DispatchEffect( "cball_bounce", data );
-
-			if ( tr.m_pEnt )
+			CPropBox *pBox = dynamic_cast<CPropBox*>( pEntity );
+			if ( pBox )
 			{
+				if ( pBox->m_hAttached )
+				{
+					bDoEffects = false; // This is to mimic Rexaura's behavior
+					SetContextThink( &CPropCombineBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
+				}
+				pBox->EnergyBallHit( this );
+			}
+			else
+			{
+				// Cball impact effect (using same trace as the decal placement above)
+				CEffectData data;
+				data.m_flRadius = 16;
+				data.m_vNormal	= tr.plane.normal;
+				data.m_vOrigin	= tr.endpos + tr.plane.normal * 1.0f;
+				DispatchEffect( "cball_bounce", data );
 				UTIL_DecalTrace( &tr, "EnergyBall.Impact" );
 			}
 		}
 
-		EmitSound( "EnergyBall.Impact" );
+		if ( bDoEffects )
+		{
+			EmitSound( "EnergyBall.Impact" );
+		}
 	}
 	
 	// Record our direction so our fixed direction hacks know we have changed direction immediately
@@ -381,6 +407,16 @@ void CPropEnergyBall::StartTouch( CBaseEntity *pOther )
 		// Destruct when we hit the player
 		SetContextThink( &CPropCombineBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
 	}
+	
+	/*CPropBox *pBox = dynamic_cast<CPropBox*>( pOther );
+	if ( pBox )
+	{
+		if ( pBox->m_hAttached )
+		{
+			SetContextThink( &CPropCombineBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
+		}
+		pBox->EnergyBallHit( this );
+	}*/
 
 	CProp_Portal* pPortal = dynamic_cast<CProp_Portal*>(pOther);
 	// If toucher is a prop portal

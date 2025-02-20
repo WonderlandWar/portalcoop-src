@@ -21,6 +21,8 @@
 #include "PhysicsCloneArea.h"
 #include "clienttouch.h"
 
+#define DISABLE_CLONE_AREA
+
 // FIX ME
 #include "portal_shareddefs.h"
 
@@ -205,9 +207,9 @@ public:
 	bool m_bPlayerIsInPortalEnvironment;
 
 	virtual C_Prop_Portal *GetPropPortal() { return this; };
-
+#ifndef DISABLE_CLONE_AREA
 	CPhysicsCloneArea		*m_pAttachedCloningArea;
-
+#endif
 private:
 
 	void HandleClientSidedTouching();

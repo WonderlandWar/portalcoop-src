@@ -19,6 +19,7 @@
 #include "rumble_shared.h"
 #include "trigger_portal_cleanser.h"
 #include "vehicle_base.h"
+#include "prop_box.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -171,6 +172,12 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 		return;
 	}
 
+	CTriggerPortalCleanser::FizzleBaseAnimating( pOther, this );
+}
+
+void CTriggerPortalCleanser::FizzleBaseAnimating( CBaseEntity *pOther, CTriggerPortalCleanser *pTrigger )
+{
+
 	CBaseAnimating *pBaseAnimating = pOther->GetBaseAnimating();
 
 	if ( pBaseAnimating && !pBaseAnimating->IsDissolving() )
@@ -199,16 +206,19 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 		}
 
 
-		// The portal weight box, used for puzzles in the portal mod is differentiated by its name
-		// always being 'box'. We use special logic when the cleanser dissolves a box so this is a special output for it.
-		if ( pBaseAnimating->NameMatches( "box" ) )
+		if ( pTrigger )
 		{
-			m_OnDissolveBox.FireOutput( pOther, this );
-		}
+			// The portal weight box, used for puzzles in the portal mod is differentiated by its name
+			// always being 'box'. We use special logic when the cleanser dissolves a box so this is a special output for it.
+			if ( pBaseAnimating->NameMatches( "box" ) )
+			{
+				pTrigger->m_OnDissolveBox.FireOutput( pOther, pTrigger );
+			}
 
-		if ( pBaseAnimating->NameMatches( "sphere" ) )
-		{
-			m_OnDissolveSphere.FireOutput( pOther, this );
+			if ( pBaseAnimating->NameMatches( "sphere" ) )
+			{
+				pTrigger->m_OnDissolveSphere.FireOutput( pOther, pTrigger );
+			}
 		}
 
 		if ( FClassnameIs( pBaseAnimating, "updateitem2" ) )
@@ -241,6 +251,12 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 
 		if ( pDisolvingObj )
 		{
+			CPropBox *pBox = dynamic_cast<CPropBox*>( pBaseAnimating );
+			if ( pBox )
+			{
+				pBox->PreDissolve( pBox, pTrigger );
+			}
+
 			// Remove old prop, transfer name and children to the new simple prop
 			pDisolvingObj->SetName( pBaseAnimating->GetEntityName() );
 			UTIL_TransferPoseParameters( pBaseAnimating, pDisolvingObj );
@@ -274,6 +290,9 @@ void CTriggerPortalCleanser::Touch( CBaseEntity *pOther )
 			pDisolvingAnimating->Dissolve( "", gpGlobals->curtime, false, ENTITY_DISSOLVE_NORMAL );
 		}
 
-		m_OnDissolve.FireOutput( pOther, this );
+		if ( pTrigger )
+		{
+			pTrigger->m_OnDissolve.FireOutput( pOther, pTrigger );
+		}
 	}
 }

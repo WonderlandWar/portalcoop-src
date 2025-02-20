@@ -1748,8 +1748,7 @@ public:
 	// So it can get at the physics methods
 	friend class CCollisionEvent;
 	
-	PINGICON SetDefaultPingIcon() { m_iPingIcon = PING_ICON_DEFAULT; }
-	PINGICON SetPingIcon(PINGICON iPingIcon) { m_iPingIcon = iPingIcon; }
+	void SetPingIcon(PINGICON iPingIcon) { m_iPingIcon = iPingIcon; }
 
 	CNetworkVar(PINGICON, m_iPingIcon);
 

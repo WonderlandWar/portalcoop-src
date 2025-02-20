@@ -278,9 +278,9 @@ void CPortalSimulator::MoveTo( const Vector &ptCenter, const QAngle &angles )
 		return;
 #ifdef DEBUG
 #ifdef GAME_DLL
-	Msg("Server: CPortalSimulator::MoveTo:\nptCenter %f %f %f\nangles %f %f %f\n\n", ptCenter[0], ptCenter[1], ptCenter[2], angles[0], angles[1], angles[2]);
+	//Msg("Server: CPortalSimulator::MoveTo:\nptCenter %f %f %f\nangles %f %f %f\n\n", ptCenter[0], ptCenter[1], ptCenter[2], angles[0], angles[1], angles[2]);
 #else
-	Msg("Client: CPortalSimulator::MoveTo:\nptCenter %f %f %f\nangles %f %f %f\n\n", ptCenter[0], ptCenter[1], ptCenter[2], angles[0], angles[1], angles[2]);
+	//Msg("Client: CPortalSimulator::MoveTo:\nptCenter %f %f %f\nangles %f %f %f\n\n", ptCenter[0], ptCenter[1], ptCenter[2], angles[0], angles[1], angles[2]);
 #endif
 #endif
 	CREATEDEBUGTIMER( functionTimer );

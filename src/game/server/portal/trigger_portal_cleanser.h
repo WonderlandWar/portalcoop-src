@@ -48,6 +48,8 @@ public:
 	void Touch( CBaseEntity *pOther );
 	//CNetworkVar(bool, m_bDisabled);
 
+	static void FizzleBaseAnimating( CBaseEntity *pOther, CTriggerPortalCleanser *pTrigger );
+
 	DECLARE_DATADESC();
 
 	// Outputs

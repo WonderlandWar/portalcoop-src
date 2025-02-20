@@ -353,6 +353,9 @@ $Project "Server (Portal)"
 			$File	"$SRCDIR\game\shared\portal\portal_physics_collisionevent.h"
 			$File	"portal\entity_training_annotations.cpp"
 			$File	"portal\entity_training_annotations.h"
+			$File	"portal\trigger_box_reflector.cpp"
+			$File	"portal\prop_box.cpp"
+			$File	"portal\prop_box.h"
 
 			$Folder	"Weapons"
 			{

@@ -219,6 +219,9 @@ $Project "Client (Portal)"
 			$File	"$SRCDIR\game\shared\portal\PhysicsCloneArea.h"
 			$File	"$SRCDIR\game\shared\portal\portal_physics_collisionevent.cpp"
 			$File	"$SRCDIR\game\shared\portal\portal_physics_collisionevent.h"
+			
+			$File	"portal\c_prop_box.cpp"
+			$File	"portal\c_prop_box.h"
 
 			$Folder	"Weapons"
 			{

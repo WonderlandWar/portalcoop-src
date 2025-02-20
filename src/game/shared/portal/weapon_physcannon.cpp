@@ -1219,7 +1219,7 @@ CPlayerPickupController::CPlayerPickupController()
 	SetTransmitState( FL_EDICT_ALWAYS );
 #else
 	m_bShouldInit = true;
-	SetNextClientThink(CLIENT_THINK_ALWAYS);
+	//SetNextClientThink(CLIENT_THINK_ALWAYS);
 #endif
 }
 

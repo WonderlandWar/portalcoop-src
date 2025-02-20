@@ -409,8 +409,9 @@ void C_Prop_Portal::Spawn( void )
 	m_hEdgeEffect = NULL;
 	m_hParticleEffect = NULL;
 	BaseClass::Spawn();
-			
+#ifndef DISABLE_CLONE_AREA
 	m_pAttachedCloningArea = CPhysicsCloneArea::CreatePhysicsCloneArea( this );
+#endif
 }
 
 
@@ -549,9 +550,10 @@ bool C_Prop_Portal::TestCollision(const Ray_t &ray, unsigned int fContentsMask, 
 
 void C_Prop_Portal::Activate( void )
 {
+#ifndef DISABLE_CLONE_AREA
 	if( m_pAttachedCloningArea == NULL )
 		m_pAttachedCloningArea = CPhysicsCloneArea::CreatePhysicsCloneArea( this );
-	
+#endif
 	if( IsActive() && (m_hLinkedPortal.Get() != NULL) )
 	{
 		Vector ptCenter = m_ptOrigin;
@@ -654,10 +656,10 @@ void C_Prop_Portal::ClientThink( void )
 	//HandleFakePhysicsTouch();
 	
 	SetupPortalColorSet();
-
+#ifndef DISABLE_CLONE_AREA
 	if (m_pAttachedCloningArea)
 		m_pAttachedCloningArea->ClientThink();
-
+#endif
 	if (m_bDoRenderThink)
 	{
 		bool bDidAnything = false;
@@ -982,13 +984,13 @@ void C_Prop_Portal::UpdateOnRemove( void )
 	g_pPortalRender->RemovePortal( this );
 
 	DestroyAttachedParticles();
-	
+#ifndef DISABLE_CLONE_AREA
 	if( m_pAttachedCloningArea )
 	{
 		delete m_pAttachedCloningArea;
 		m_pAttachedCloningArea = NULL;
 	}
-	
+#endif
 	C_Prop_Portal *pRemote = m_hLinkedPortal;
 	if (pRemote != NULL)
 	{
@@ -1004,10 +1006,10 @@ void C_Prop_Portal::UpdateOnRemove( void )
 void C_Prop_Portal::OnRestore( void )
 {
 	BaseClass::OnRestore();
-	
+#ifndef DISABLE_CLONE_AREA
 	Assert( m_pAttachedCloningArea == NULL );
 	m_pAttachedCloningArea = CPhysicsCloneArea::CreatePhysicsCloneArea( this );
-
+#endif
 	if (ShouldCreateAttachedParticles())
 	{
 		CreateAttachedParticles();
@@ -1121,10 +1123,10 @@ void C_Prop_Portal::HandleNetworkChanges( bool bForcedChanges )
 			//Reset the portals
 			g_pPortalRender->RemovePortal(this);
 			g_pPortalRender->AddPortal(this); 
-
+#ifndef DISABLE_CLONE_AREA
 		if( m_pAttachedCloningArea )
 			m_pAttachedCloningArea->UpdatePosition();
-
+#endif
 			//update our associated portal environment
 			//CPortal_PhysicsEnvironmentMgr::CreateEnvironment( this );
 
