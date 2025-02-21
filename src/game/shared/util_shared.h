@@ -167,6 +167,22 @@ protected:
 	CUtlVector<IHandleEntity*>	m_PassEntities;
 };
 
+class CTraceFilterOnlyPlayer : public CTraceFilterSimple
+{
+public:
+	CTraceFilterOnlyPlayer( const IHandleEntity *passentity, int collisionGroup )
+		: CTraceFilterSimple( passentity, collisionGroup )
+	{
+	}
+
+	virtual TraceType_t	GetTraceType() const
+	{
+		return TRACE_ENTITIES_ONLY;
+	}
+
+	virtual bool ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask );
+};
+
 class CTraceFilterOnlyNPCsAndPlayer : public CTraceFilterSimple
 {
 public:

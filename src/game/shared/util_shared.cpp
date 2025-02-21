@@ -312,6 +312,22 @@ bool CTraceFilterSimple::ShouldHitEntity( IHandleEntity *pHandleEntity, int cont
 //-----------------------------------------------------------------------------
 // Purpose: Trace filter that only hits NPCs and the player
 //-----------------------------------------------------------------------------
+bool CTraceFilterOnlyPlayer::ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask )
+{
+	if ( CTraceFilterSimple::ShouldHitEntity( pHandleEntity, contentsMask ) )
+	{
+		CBaseEntity *pEntity = EntityFromEntityHandle( pHandleEntity );
+		if ( !pEntity )
+			return false;
+
+		return ( pEntity->IsPlayer() );
+	}
+	return false;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Trace filter that only hits NPCs and the player
+//-----------------------------------------------------------------------------
 bool CTraceFilterOnlyNPCsAndPlayer::ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask )
 {
 	if ( CTraceFilterSimple::ShouldHitEntity( pHandleEntity, contentsMask ) )

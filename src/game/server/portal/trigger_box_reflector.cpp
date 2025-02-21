@@ -114,6 +114,7 @@ void CTriggerBoxReflector::Touch( CBaseEntity *pOther )
 	CPropBox *pBox = static_cast<CPropBox*>( pOther );
 
 	// Test to see if any players are in the way:
+#if 0
 	for ( int i = 1; i < gpGlobals->maxClients; ++i )
 	{
 		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
@@ -129,12 +130,29 @@ void CTriggerBoxReflector::Touch( CBaseEntity *pOther )
 		Vector vecBoxOrigin = pAttachEntity->GetAbsOrigin();
 		Vector vBoxMins = pBox->CollisionProp()->OBBMins() + vecBoxOrigin;
 		Vector vBoxMaxs = pBox->CollisionProp()->OBBMaxs() + vecBoxOrigin;
-	
+		
+		NDebugOverlay::Box( vec3_origin, vPlayerMins, vPlayerMaxs, 255, 0, 0, 100, 0.05 );
+		NDebugOverlay::Box( vec3_origin, vBoxMins, vBoxMaxs, 255, 0, 0, 100, 0.05 );
+
 		if ( IsBoxIntersectingBox( vPlayerMins, vPlayerMaxs, vBoxMins, vBoxMaxs ) )
 		{
 			return;
 		}
 	}
+#else
+	Vector vecBoxOrigin = pAttachEntity->GetAbsOrigin();
+		
+	CTraceFilterOnlyPlayer filter( NULL, COLLISION_GROUP_NONE );
+
+	trace_t tr;
+	UTIL_TraceHull( vecBoxOrigin, vecBoxOrigin, pBox->CollisionProp()->OBBMins() * 1.4, pBox->CollisionProp()->OBBMaxs() * 1.4, MASK_ALL, &filter, &tr );
+	
+	if ( tr.m_pEnt )
+	{
+		Assert( tr.m_pEnt->IsPlayer() );
+		return;
+	}
+#endif
 
 	Assert( pBox->m_hAttached != this );
 
