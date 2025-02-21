@@ -3,6 +3,7 @@
 #include "trigger_box_reflector.h"
 #include "prop_combine_ball.h"
 #include "trigger_portal_cleanser.h"
+#include "collisionutils.h"
 
 ConVar sv_trigger_box_reflector_temporary_time( "sv_trigger_box_reflector_temporary_time", "2", FCVAR_CHEAT );
 
@@ -28,6 +29,12 @@ BEGIN_DATADESC( CTriggerBoxReflector )
 END_DATADESC()
 
 LINK_ENTITY_TO_CLASS( trigger_box_reflector, CTriggerBoxReflector )
+
+CTriggerBoxReflector::CTriggerBoxReflector()
+{
+	m_bTemporary = false;
+	m_flTemporaryDetachTime = 0;
+}
 
 void CTriggerBoxReflector::Spawn( void )
 {
@@ -81,13 +88,21 @@ bool CTriggerBoxReflector::CreateVPhysics()
 	return true;
 }
 
-void CTriggerBoxReflector::StartTouch( CBaseEntity *pOther )
+void CTriggerBoxReflector::Touch( CBaseEntity *pOther )
 {
 	if ( m_hAttachedBox )
 		return;
 
 	if ( !FClassnameIs( pOther, "prop_box" ) )
 		return;
+
+	if ( m_bTemporary )
+	{
+		if ( m_flTemporaryDetachTime >= gpGlobals->curtime )
+		{
+			return;
+		}
+	}
 
 	CBaseEntity *pAttachEntity = m_hAttachEnt;
 	if ( !pAttachEntity )
@@ -97,7 +112,30 @@ void CTriggerBoxReflector::StartTouch( CBaseEntity *pOther )
 	}
 
 	CPropBox *pBox = static_cast<CPropBox*>( pOther );
+
+	// Test to see if any players are in the way:
+	for ( int i = 1; i < gpGlobals->maxClients; ++i )
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
+		if ( !pPlayer )
+			continue;
+
+		bool bDucked = (pPlayer->GetFlags() & FL_DUCKING) != 0;
+
+		Vector vecPlayerOrigin = pPlayer->GetAbsOrigin();
+		Vector vPlayerMins = ( bDucked ? VEC_DUCK_HULL_MIN : VEC_HULL_MIN ) + vecPlayerOrigin;
+		Vector vPlayerMaxs = ( bDucked ? VEC_DUCK_HULL_MAX : VEC_HULL_MAX ) + vecPlayerOrigin;
+		
+		Vector vecBoxOrigin = pAttachEntity->GetAbsOrigin();
+		Vector vBoxMins = pBox->CollisionProp()->OBBMins() + vecBoxOrigin;
+		Vector vBoxMaxs = pBox->CollisionProp()->OBBMaxs() + vecBoxOrigin;
 	
+		if ( IsBoxIntersectingBox( vPlayerMins, vPlayerMaxs, vBoxMins, vBoxMaxs ) )
+		{
+			return;
+		}
+	}
+
 	Assert( pBox->m_hAttached != this );
 
 	pBox->m_hAttached = this;
@@ -179,6 +217,7 @@ void CTriggerBoxReflector::TemporaryDetachThink( void )
 	if ( m_hAttachedBox )
 	{
 		DetachBox( m_hAttachedBox, true );
+		m_flTemporaryDetachTime = gpGlobals->curtime + 0.4;
 	}
 }
 

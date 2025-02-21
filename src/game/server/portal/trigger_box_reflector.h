@@ -9,13 +9,15 @@ public:
 	DECLARE_CLASS( CTriggerBoxReflector, CBaseEntity );
 	DECLARE_DATADESC();
 
+	CTriggerBoxReflector();
+
 	void Spawn( void );
 	void Activate( void );
 	void Precache( void );
 	void UpdateOnRemove( void );
 	bool CreateVPhysics();
 
-	void StartTouch( CBaseEntity *pOther );
+	void Touch( CBaseEntity *pOther );
 	void EndTouch( CBaseEntity *pOther );
 
 	void DetachBox( CPropBox *pBox, bool bPush = false );
@@ -32,6 +34,7 @@ private:
 	string_t m_iszAttachToEntity;
 
 	bool m_bTemporary;
+	float m_flTemporaryDetachTime;
 
 	CHandle<CBaseEntity> m_hAttachEnt; // The reference entity the trigger will set the box to
 	CHandle<CPropBox> m_hAttachedBox; // The box this trigger attaches to it
