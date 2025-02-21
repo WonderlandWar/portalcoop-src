@@ -1840,6 +1840,8 @@ void CHLClient::LevelShutdown( void )
 	CReplayRagdollRecorder::Instance().Shutdown();
 	CReplayRagdollCache::Instance().Shutdown();
 #endif
+	extern void PurgeAndDeleteCCHandles();
+	PurgeAndDeleteCCHandles();
 }
 
 

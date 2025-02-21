@@ -88,6 +88,11 @@ struct CCHandleInfo_t
 
 CUtlVector<CCHandleInfo_t> g_AllCCHandles;
 
+void PurgeAndDeleteCCHandles()
+{
+	g_AllCCHandles.Purge();
+}
+
 ClientCCHandle_t GetCCHandleFromFile( const char *filename )
 {
 	for ( int i = 0; i < g_AllCCHandles.Count(); ++i )

@@ -5,7 +5,7 @@
 #include "trigger_portal_cleanser.h"
 #include "collisionutils.h"
 
-ConVar sv_trigger_box_reflector_temporary_time( "sv_trigger_box_reflector_temporary_time", "2", FCVAR_CHEAT );
+ConVar sv_trigger_box_reflector_temporary_time( "sv_trigger_box_reflector_temporary_time", "2.5", FCVAR_CHEAT );
 
 static const char *g_pszTemporaryDetachThink = "TemporaryDetachThink";
 
