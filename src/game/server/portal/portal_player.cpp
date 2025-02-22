@@ -2433,7 +2433,7 @@ void CPortal_Player::CreateRagdollEntity(const CTakeDamageInfo& info)
 {
 	if (m_hRagdoll)
 	{
-		UTIL_RemoveImmediate(m_hRagdoll);
+		UTIL_Remove(m_hRagdoll);
 		m_hRagdoll = NULL;
 	}
 

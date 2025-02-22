@@ -43,6 +43,8 @@ public:
 	virtual void StartTouch( CBaseEntity *pOther );
 	virtual void NotifySystemEvent( CBaseEntity *pNotify, notify_system_event_t eventType, const notify_system_event_params_t &params );
 
+	bool HandleSpecialEntityImpact( CBaseEntity *pOther, bool bDoAnything );
+
 	CHandle<CProp_Portal>		m_hTouchedPortal;	// Pointer to the portal we are touched most recently
 	bool						m_bTouchingPortal1;	// Are we touching portal 1
 	bool						m_bTouchingPortal2;	// Are we touching portal 2
@@ -244,23 +246,10 @@ void CPropEnergyBall::VPhysicsCollision( int index, gamevcollisionevent_t *pEven
 		// Only place decals and draw effects if we hit something valid
 		if ( pEntity )
 		{
-			CPropBox *pBox = dynamic_cast<CPropBox*>( pEntity );
-			if ( pBox )
+			bDoEffects = HandleSpecialEntityImpact( pEntity, true );
+
+			if ( bDoEffects )
 			{
-				if ( pBox->m_hAttached )
-				{
-					bDoEffects = false; // This is to mimic Rexaura's behavior
-					SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
-				}
-				pBox->EnergyBallHit( this );
-			}
-			else
-			{
-				CFuncBoxReflectorShield *pShield = dynamic_cast<CFuncBoxReflectorShield*>( pEntity );
-				if ( pShield )
-				{
-					pShield->EnergyBallHit( this );
-				}
 				// Cball impact effect (using same trace as the decal placement above)
 				CEffectData data;
 				data.m_flRadius = 16;
@@ -327,6 +316,41 @@ void CPropEnergyBall::NotifySystemEvent(CBaseEntity *pNotify, notify_system_even
 	}
 
 	//BaseClass::NotifySystemEvent( pNotify, eventType, params );
+}
+
+bool CPropEnergyBall::HandleSpecialEntityImpact( CBaseEntity *pOther, bool bDoAnything )
+{
+	CPropBox *pBox = dynamic_cast<CPropBox*>( pOther );
+	if ( pBox )
+	{
+		if ( pBox->m_hAttached )
+		{
+			if ( bDoAnything )
+			{
+				SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
+			}
+
+			return false;
+		}
+		
+		if ( bDoAnything )
+		{
+			pBox->EnergyBallHit( this );
+		}
+	}
+	else
+	{
+		if ( bDoAnything )
+		{
+			CFuncBoxReflectorShield *pShield = dynamic_cast<CFuncBoxReflectorShield*>( pOther );
+			if ( pShield )
+			{
+				pShield->EnergyBallHit( this );
+			}
+		}
+	}
+
+	return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -415,6 +439,8 @@ void CPropEnergyBall::StartTouch( CBaseEntity *pOther )
 		SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
 	}
 	
+	//HandleSpecialEntityImpact( pOther, true );
+
 	/*CPropBox *pBox = dynamic_cast<CPropBox*>( pOther );
 	if ( pBox )
 	{
