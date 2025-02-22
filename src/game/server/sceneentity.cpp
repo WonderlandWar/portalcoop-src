@@ -52,8 +52,11 @@ class CBaseFlex;
 //#define COMPILED_VCDS 1
 
 static ConVar scene_forcecombined( "scene_forcecombined", "0", 0, "When playing back, force use of combined .wav files even in english." );
+#ifdef PORTAL // REXAURA: Bad hack but it's quicker than going through every scene
+static ConVar scene_maxcaptionradius( "scene_maxcaptionradius", "0", FCVAR_ARCHIVE, "Only show closed captions if recipient is within this many units of speaking actor (0==disabled)." );
+#else
 static ConVar scene_maxcaptionradius( "scene_maxcaptionradius", "1200", 0, "Only show closed captions if recipient is within this many units of speaking actor (0==disabled)." );
-
+#endif
 // Assume sound system is 100 msec lagged (only used if we can't find snd_mixahead cvar!)
 #define SOUND_SYSTEM_LATENCY_DEFAULT ( 0.1f )
 

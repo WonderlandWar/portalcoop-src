@@ -43,6 +43,8 @@ public:
 
 	Vector	m_vecOrigin;
 
+	ClientCCHandle_t CCHandle() const { return m_CCHandle; }
+
 private:
 
 	float	m_flCurWeight;
@@ -93,7 +95,7 @@ void PurgeAndDeleteCCHandles()
 	g_AllCCHandles.Purge();
 }
 
-ClientCCHandle_t GetCCHandleFromFile( const char *filename )
+ClientCCHandle_t GetCachedCCHandleFromFile( const char *filename )
 {
 	for ( int i = 0; i < g_AllCCHandles.Count(); ++i )
 	{
@@ -119,7 +121,7 @@ void C_ColorCorrection::OnDataChanged(DataUpdateType_t updateType)
 	{
 		if ( m_CCHandle == INVALID_CLIENT_CCHANDLE )
 		{
-			ClientCCHandle_t handle = GetCCHandleFromFile( m_netLookupFilename );
+			ClientCCHandle_t handle = GetCachedCCHandleFromFile( m_netLookupFilename );
 			if ( handle != INVALID_CLIENT_CCHANDLE )
 			{
 				m_CCHandle = handle;
@@ -150,7 +152,7 @@ bool C_ColorCorrection::ShouldDraw()
 #ifdef PORTAL
 
 
-C_ColorCorrection *GetNearestDistBasedColorCorrection( void )
+C_ColorCorrection *GetNearestDistBasedColorCorrectionWithHandle( ClientCCHandle_t handle )
 {
 	float flFinalDistance = FLT_MAX;
 	C_ColorCorrection *pFinalCorrection = NULL;
@@ -163,6 +165,9 @@ C_ColorCorrection *GetNearestDistBasedColorCorrection( void )
 		{
 			continue;
 		}
+
+		if ( pCorrection->CCHandle() != handle )
+			continue;
 		
 		bool bUseDist = ( pCorrection->m_minFalloff != -1 ) && ( pCorrection->m_maxFalloff != -1 ) && pCorrection->m_minFalloff != pCorrection->m_maxFalloff;
 		if ( !bUseDist )
@@ -195,12 +200,10 @@ void C_ColorCorrection::ClientThink()
 		return;
 	}
 
-#ifdef PORTAL
 	bool bUseDist = ( m_minFalloff != -1 ) && ( m_maxFalloff != -1 ) && m_minFalloff != m_maxFalloff;
 
-	if( bUseDist && GetNearestDistBasedColorCorrection() != this )
+	if( bUseDist && GetNearestDistBasedColorCorrectionWithHandle( m_CCHandle ) != this )
 		return;
-#endif
 
 	if( !m_bEnabled && m_flCurWeight == 0.0f )
 	{
