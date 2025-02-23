@@ -473,11 +473,10 @@ void CProp_Portal::DelayedPlacementThink( void )
 		if( pFiringPlayer )
 		{
 			PortalGameRules()->IncrementPortalsPlaced();
-
-			// Placement successful, fire the output
-			m_OnPlacedSuccessfully.FireOutput( pPortalGun, this );
-
 		}
+
+		// Placement successful, fire the output
+		m_OnPlacedSuccessfully.FireOutput( pPortalGun, this );
 	}
 #endif
 	

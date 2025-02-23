@@ -12,6 +12,8 @@ BEGIN_DATADESC( CPropBox )
 
 	DEFINE_OUTPUT( m_OnDissolved, "OnDissolved" ),
 
+	DEFINE_INPUTFUNC( FIELD_VOID, "Dissolve", InputDissolve ),
+
 END_DATADESC()
 
 IMPLEMENT_SERVERCLASS_ST( CPropBox, DT_PropBox )
@@ -60,6 +62,11 @@ void CPropBox::PreDissolve( CBaseEntity *pActivator, CBaseEntity *pCaller )
 {
 	EmitSound( "Rexaura.BoxDissolve" );
 	m_OnDissolved.FireOutput( pActivator, pCaller );
+}
+
+void CPropBox::InputDissolve( inputdata_t &inputdata )
+{
+	CTriggerPortalCleanser::FizzleBaseAnimating( this, NULL );
 }
 
 #define PORTAL_WEIGHT_BOX_MODEL_NAME "models/props/metal_box.mdl"

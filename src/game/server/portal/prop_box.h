@@ -23,6 +23,9 @@ public:
 	CHandle<CTriggerBoxReflector> m_hAttached;
 
 private:
+
+	void InputDissolve( inputdata_t &inputdata );
+
 	COutputEvent m_OnDissolved;
 };
 

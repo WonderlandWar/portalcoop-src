@@ -2431,17 +2431,18 @@ bool CPortal_Player::BecomeRagdollOnClient(const Vector& force)
 
 void CPortal_Player::CreateRagdollEntity(const CTakeDamageInfo& info)
 {
-	if (m_hRagdoll)
-	{
-		UTIL_Remove(m_hRagdoll);
-		m_hRagdoll = NULL;
-	}
-
 #if PORTAL_HIDE_PLAYER_RAGDOLL
 	AddSolidFlags(FSOLID_NOT_SOLID);
 	AddEffects(EF_NODRAW | EF_NOSHADOW);
 	AddEFlags(EFL_NO_DISSOLVE);
 #endif // PORTAL_HIDE_PLAYER_RAGDOLL
+
+#if 0
+	if (m_hRagdoll)
+	{
+		UTIL_Remove(m_hRagdoll);
+		m_hRagdoll = NULL;
+	}
 	CBaseEntity* pRagdoll = CreateServerRagdoll(this, m_nForceBone, info, COLLISION_GROUP_INTERACTIVE_DEBRIS, true);
 	pRagdoll->m_takedamage = DAMAGE_NO;
 	m_hRagdoll = pRagdoll;
@@ -2499,6 +2500,7 @@ void CPortal_Player::CreateRagdollEntity(const CTakeDamageInfo& info)
 		// Save ragdoll handle.
 		m_hRagdoll = pRagdoll;
 	*/
+#endif
 }
 
 void CPortal_Player::Jump(void)
@@ -2553,7 +2555,7 @@ void CPortal_Player::Event_Killed(const CTakeDamageInfo& info)
 	}
 	*/
 #endif // PORTAL_HIDE_PLAYER_RAGDOLL
-
+#if !PORTAL_HIDE_PLAYER_RAGDOLL
 	if ((info.GetDamageType() & DMG_DISSOLVE) && !(m_hRagdoll.Get()->GetEFlags() & EFL_NO_DISSOLVE))
 	{
 		if (m_hRagdoll)
@@ -2561,7 +2563,7 @@ void CPortal_Player::Event_Killed(const CTakeDamageInfo& info)
 			m_hRagdoll->GetBaseAnimating()->Dissolve(NULL, gpGlobals->curtime, false, ENTITY_DISSOLVE_NORMAL);
 		}
 	}
-
+#endif
 	m_lifeState = LIFE_DYING;
 	StopZooming();
 
