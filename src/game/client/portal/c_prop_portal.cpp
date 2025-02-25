@@ -355,15 +355,6 @@ CProp_Portal *CProp_Portal::FindPortal( unsigned char iLinkageGroupID, bool bPor
 			return pFoundInactive;
 	}
 
-	if( bCreateIfNothingFound )
-	{
-		CProp_Portal *pPortal = (CProp_Portal *)CreateEntityByName( "prop_portal" );
-		pPortal->m_iLinkageGroupID = iLinkageGroupID;
-		pPortal->m_bIsPortal2 = bPortal2;
-		pPortal->Spawn();
-		return pPortal;
-	}
-
 	return NULL;
 }
 
@@ -596,65 +587,9 @@ void C_Prop_Portal::Activate( void )
 
 	BaseClass::Activate();
 }
-#if 1
-void C_Prop_Portal::HandleClientSidedTouching( void )
-{
-	// The way normal client sided teleportation is done is very complicated, when you walk through, your position in space is technically not actually changed which is evident when you try to use
-	// a predicted weapon that shoots bullets, like the shotgun, you'll be able to see that no bullets appear before the client knows that it was teleported by the server.
-	// What really happens is that you walk through it and through clever rendering tricks, it gives the illusion that you walked through, but you are technically just moving beyond the portal plane.
-
-
-	// Copied from c_triggers.cpp
-	C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPortalPlayer();
-
-	if ( !pPlayer || !IsActive() || ( m_hLinkedPortal && !m_hLinkedPortal->IsActive() ) )
-	{
-		//SetNextClientThink(gpGlobals->curtime);
-		return;
-	}
-
-	// We don't use AbsOrigin because CalcPortalView transforms our view origin, not abs origin.
-	Vector vPlayerMins = pPlayer->GetPlayerMins() + MainViewOrigin() - GetViewOffset(); //pPlayer->GetAbsOrigin()
-	Vector vPlayerMaxs = pPlayer->GetPlayerMaxs() + MainViewOrigin() - GetViewOffset(); //pPlayer->GetAbsOrigin()
-
-	Vector vMins; //= CProp_Portal_Shared::vLocalMins + m_ptOrigin;
-	Vector vMaxs; //= CProp_Portal_Shared::vLocalMaxs + m_ptOrigin;
-	
-	CollisionProp()->WorldSpaceAABB( &vMins, &vMaxs );
-	
-	ConVarRef cam_command("cam_command"); // Doing extern ConVar cam_command won't work, for some reason...
-	
-	Vector vViewOrigin = cam_command.GetInt() == 0 ? MainViewOrigin() : GetAbsOrigin() + GetViewOffset();
-
-	if ( IsPointInBox(vViewOrigin, vMins, vMaxs) &&
-		IsActive() &&
-		m_hLinkedPortal.Get() &&
-		m_hLinkedPortal.Get()->IsActive() )
-	{
-		m_bEyePositionIsInPortalEnvironment = true;
-	}
-	else
-	{
-		m_bEyePositionIsInPortalEnvironment = false;
-	}
-	
-	if ( IsPointInBox(pPlayer->GetLocalOrigin(), vMins, vMaxs) && IsActive() && m_hLinkedPortal.Get() && m_hLinkedPortal.Get()->IsActive()  )
-	{
-		m_bPlayerOriginIsInPortalEnvironment = true;
-	}
-	else
-	{
-		m_bPlayerOriginIsInPortalEnvironment = false;
-	}
-}
-#endif
 
 void C_Prop_Portal::ClientThink( void )
 {
-	HandleClientSidedTouching();
-	HandleFakeTouch();
-	//HandleFakePhysicsTouch();
-	
 	SetupPortalColorSet();
 #ifndef DISABLE_CLONE_AREA
 	if (m_pAttachedCloningArea)
@@ -834,7 +769,13 @@ void C_Prop_Portal::Simulate()
 	//now, fix up our list of ghosted renderables.
 	{
 		//The local player doesn't get a ghost renderable for some reason, hack time!
-		if (m_bPlayerIsInPortalEnvironment)
+		
+		Vector vPortalMins, vPortalMaxs;
+		CollisionProp()->WorldSpaceAABB( &vPortalMins, &vPortalMaxs );
+
+		Vector vPlayerMins, vPlayerMaxs;
+		pLocalPlayer->CollisionProp()->WorldSpaceAABB( &vPlayerMins, &vPlayerMaxs );
+		if ( IsBoxIntersectingBox( vPortalMins, vPortalMaxs, vPlayerMins, vPlayerMaxs ) )
 		{
 			m_hGhostingEntities.AddToTail( pLocalPlayer );
 
@@ -940,36 +881,22 @@ void C_Prop_Portal::Simulate()
 	//ensure the shared clip plane is up to date
 	C_Prop_Portal *pLinkedPortal = m_hLinkedPortal.Get();
 
-
-	// When the portal is flat on the ground or on a ceiling, tweak the clip plane offset to hide the player feet sticking 
-	// through the floor. We can't use this offset in other configurations -- it visibly would cut of parts of the model.
-	float flTmp = fabsf(DotProduct(pLinkedPortal->m_plane_Origin.normal, Vector(0, 0, 1)));
-	flTmp = fabsf(flTmp - 1.0f);
-	float flClipPlaneFudgeOffset = (flTmp < 0.01f) ? 2.0f : -2.0f;
-
 	m_fGhostRenderablesClip[0] = pLinkedPortal->m_plane_Origin.normal.x;
 	m_fGhostRenderablesClip[1] = pLinkedPortal->m_plane_Origin.normal.y;
 	m_fGhostRenderablesClip[2] = pLinkedPortal->m_plane_Origin.normal.z;
 	m_fGhostRenderablesClip[3] = pLinkedPortal->m_plane_Origin.dist - 0.75f;
-	
-	m_fGhostRenderablesClipForPlayer[0] = pLinkedPortal->m_plane_Origin.normal.x;
-	m_fGhostRenderablesClipForPlayer[1] = pLinkedPortal->m_plane_Origin.normal.y;
-	m_fGhostRenderablesClipForPlayer[2] = pLinkedPortal->m_plane_Origin.normal.z;
-	m_fGhostRenderablesClipForPlayer[3] = pLinkedPortal->m_plane_Origin.dist + flClipPlaneFudgeOffset;
-
 }
 
 
 C_PortalGhostRenderable *C_Prop_Portal::GetGhostRenderableForEntity( C_BaseEntity *pEntity )
 {
 	//Disable this for now
-#if 0
 	for( int i = 0; i != m_GhostRenderables.Count(); ++i )
 	{
-		if( m_GhostRenderables[i]->m_hGhostedRenderable == pEntity )
+		if( m_GhostRenderables[i]->m_pGhostedRenderable == pEntity )
 			return m_GhostRenderables[i];
 	}
-#endif
+
 	return NULL;
 }
 
@@ -1469,8 +1396,6 @@ void C_Prop_Portal::StartTouch(C_BaseEntity *pOther)
 		pOther->IsPlayer()
 		)
 	{
-		if (pOther == C_BasePlayer::GetLocalPlayer())
-			m_bPlayerIsInPortalEnvironment = true;
 		return;
 	}
 	
@@ -1522,8 +1447,6 @@ void C_Prop_Portal::EndTouch(C_BaseEntity *pOther)
 		pOther->IsPlayer()
 		)
 	{
-		if (pOther == C_BasePlayer::GetLocalPlayer())
-			m_bPlayerIsInPortalEnvironment = false;
 		return;
 	}
 	
@@ -1692,8 +1615,8 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 		m_vRight = -m_vRight;
 
 		//Predicting these is a terrible idea
-		//m_ptOrigin = vOrigin;
-		//m_qAbsAngle = qAngles;
+		m_ptOrigin = vOrigin;
+		m_qAbsAngle = qAngles;
 	}
 
 	AddEffects( EF_NOINTERP );
@@ -1718,7 +1641,7 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	}
 
 	//Predicting this is a terrible idea
-	//m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
+	m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
 
 	m_pLinkedPortal = m_hLinkedPortal;
 

@@ -73,11 +73,6 @@ BEGIN_NETWORK_TABLE( CWeaponPortalBase, DT_WeaponPortalBase )
 //	SendPropExclude( "DT_BaseAnimating", "m_nSequence" ),
 //	SendPropExclude( "DT_LocalActiveWeaponData", "m_flTimeWeaponIdle" ),
 
-#if PREDICT_NEXTATTACK_TIME
-	SendPropExclude("DT_LocalActiveWeaponData", "m_flNextPrimaryAttack"),
-	SendPropExclude("DT_LocalActiveWeaponData", "m_flNextSecondaryAttack"),
-#endif
-
 #endif
 	
 END_NETWORK_TABLE()
@@ -85,15 +80,6 @@ END_NETWORK_TABLE()
 LINK_ENTITY_TO_CLASS_ALIASED(weapon_portal_base, WeaponPortalBase);
 
 BEGIN_PREDICTION_DATA( CWeaponPortalBase ) 
-
-#ifdef CLIENT_DLL
-
-#if PREDICT_NEXTATTACK_TIME
-	DEFINE_PRED_FIELD( m_flNextPrimaryAttack, FIELD_FLOAT, FTYPEDESC_NOERRORCHECK | FTYPEDESC_PRIVATE | FTYPEDESC_OVERRIDE ),	
-	DEFINE_PRED_FIELD( m_flNextSecondaryAttack, FIELD_FLOAT, FTYPEDESC_NOERRORCHECK | FTYPEDESC_PRIVATE | FTYPEDESC_OVERRIDE ),
-#endif
-
-#endif
 END_PREDICTION_DATA()
 
 

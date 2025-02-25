@@ -12,21 +12,16 @@
 
 #include "c_basetoggle.h"
 #include "triggers_shared.h"
-#include "clienttouch.h"
 
-class C_BaseTrigger : public C_BaseToggle, CClientTouchable
+class C_BaseTrigger : public C_BaseToggle
 {
 	DECLARE_CLASS( C_BaseTrigger, C_BaseToggle );
 	DECLARE_CLIENTCLASS();
-	DECLARE_TOUCHABLE();
 public:
 
 	C_BaseTrigger( void );
 
 	virtual void Spawn();
-	virtual void ClientThink();
-
-	virtual bool TouchCondition( C_BaseEntity *pOther );
 	
 	virtual bool PassesTriggerFilters(C_BaseEntity *pOther);
 

@@ -451,7 +451,7 @@ const char *CPortalGameRules::GetGameDescription( void )
 	{
 		if (sv_portalgun_spawn.GetBool())
 		{
-			CWeaponPortalgun *pPortalgun = (CWeaponPortalgun*)CreateEntityByName("weapon_portalgun");
+			CWeaponPortalgun *pPortalgun = (CWeaponPortalgun*)pPlayer->GiveNamedItem("weapon_portalgun");
 			if (sv_portalgun_color.GetInt() == 0)
 			{
 				pPortalgun->SetCanFirePortal1(true);
@@ -467,25 +467,17 @@ const char *CPortalGameRules::GetGameDescription( void )
 				pPortalgun->SetCanFirePortal1(true);
 				pPortalgun->SetCanFirePortal2(true);
 			}
-
-			DispatchSpawn(pPortalgun);
-			pPlayer->Weapon_Equip(pPortalgun);
 		}
 		else
 		{
 			// Sooo the reason why we can't use the info_player_portalcoop entity directly is because the portalgun spawns too fast, I think.
 			// We know for sure that spawning under the gamerules works fine, so we'll use it and we'll let cvars override our values. - Wonderland_War
-
-			CPortal_Player *pPortalPlayer = ToPortalPlayer(pPlayer);
-			
-			if (pPortalPlayer->m_pSpawnedPortalgun)
+			CWeaponPortalgun *pPortalgun = (CWeaponPortalgun *)pPlayer->GiveNamedItem( "weapon_portalgun" );
+			if ( pPortalgun )
 			{
-				DispatchSpawn(pPortalPlayer->m_pSpawnedPortalgun);
-				pPlayer->Weapon_Equip(pPortalPlayer->m_pSpawnedPortalgun);
+				pPortalgun->m_bCanFirePortal1 = ((CPortal_Player*)pPlayer)->m_PortalGunSpawnInfo.m_bCanFirePortal1;
+				pPortalgun->m_bCanFirePortal2 = ((CPortal_Player*)pPlayer)->m_PortalGunSpawnInfo.m_bCanFirePortal2;
 			}
-
-			pPortalPlayer->m_pSpawnedPortalgun = NULL;
-
 		}
 
 		if (sv_spawn_with_suit.GetBool())
@@ -498,9 +490,7 @@ const char *CPortalGameRules::GetGameDescription( void )
 	// Purpose:
 	//-----------------------------------------------------------------------------
 	CBaseEntity *CPortalGameRules::GetPlayerSpawnSpot( CBasePlayer *pPlayer )
-	{
-		
-		
+	{		
 		CBaseEntity *pSpawnSpot = pPlayer->EntSelectSpawnPoint();
 		
 
@@ -508,7 +498,11 @@ const char *CPortalGameRules::GetGameDescription( void )
 
 		if ( pCoopSpawn )
 		{
-			Assert( pCoopSpawn->CanSpawnOnMe( pPlayer ) );
+			if ( !pCoopSpawn->CanSpawnOnMe( pPlayer ) )
+			{
+				AssertMsg( false, "Player spawned on the incorrect spawnpoint" );
+				Warning( "Warning: Player spawned on the incorrect spawnpoint!\n" );
+			}
 
 			pPlayer->SetLocalOrigin( pSpawnSpot->GetAbsOrigin() + Vector(0,0,1) );
 			pPlayer->SetAbsVelocity( vec3_origin );

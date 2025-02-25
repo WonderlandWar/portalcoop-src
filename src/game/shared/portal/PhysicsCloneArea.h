@@ -15,7 +15,6 @@
 #include "baseentity_shared.h"
 #ifdef CLIENT_DLL
 #include "c_prop_portal.h"
-#include "clienttouch.h"
 
 //#define CPhysicsCloneArea C_PhysicsCloneArea
 #endif
@@ -29,20 +28,15 @@ class CPortalSimulator;
 #ifdef GAME_DLL
 class CPhysicsCloneArea : public CBaseEntity
 #else
-class CPhysicsCloneArea : public C_BaseEntity, public CClientTouchable	
+class CPhysicsCloneArea : public C_BaseEntity
 #endif
 {
 public:
 	DECLARE_CLASS( CPhysicsCloneArea, CBaseEntity );
 		
 #ifdef CLIENT_DLL
-	DECLARE_TOUCHABLE()
 	CPhysicsCloneArea();
 	~CPhysicsCloneArea();
-
-	virtual void ClientThink( void );
-
-	virtual bool TouchCondition( C_BaseEntity *pOther );
 
 #endif
 

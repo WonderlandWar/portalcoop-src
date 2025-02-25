@@ -35,6 +35,7 @@ BEGIN_DATADESC( CTriggerBoxReflector )
 	DEFINE_OUTPUT( m_OnEnergyBallHit, "OnEnergyBallHit" ),
 
 	DEFINE_THINKFUNC( TemporaryDetachThink ),
+	DEFINE_THINKFUNC( BeamUpdateThink ),
 
 END_DATADESC()
 

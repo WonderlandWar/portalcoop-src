@@ -32,24 +32,6 @@ void C_BaseTrigger::Spawn(void)
 	SetNextClientThink(CLIENT_THINK_ALWAYS);
 }
 
-void C_BaseTrigger::ClientThink(void)
-{	
-	//Hacks to get client sided triggers working
-	if ( !m_bDisabled )
-		HandleFakeTouch();
-}
-
-bool C_BaseTrigger::TouchCondition( C_BaseEntity *pOther )
-{	
-	if ( !PassesTriggerFilters( pOther ) )
-		return false;
-
-	if ( ( pOther->GetSolidFlags() & FSOLID_TRIGGER ) != 0 )
-		return false;
-
-	return true;
-}
-
 
 //-----------------------------------------------------------------------------
 // Purpose: Returns true if this entity passes the filter criteria, false if not.
@@ -63,7 +45,7 @@ bool C_BaseTrigger::PassesTriggerFilters(C_BaseEntity *pOther)
 		(HasSpawnFlags(SF_TRIGGER_ALLOW_NPCS) && (pOther->GetFlags() & FL_NPC)) ||
 		(HasSpawnFlags(SF_TRIGGER_ALLOW_PUSHABLES) && FClassnameIs(pOther, "func_pushable")) ||
 		(HasSpawnFlags(SF_TRIGGER_ALLOW_PHYSICS) && pOther->GetMoveType() == MOVETYPE_VPHYSICS) 
-#if defined( HL2_EPISODIC ) || defined( TF_DLL )		
+#if defined( HL2_EPISODIC ) || defined( TF_CLIENT_DLL )		
 		||
 		(	HasSpawnFlags(SF_TRIG_TOUCH_DEBRIS) && 
 			(pOther->GetCollisionGroup() == COLLISION_GROUP_DEBRIS ||

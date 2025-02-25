@@ -54,6 +54,7 @@ bool g_bBumpedByLinkedPortal;
 ConVar sv_portal_placement_debug ("sv_portal_placement_debug", "0", FCVAR_REPLICATED );
 ConVar sv_portal_placement_never_bump ("sv_portal_placement_never_bump", "0", FCVAR_REPLICATED | FCVAR_CHEAT );
 
+bool g_bTest = true;
 
 bool IsMaterialInList( const csurface_t &surface, char *g_ppszMaterials[] )
 {
@@ -1307,6 +1308,8 @@ bool IsPortalOnValidSurface( const Vector &vOrigin, const Vector &vForward, cons
 
 float VerifyPortalPlacement( const CProp_Portal *pIgnorePortal, Vector &vOrigin, QAngle &qAngles, int iPlacedBy, bool bTest /*= false*/ )
 {
+	g_bTest = bTest;
+
 	Vector vOriginalOrigin = vOrigin;
 
 	Vector vForward, vRight, vUp;

@@ -106,8 +106,6 @@ public:
 	void					PlayerPortalled( C_Prop_Portal *pEnteredPortal, float fTime, bool bForcedDuck );
 	void					CheckPlayerAboutToTouchPortal( void );
 
-	void					FixEyeAnglesFromPortalling( void );
-
 	virtual void	CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, float &zFar, float &fov );
 	void			CalcPortalView( Vector &eyeOrigin, QAngle &eyeAngles );
 	virtual void	CalcViewModelView( const Vector& eyeOrigin, const QAngle& eyeAngles);
@@ -229,24 +227,10 @@ public:
 	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
 	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
 
-	bool m_bShouldFixAngles;
-	bool m_bForceFixAngles;
-
 	C_Prop_Portal *m_pPortalEnvironments;
 	C_Prop_Portal *m_pTransformPortal;
 
-	bool m_bTransformFacing;
-
 	VMatrix m_PendingPortalMatrix;
-	
-	// May as well not store these in memory...
-	/*
-	bool m_bMoveUseOriginHack;
-	Vector m_vMoveOriginHack;
-	*/
-
-	QAngle m_qPrePortalledStoredViewAngles;
-	//QAngle m_qPrePortalledStoredAngles;
 
 protected:
 

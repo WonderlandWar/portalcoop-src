@@ -24,6 +24,17 @@ class CPortal_Player;
 #include "func_liquidportal.h"
 #include "ai_speech.h"			// For expresser host
 
+struct PortalGunSpawnInfo_t
+{
+	PortalGunSpawnInfo_t()
+	{
+		m_bCanFirePortal1 = true;
+		m_bCanFirePortal2 = true;
+	}
+
+	bool m_bCanFirePortal1;
+	bool m_bCanFirePortal2;
+};
 
 class CInfoPlayerPortalCoop : public CPointEntity
 {
@@ -218,7 +229,7 @@ public:
 	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
 	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
 
-	CWeaponPortalgun *m_pSpawnedPortalgun;
+	PortalGunSpawnInfo_t m_PortalGunSpawnInfo;
 
 	void SetLookingForUseEntity( bool bLookingForUseEntity ) { m_bLookingForUseEntity = bLookingForUseEntity; }
 	void SetLookForUseEntity( bool bLookForUseEntity ) { m_bLookForUseEntity = bLookForUseEntity; }
@@ -307,7 +318,7 @@ public:
 
 	friend class CProp_Portal;
 	
-	virtual CBaseEntity* EntSelectSpawnPoint( void );
+	virtual CBaseEntity* EntSelectSpawnPoint( void ) OVERRIDE;
 
 #ifdef PORTAL_MP
 public:

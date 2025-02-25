@@ -64,43 +64,38 @@ void CInfoPlayerPortalCoop::PlayerSpawned( CBasePlayer *pPlayer )
 	Assert( !m_iValidPlayerIndex || m_iValidPlayerIndex == pPlayer->entindex() );
 
 	if ( m_bSpawnWithPortalgun )
-	{			
-		CWeaponPortalgun *pPortalgun = (CWeaponPortalgun*)CreateEntityByName("weapon_portalgun");
+	{
+		PortalGunSpawnInfo_t info;
 
-		if (pPortalgun)
+		if (m_iPortalgunType == 0)
 		{
-
-			if (m_iPortalgunType == 0)
-			{
-				pPortalgun->m_bCanFirePortal1 = false;
-				pPortalgun->m_bCanFirePortal2 = false;
-			}
-			else if (m_iPortalgunType == 1)
-			{
-				pPortalgun->m_bCanFirePortal1 = true;
-				pPortalgun->m_bCanFirePortal2 = false;
-			}
-			else if (m_iPortalgunType == 2)
-			{
-				pPortalgun->m_bCanFirePortal1 = false;
-				pPortalgun->m_bCanFirePortal2 = true;
-			}
-			else if (m_iPortalgunType == 3)
-			{
-				pPortalgun->m_bCanFirePortal1 = true;
-				pPortalgun->m_bCanFirePortal2 = true;
-			}
+			info.m_bCanFirePortal1 = false;
+			info.m_bCanFirePortal2 = false;
+		}
+		else if (m_iPortalgunType == 1)
+		{
+			info.m_bCanFirePortal1 = true;
+			info.m_bCanFirePortal2 = false;
+		}
+		else if (m_iPortalgunType == 2)
+		{
+			info.m_bCanFirePortal1 = false;
+			info.m_bCanFirePortal2 = true;
+		}
+		else if (m_iPortalgunType == 3)
+		{
+			info.m_bCanFirePortal1 = true;
+			info.m_bCanFirePortal2 = true;
+		}
 
 			CPortal_Player *pPortalPlayer = ToPortalPlayer(pPlayer);
-			pPortalPlayer->m_pSpawnedPortalgun = pPortalgun;
+			pPortalPlayer->m_PortalGunSpawnInfo = info;
 			
 			// We can't do this because the view model effects get messed up, see portal_gamerules.cpp
 			/*
 			DispatchSpawn(pPortalgun);
 			pPlayer->Weapon_Equip(pPortalgun);
 			*/
-		}
-
 	}
 
 	m_OnPlayerSpawned.FireOutput(pPlayer, pPlayer);
@@ -2900,142 +2895,18 @@ void CPortal_Player::SetupVisibility(CBaseEntity* pViewEntity, unsigned char* pv
 
 CBaseEntity* CPortal_Player::EntSelectSpawnPoint(void)
 {
-	CBaseEntity* pSpot = NULL;
-	CBaseEntity* pLastSpawnPoint = g_pLastSpawn;
-	edict_t* player = edict();
-	const char* pSpawnpointName = "info_player_portalcoop";
-
-	/*if ( HL2MPRules()->IsTeamplay() == true )
+	CBaseEntity *pEntity = NULL;
+	while ( ( pEntity = gEntList.FindEntityByClassname( pEntity, "info_player_portalcoop" ) ) != NULL )
 	{
-	if ( GetTeamNumber() == TEAM_COMBINE )
-	{
-	pSpawnpointName = "info_player_combine";
-	pLastSpawnPoint = g_pLastCombineSpawn;
-	}
-	else if ( GetTeamNumber() == TEAM_REBELS )
-	{
-	pSpawnpointName = "info_player_rebel";
-	pLastSpawnPoint = g_pLastRebelSpawn;
-	}*/
-		if ( gEntList.FindEntityByClassname( NULL, pSpawnpointName ) == NULL )
+		CInfoPlayerPortalCoop *pCoopSpawn = static_cast<CInfoPlayerPortalCoop*>( pEntity );
+		if ( pCoopSpawn->CanSpawnOnMe( this ) )
 		{
-			pSpawnpointName = "info_player_start"; //info_player_portalcoop is more important
-			pLastSpawnPoint = g_pLastSpawn;
-		}
-
-		if ( gEntList.FindEntityByClassname( NULL, pSpawnpointName ) == NULL )
-		{
-			pSpawnpointName = "info_player_deathmatch";
-			pLastSpawnPoint = g_pLastSpawn;
-		}
-	//}
-
-	pSpot = pLastSpawnPoint;
-	// Randomize the start spot
-	
-	for (int i = random->RandomInt(1, 5); i > 0; i--)
-	{
-		pSpot = gEntList.FindEntityByClassname(pSpot, pSpawnpointName);
-		
-		CInfoPlayerPortalCoop *pCoopSpot = dynamic_cast<CInfoPlayerPortalCoop*>(pSpot);
-		if (pCoopSpot)
-		{
-			if ( pCoopSpot->CanSpawnOnMe( this ) )
-			{
-				pSpot = pCoopSpot;
-			}
+			return pCoopSpawn;
 		}
 	}
 
-
-	if (!pSpot)  // skip over the null point
-	{
-		pSpot = gEntList.FindEntityByClassname(pSpot, pSpawnpointName);
-
-		CInfoPlayerPortalCoop *pCoopSpot = dynamic_cast<CInfoPlayerPortalCoop*>(pSpot);
-		if (pCoopSpot && strcmp(pSpawnpointName, "info_player_portalcoop"))
-		{
-			while ( !pCoopSpot || ( pCoopSpot && !pCoopSpot->CanSpawnOnMe(this) ) )
-			{
-				pCoopSpot = dynamic_cast<CInfoPlayerPortalCoop*>(gEntList.FindEntityByClassname(pCoopSpot, pSpawnpointName));
-			}
-		}
-
-		if (pCoopSpot)
-			pSpot = pCoopSpot;
-
-	}
-
-	CBaseEntity* pFirstSpot = pSpot;
-
-	do
-	{
-		if (pSpot)
-		{
-			// check if pSpot is valid
-			if (PortalGameRules()->IsSpawnPointValid(pSpot, this))
-			{
-				if (pSpot->GetLocalOrigin() == vec3_origin)
-				{
-					pSpot = gEntList.FindEntityByClassname(pSpot, pSpawnpointName);
-					continue;
-				}
-
-				CInfoPlayerPortalCoop *pCoopSpot = dynamic_cast<CInfoPlayerPortalCoop*>(pSpot);
-				if ( pCoopSpot && !pCoopSpot->CanSpawnOnMe(this) )
-				{
-					continue;
-				}
-
-				// if so, go to pSpot
-				goto ReturnSpot;
-			}
-		}
-		// increment pSpot
-		pSpot = gEntList.FindEntityByClassname(pSpot, pSpawnpointName);
-	} while (pSpot != pFirstSpot); // loop if we're not back to the start
-
-	// we haven't found a place to spawn yet,  so kill any guy at the first spawn point and spawn there
-	// Don't kill if we are avoiding players because it's a pointless check otherwise
-	if (pSpot && !pcoop_avoidplayers.GetBool())
-	{
-		CBaseEntity* ent = NULL;
-		for (CEntitySphereQuery sphere(pSpot->GetAbsOrigin(), 16); (ent = sphere.GetCurrentEntity()) != NULL; sphere.NextEntity())
-		{
-			// if ent is a client, kill em (unless they are ourselves)
-			if (ent->IsPlayer() && !(ent->edict() == player))
-				ent->TakeDamage(CTakeDamageInfo(GetContainingEntity(INDEXENT(0)), GetContainingEntity(INDEXENT(0)), 300, DMG_GENERIC));
-		}
-		goto ReturnSpot;
-	}
-
-	if (!pSpot)
-	{
-		pSpot = gEntList.FindEntityByClassname(pSpot, "info_player_start");
-
-		if (pSpot)
-			goto ReturnSpot;
-	}
-
-ReturnSpot:
-
-	/*if ( HL2MPRules()->IsTeamplay() == true )
-	{
-	if ( GetTeamNumber() == TEAM_COMBINE )
-	{
-	g_pLastCombineSpawn = pSpot;
-	}
-	else if ( GetTeamNumber() == TEAM_REBELS )
-	{
-	g_pLastRebelSpawn = pSpot;
-	}
-	}*/
-
-	g_pLastSpawn = pSpot;
-
-	//m_flSlamProtectTime = gpGlobals->curtime + 0.5;
-
-	return pSpot;
+	// If a normal coop spawn wasn't found, use the normal behavior
+	return BaseClass::EntSelectSpawnPoint();
 }
 
 #ifdef PORTAL_MP

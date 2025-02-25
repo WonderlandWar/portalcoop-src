@@ -43,7 +43,6 @@ class CUserCmd;
 // How many times to display altfire hud hints (per weapon)
 #define WEAPON_ALTFIRE_HUD_HINT_COUNT	1
 #define WEAPON_RELOAD_HUD_HINT_COUNT	1
-#define PREDICT_NEXTATTACK_TIME 1
 
 //Start with a constraint in place (don't drop to floor)
 #define	SF_WEAPON_START_CONSTRAINED	(1<<0)	

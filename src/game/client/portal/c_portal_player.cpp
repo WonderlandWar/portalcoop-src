@@ -382,8 +382,6 @@ C_Portal_Player::C_Portal_Player()
 	m_CCDeathHandle = INVALID_CLIENT_CCHANDLE;
 	m_flDeathCCWeight = 0.0f;
 #endif
-
-	m_bShouldFixAngles = false;
 	
 	ListenForGameEvent( "bonusmap_unlock" );
 	ListenForGameEvent( "advanced_map_complete" );
@@ -1822,8 +1820,6 @@ void C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 	//Msg( "Pforwardmove=%f, sidemove=%f\n", pCmd->forwardmove, pCmd->sidemove );
 }
 
-ConVar cl_use_portalling_angle_fix("cl_use_portalling_angle_fix", "1", FCVAR_CLIENTCMD_CAN_EXECUTE | FCVAR_ARCHIVE, "Attempts to make portal teleportations seem less laggy");
-
 CON_COMMAND(portalenvironmentresponse, "Let's use know if we have a portal environment\n")
 {
 	C_Portal_Player *pPlayer = C_Portal_Player::GetLocalPortalPlayer();
@@ -1861,79 +1857,6 @@ bool C_Portal_Player::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 
 	//if ( m_hPortalEnvironment.Get() )
 	//	DetectAndHandlePortalTeleportation( m_hPortalEnvironment.Get() );
-
-	// This works GREAT for everyone! Well, except for the listen server host.
-	// What happens is that it the stored view angles are set before the listen server host actually teleports, and portal angles have never been a problem for the listen server host.
-	if ( (m_bShouldFixAngles && !m_bIsListenServerHost ) || ( m_bShouldFixAngles && m_bIsListenServerHost && bFakeLag ) )
-	{
-		m_bShouldFixAngles = false;
-
-		bool bFixAngles = true;
-
-		C_Prop_Portal *pPrePortalledLinkedPortal = NULL;
-
-		if(m_pPrePortalledPortal)
-		{
-			pPrePortalledLinkedPortal = m_pPrePortalledPortal->m_hLinkedPortal.Get();
-		}
-
-#if 0
-		if ( UTIL_Portal_EntityIsInPortalHole( m_pPrePortalledPortal->m_hLinkedPortal.Get(), this ) )
-		{
-			bFixAngles = false;
-			if( cl_portal_debug_eye_angles.GetBool() )
-			Msg("Not fixing angles because we are in the linked PrePortalledPortal hole\n");
-		}
-		if ( !UTIL_Portal_EntityIsInPortalHole( m_pPrePortalledPortal, this ) )
-		{
-			bFixAngles = false;
-			if( cl_portal_debug_eye_angles.GetBool() )
-			Msg("Not fixing angles because we are in the PrePortalledPortal hole\n");
-		}
-
-		if ( m_pPrePortalledPortal != m_hPortalEnvironment.Get() )
-		{
-			bFixAngles = false;
-			if( cl_portal_debug_eye_angles.GetBool() )
-			Msg("Not fixing angles because PrePortalledPortal is our Portal Environment\n");
-		}
-		
-		if ( m_pPrePortalledPortal != m_hPortalMoveEnvironment.Get() )
-		{
-			bFixAngles = false;
-			if( cl_portal_debug_eye_angles.GetBool() )
-			Msg("Not fixing angles because PrePortalledPortal is our Portal Move Environment\n");
-		}
-#else
-		
-		//Hmm, if a player goes too fast, they can ignore the later check and it's a failure, so let's use the last portal environment.
-		if (m_hPortalLastEnvironment && ( m_hPortalLastEnvironment->GetLinkedPortal() != pPrePortalledLinkedPortal ))
-		{
-			bFixAngles = false;
-			if( cl_portal_debug_eye_angles.GetBool() )
-			Msg("Not fixing angles because our last portal environment isn't the Pre Portalled Linked Portal\n");
-		}
-		//HACK: Improper eye angles are caused by the Eye Position being on the other side of the portal when the client finally knows that the server teleported it.
-		else if ( m_pPrePortalledPortal && pPrePortalledLinkedPortal && !pPrePortalledLinkedPortal->m_bEyePositionIsInPortalEnvironment )
-		{
-			bFixAngles = false;
-			if( cl_portal_debug_eye_angles.GetBool() )
-			Msg("Not fixing angles because our eyes aren't in the new portal environment.\n");
-		}
-#endif
-
-		if (m_bForceFixAngles)
-			bFixAngles = true;
-
-		// This is just causing way too many problems, it could've worked, but it doesn't very well. I'll make it optional though.
-		if ( cl_use_portalling_angle_fix.GetBool() && bFixAngles )
-		{
-			pCmd->viewangles = m_qPrePortalledStoredViewAngles;
-			FixEyeAnglesFromPortalling(); 
-		}
-
-		m_bForceFixAngles = false;
-	}
 
 	AvoidPlayers( pCmd );
 
@@ -2238,17 +2161,7 @@ void C_Portal_Player::PlayerPortalled( C_Prop_Portal *pEnteredPortal, float fTim
 
 		m_bPortalledMessagePending = true;
 		m_PendingPortalMatrix = pEnteredPortal->MatrixThisToLinked();
-
 		
-		bool bFakeLag = false;
-		ConVarRef net_fakelag("net_fakelag");
-		if (net_fakelag.IsValid())
-		{
-			bFakeLag = (net_fakelag.GetInt() != 0);
-		}
-
-		if (!m_bIsListenServerHost || bFakeLag)
-			m_bShouldFixAngles = true;
 
 		if( IsLocalPlayer( ) && pRemotePortal )
 		{
@@ -2313,31 +2226,6 @@ void C_Portal_Player::PlayerPortalled( C_Prop_Portal *pEnteredPortal, float fTim
 		if( IsLocalPlayer() )
 			g_pPortalRender->EnteredPortal( pEnteredPortal );
 	}
-#endif
-}
-
-void C_Portal_Player::FixEyeAnglesFromPortalling( void )
-{	
-	
-	SetViewAngles( m_qPrePortalledStoredViewAngles );
-
-#if 1
-	//engine view angles (for mouse input smoothness)
-	{
-		engine->SetViewAngles( m_qPrePortalledStoredViewAngles );
-	}
-
-	//predicted view angles
-	{
-		prediction->SetViewAngles( m_qPrePortalledStoredViewAngles );
-	}
-#endif
-
-	// Unnecessary probably
-#if 1
-	SetLocalAngles(m_qPrePortalledStoredViewAngles);
-	SetAbsAngles(m_qPrePortalledStoredViewAngles);
-	SetNetworkAngles(m_qPrePortalledStoredViewAngles);
 #endif
 }
 
@@ -2993,18 +2881,6 @@ void C_Portal_Player::CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNe
 					m_bEyePositionIsTransformedByPortal = bEyeTransform_Backup;
 					CalcPortalView( eyeOrigin, eyeAngles );
 				}
-				else
-				{
-					/*
-					m_qPrePortalledStoredViewAngles = eyeAngles;
-					if (!m_bTransformFacing)
-					{
-						m_bForceFixAngles = true;
-					}
-					*/
-
-					m_bTransformFacing = true;
-				}
 			}
 		}
 		else
@@ -3146,75 +3022,6 @@ void C_Portal_Player::CalcPortalView( Vector &eyeOrigin, QAngle &eyeAngles )
 		//Using eyeAngles just changes the MainViewAngles(), which doesn't effect gameplay, so use other angles that effect gameplay instead.
 		UTIL_Portal_AngleTransform( matThisToLinked, eyeAngles, eyeAngles );
 
-		// This works well, but we need to fix the movement issues first.
-		/*
-		if (m_bTransformFacing)
-		{
-			//Engine
-			{
-				QAngle qEngineAngle;
-				engine->GetViewAngles(qEngineAngle);
-				UTIL_Portal_AngleTransform( matThisToLinked, qEngineAngle, qEngineAngle );
-				engine->SetViewAngles(qEngineAngle);
-			}
-
-			//Prediction
-			{
-				QAngle qPredictionAngle;
-				prediction->GetViewAngles(qPredictionAngle);
-				UTIL_Portal_AngleTransform( matThisToLinked, qPredictionAngle, qPredictionAngle );
-				prediction->SetViewAngles(qPredictionAngle);
-			}
-		
-			//pl.v_angle
-			{			
-				UTIL_Portal_AngleTransform( matThisToLinked, pl.v_angle, pl.v_angle );
-			}
-		
-			// Network
-			{
-				QAngle qNetworkAngles = GetNetworkAngles();
-				UTIL_Portal_AngleTransform( matThisToLinked, qNetworkAngles, qNetworkAngles );
-				SetLocalAngles(qNetworkAngles);
-			}
-
-			// Local
-			{
-				QAngle qLocalAngles = GetLocalAngles();
-				UTIL_Portal_AngleTransform( matThisToLinked, qLocalAngles, qLocalAngles );
-				SetLocalAngles(qLocalAngles);
-			}
-
-
-			// Abs
-			{
-				QAngle qAbsAngles = GetAbsAngles();
-				UTIL_Portal_AngleTransform(matThisToLinked, qAbsAngles, qAbsAngles);
-				SetLocalAngles(qAbsAngles);
-			}
-		}
-			*/
-
-		m_qPrePortalledStoredViewAngles = eyeAngles;
-
-		// This won't work if our eye isn't in the portal environment
-		if (m_bTransformFacing)
-		{
-			// Reorient last facing direction to fix pops in view model lag
-			for ( int i = 0; i < MAX_VIEWMODELS; i++ )
-			{
-				CBaseViewModel *vm = GetViewModel( i );
-				if ( !vm )
-					continue;
-
-				m_pTransformPortal = UTIL_IntersectEntityExtentsWithPortal( this );
-
-				if (pPortal && pPortal->m_bEyePositionIsInPortalEnvironment)
-				UTIL_Portal_VectorTransform( matThisToLinked, vm->m_vecLastFacing, vm->m_vecLastFacing );
-			}
-
-			m_bTransformFacing = false;			
-		}
 
 		//DevMsg( 2, "transforming portal view to   <%f %f %f> <%f %f %f>\n", eyeOrigin.x, eyeOrigin.y, eyeOrigin.z, eyeAngles.x, eyeAngles.y, eyeAngles.z );
 

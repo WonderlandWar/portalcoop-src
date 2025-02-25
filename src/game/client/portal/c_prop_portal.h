@@ -19,7 +19,6 @@
 #include "PortalSimulation.h"
 #include "C_PortalGhostRenderable.h" 
 #include "PhysicsCloneArea.h"
-#include "clienttouch.h"
 
 #define DISABLE_CLONE_AREA
 
@@ -34,13 +33,12 @@ struct dlight_t;
 class C_DynamicLight;
 class CPhysicsCloneArea;
 
-class C_Prop_Portal : public CPortalRenderable_FlatBasic, public CPortalSimulatorEventCallbacks, public CClientTouchable
+class C_Prop_Portal : public CPortalRenderable_FlatBasic, public CPortalSimulatorEventCallbacks
 {
 public:
 	DECLARE_CLASS( C_Prop_Portal, CPortalRenderable_FlatBasic );
 	DECLARE_CLIENTCLASS();
 	DECLARE_PREDICTABLE();
-	DECLARE_TOUCHABLE();
 							C_Prop_Portal( void );
 	virtual					~C_Prop_Portal( void );
 
@@ -194,25 +192,17 @@ public:
 	CUtlVector<EHANDLE>		m_hGhostingEntities;
 	CUtlVector<C_PortalGhostRenderable *>		m_GhostRenderables;
 	float					m_fGhostRenderablesClip[4];
-	float					m_fGhostRenderablesClipForPlayer[4];
 
 	virtual PINGICON GetPingIcon() { return PING_ICON_PORTAL; }
 	
 	//find a portal with the designated attributes, or creates one with them, favors active portals over inactive
 	static CProp_Portal		*FindPortal( unsigned char iLinkageGroupID, bool bPortal2, bool bCreateIfNothingFound = false );
 
-	bool m_bEyePositionIsInPortalEnvironment;
-	bool m_bPlayerOriginIsInPortalEnvironment;
-
-	bool m_bPlayerIsInPortalEnvironment;
-
 	virtual C_Prop_Portal *GetPropPortal() { return this; };
 #ifndef DISABLE_CLONE_AREA
 	CPhysicsCloneArea		*m_pAttachedCloningArea;
 #endif
 private:
-
-	void HandleClientSidedTouching();
 
 	bool m_bDoRenderThink;
 

@@ -52,29 +52,6 @@ CPhysicsCloneArea::~CPhysicsCloneArea()
 	cl_entitylist->RemoveEntity( GetIClientUnknown()->GetRefEHandle() );
 }
 
-void CPhysicsCloneArea::ClientThink( void )
-{
-	BaseClass::ClientThink();
-	HandleFakeTouch();
-}
-
-bool CPhysicsCloneArea::TouchCondition( C_BaseEntity *pOther )
-{
-	if ( !m_bActive )
-		return false;
-
-	if ( FClassnameIs( pOther, "prop_portal" ) )
-		return false;
-	
-	if ( pOther->GetSolid() == SOLID_NONE )
-		return false;
-
-	if ( ( pOther->GetSolidFlags() & FSOLID_NOT_SOLID ) != 0 )
-		return false;
-
-	return true;
-}
-
 #endif
 
 

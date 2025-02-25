@@ -296,8 +296,11 @@ void CWeaponPortalgun::PrimaryAttack( void )
 	
 	// player "shoot" animation
 	pPlayer->SetAnimation( PLAYER_ATTACK1 );
+	
+	float punchPitch = SharedRandomFloat( "portalgun_punchpitch", -1, -0.5f );
+	float punchYaw = SharedRandomFloat( "portalgun_punchyaw", -1, 1 );
 
-	pPlayer->ViewPunch( QAngle( random->RandomFloat( -1, -0.5f ), random->RandomFloat( -1, 1 ), 0 ) );
+	pPlayer->ViewPunch( QAngle( punchPitch, punchYaw, 0 ) );
 }
 
 //-----------------------------------------------------------------------------
@@ -337,8 +340,11 @@ void CWeaponPortalgun::SecondaryAttack( void )
 
 	// player "shoot" animation
 	pPlayer->SetAnimation( PLAYER_ATTACK1 );
+	
+	float punchPitch = SharedRandomFloat( "portalgun_punchpitch", -1, -0.5f );
+	float punchYaw = SharedRandomFloat( "portalgun_punchyaw", -1, 1 );
 
-	pPlayer->ViewPunch( QAngle( random->RandomFloat( -1, -0.5f ), random->RandomFloat( -1, 1 ), 0 ) );
+	pPlayer->ViewPunch( QAngle( punchPitch, punchYaw, 0 ) );
 }
 
 void CWeaponPortalgun::DelayAttack( float fDelay )
