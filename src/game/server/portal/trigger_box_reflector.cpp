@@ -4,10 +4,14 @@
 #include "prop_combine_ball.h"
 #include "trigger_portal_cleanser.h"
 #include "collisionutils.h"
+#include "beam_shared.h"
 
-ConVar sv_trigger_box_reflector_temporary_time( "sv_trigger_box_reflector_temporary_time", "2.5", FCVAR_CHEAT );
+ConVar sv_box_reflector_temporary_time( "sv_box_reflector_temporary_time", "2.5", FCVAR_CHEAT );
+ConVar sv_box_reflector_temporary_beam_decay_to( "sv_box_reflector_temporary_beam_decay_to", "0.02", FCVAR_GAMEDLL );
+ConVar sv_box_reflector_temporary_beam_old( "sv_box_reflector_temporary_beam_old", "1", FCVAR_GAMEDLL );
 
-static const char *g_pszTemporaryDetachThink = "TemporaryDetachThink";
+static const char *g_pszTemporaryDetachThink = "TemporaryDetachThinkContext";
+static const char *g_pszBeamUpdateThink = "BeamUpdateThinkContext";
 
 PRECACHE_REGISTER( trigger_box_reflector );
 
@@ -16,6 +20,12 @@ BEGIN_DATADESC( CTriggerBoxReflector )
 	DEFINE_KEYFIELD( m_iszAttachToEntity, FIELD_STRING, "AttachToEntity" ),
 	
 	DEFINE_KEYFIELD( m_bTemporary, FIELD_BOOLEAN, "temporary" ),
+
+	DEFINE_KEYFIELD( m_iszBeamSetName1, FIELD_STRING, "BeamSetName1" ),
+	DEFINE_KEYFIELD( m_iszBeamSetName2, FIELD_STRING, "BeamSetName2" ),
+	DEFINE_KEYFIELD( m_iszBeamSetName3, FIELD_STRING, "BeamSetName3" ),
+	DEFINE_KEYFIELD( m_iszBeamSetName4, FIELD_STRING, "BeamSetName4" ),
+	DEFINE_KEYFIELD( m_iszBeamSetName5, FIELD_STRING, "BeamSetName5" ),
 
 	DEFINE_FIELD( m_hAttachEnt, FIELD_EHANDLE ),
 	DEFINE_FIELD( m_hAttachedBox, FIELD_EHANDLE ),
@@ -34,6 +44,8 @@ CTriggerBoxReflector::CTriggerBoxReflector()
 {
 	m_bTemporary = false;
 	m_flTemporaryDetachTime = 0;
+	m_flTemporaryEndTime = 0;
+	m_flBeamBrightness = 0;
 }
 
 void CTriggerBoxReflector::Spawn( void )
@@ -174,7 +186,13 @@ void CTriggerBoxReflector::Touch( CBaseEntity *pOther )
 	
 	if ( m_bTemporary )
 	{
-		SetContextThink( &CTriggerBoxReflector::TemporaryDetachThink, gpGlobals->curtime + sv_trigger_box_reflector_temporary_time.GetFloat(), g_pszTemporaryDetachThink );
+		float flThinkTime = gpGlobals->curtime + sv_box_reflector_temporary_time.GetFloat();
+		m_flTemporaryEndTime = flThinkTime;
+		SetContextThink( &CTriggerBoxReflector::TemporaryDetachThink, flThinkTime, g_pszTemporaryDetachThink );
+		SetContextThink( &CTriggerBoxReflector::BeamUpdateThink, gpGlobals->curtime, g_pszBeamUpdateThink );
+
+		SetBeamBrightness( 100 ); // The default brightness for beams
+		m_flBeamBrightness = 100;
 	}
 }
 
@@ -222,12 +240,36 @@ void CTriggerBoxReflector::DetachBox( CPropBox *pAttachedBox, bool bPush /*= fal
 	}
 
 	m_hAttachedBox = NULL;
+	
+	SetContextThink( NULL, 0, g_pszBeamUpdateThink );
 }
 
 void CTriggerBoxReflector::EnergyBallHit( CBaseEntity *pBall )
 {
 	EmitSound( "Rexaura.Ball_Force_Explosion" );
 	m_OnEnergyBallHit.FireOutput( pBall, pBall );
+}
+
+void CTriggerBoxReflector::SetSpecificBeamBrightness( const char *pszName, float flBrightness )
+{
+	CBaseEntity *pEntity = NULL;
+	while ( ( pEntity = gEntList.FindEntityByName( pEntity, pszName ) ) != NULL )
+	{
+		CBeam *pBeam = dynamic_cast<CBeam*>( pEntity );
+		if ( !pBeam )
+			continue;
+
+		pBeam->SetBrightness( flBrightness );
+	}
+}
+
+void CTriggerBoxReflector::SetBeamBrightness( float flBrightness )
+{
+	SetSpecificBeamBrightness( m_iszBeamSetName1.ToCStr(), flBrightness );
+	SetSpecificBeamBrightness( m_iszBeamSetName2.ToCStr(), flBrightness );
+	SetSpecificBeamBrightness( m_iszBeamSetName3.ToCStr(), flBrightness );
+	SetSpecificBeamBrightness( m_iszBeamSetName4.ToCStr(), flBrightness );
+	SetSpecificBeamBrightness( m_iszBeamSetName5.ToCStr(), flBrightness );
 }
 
 void CTriggerBoxReflector::TemporaryDetachThink( void )
@@ -237,6 +279,38 @@ void CTriggerBoxReflector::TemporaryDetachThink( void )
 		DetachBox( m_hAttachedBox, true );
 		m_flTemporaryDetachTime = gpGlobals->curtime + 0.4;
 	}
+}
+
+void CTriggerBoxReflector::BeamUpdateThink( void )
+{
+	float flBrightness;
+	if ( sv_box_reflector_temporary_beam_old.GetBool() )
+	{
+		float flProgress = (m_flTemporaryEndTime - gpGlobals->curtime);
+
+		if ( flProgress == 0 )
+			return;
+	
+		float flEndTime = sv_box_reflector_temporary_time.GetFloat();
+	
+		if ( flEndTime == 0 )
+			return;
+
+	
+		flBrightness = ( flProgress / flEndTime );
+		flBrightness *= 100;
+	}
+	else
+	{
+		m_flBeamBrightness *= ExponentialDecay( sv_box_reflector_temporary_beam_decay_to.GetFloat(), sv_box_reflector_temporary_time.GetFloat() * 1.6, gpGlobals->interval_per_tick );
+		flBrightness = m_flBeamBrightness;
+	}
+		
+
+	SetBeamBrightness( flBrightness );
+	
+	// Using old + a 0.5 second delay is more useful for players
+	SetNextThink( gpGlobals->curtime + 0.5, g_pszBeamUpdateThink );
 }
 
 // Global Savedata for base trigger

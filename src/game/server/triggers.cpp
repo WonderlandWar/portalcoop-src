@@ -2547,6 +2547,16 @@ void CTriggerTeleport::Touch( CBaseEntity *pOther )
 #else
 		pVelocity = NULL;	//BUGBUG - This does not set the player's velocity to zero!!!
 #endif
+#ifdef PORTAL // HACK: Manually set the energy ball's velocity
+		if ( FClassnameIs( pOther, "prop_energy_ball" ) )
+		{
+			float flSpeed = pOther->GetAbsVelocity().LengthSqr();
+			Vector forward;
+			AngleVectors( *pAngles, &forward );
+
+			pOther->SetAbsVelocity( forward * flSpeed );
+		}
+#endif
 	}
 
 	tmp += vecLandmarkOffset;

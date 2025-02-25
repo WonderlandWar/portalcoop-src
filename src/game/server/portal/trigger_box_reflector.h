@@ -23,18 +23,31 @@ public:
 	void DetachBox( CPropBox *pBox, bool bPush = false );
 
 	void EnergyBallHit( CBaseEntity *pBall );
-
+	
+	void SetSpecificBeamBrightness( const char *name, float flBrightness );
+	void SetBeamBrightness( float flBrightness );
+		
 	// Thinks
 	void TemporaryDetachThink( void );
+	void BeamUpdateThink( void );
 
+	// Accessors
 	CPropBox *GetBox() const { return m_hAttachedBox; }
 
 private:
+
+	string_t m_iszBeamSetName1;
+	string_t m_iszBeamSetName2;
+	string_t m_iszBeamSetName3;
+	string_t m_iszBeamSetName4;
+	string_t m_iszBeamSetName5;
 
 	string_t m_iszAttachToEntity;
 
 	bool m_bTemporary;
 	float m_flTemporaryDetachTime;
+	float m_flTemporaryEndTime;
+	float m_flBeamBrightness;
 
 	CHandle<CBaseEntity> m_hAttachEnt; // The reference entity the trigger will set the box to
 	CHandle<CPropBox> m_hAttachedBox; // The box this trigger attaches to it
