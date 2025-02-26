@@ -1647,6 +1647,7 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 
 	
 	PortalMoved(); //updates link matrix and internals
+	OnPortalMoved();
 
 	UpdateGhostRenderables();
 

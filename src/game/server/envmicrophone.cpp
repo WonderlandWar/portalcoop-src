@@ -328,16 +328,17 @@ bool CEnvMicrophone::CanHearSound( int entindex, soundlevel_t soundlevel, float 
 	}
 
 #ifdef PORTAL
-	bool bShouldListen = true;
+	Assert( ( m_spawnflags & SF_MICROPHONE_IGNORE_NONATTENUATED ) != 0 );
+
 	CBaseCombatWeapon *pWeapon = dynamic_cast<CBaseCombatWeapon*>(pEntity);
 
 	if (pWeapon && pWeapon->GetOwner() && pWeapon->GetOwner()->IsPlayer())
 	{
-		bShouldListen = false;
+		return false;
 	}
 #endif
 
-	if (pEntity && (!bShouldListen || pEntity->IsPlayer()))
+	if (pEntity && pEntity->IsPlayer() )
 			return false;
 			    
 	// Cull out sounds except from specific entities
@@ -482,6 +483,24 @@ MicrophoneResult_t CEnvMicrophone::SoundPlayed( int entindex, const char *soundn
 
 	if ( !CanHearSound( entindex, soundlevel, flVolume, pOrigin ) )
 		return MicrophoneResult_Ok;
+
+#ifdef PORTAL // Music hack fix
+	if ( strstr( soundname, "music" ) || strstr( soundname, "Song" ) )
+	{
+		return MicrophoneResult_Ok;
+	}
+
+	// 1st character
+	if ( strlen(soundname) > 0 && soundname[0] == '#' )
+	{
+		return MicrophoneResult_Ok;
+	}
+	// 2nd character
+	if ( strlen(soundname) > 1 && soundname[1] == '#' )
+	{
+		return MicrophoneResult_Ok;
+	}
+#endif
 
 	// We've heard it. Play it out our speaker. If our speaker's gone away, we're done.
 	if ( !m_hSpeaker )
