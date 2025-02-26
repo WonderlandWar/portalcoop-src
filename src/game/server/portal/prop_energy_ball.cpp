@@ -323,6 +323,7 @@ bool CPropEnergyBall::HandleSpecialEntityImpact( CBaseEntity *pOther, bool bDoAn
 	CPropBox *pBox = dynamic_cast<CPropBox*>( pOther );
 	if ( pBox )
 	{
+		bool bRet = true;
 		if ( pBox->m_hAttached )
 		{
 			if ( bDoAnything )
@@ -330,13 +331,15 @@ bool CPropEnergyBall::HandleSpecialEntityImpact( CBaseEntity *pOther, bool bDoAn
 				SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
 			}
 
-			return false;
+			bRet = false;
 		}
 		
 		if ( bDoAnything )
 		{
 			pBox->EnergyBallHit( this );
 		}
+
+		return bRet;
 	}
 	else
 	{
