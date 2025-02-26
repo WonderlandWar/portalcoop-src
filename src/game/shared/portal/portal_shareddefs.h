@@ -80,6 +80,16 @@ enum PortalChallengeType
 // This new version was supposed to be better :(
 #define FIXANGLEMETHOD_CONCOMMAND 0
 
+// It's better to have a list of Portal mods instead of having a 
+// single cvar for Rexaura in case we want to add more mods (Portal: Prelude, Portal: Pro, Blue Portals, etc...)
+enum PortalGameType_t
+{
+	PORTAL_GAME_PORTAL,
+	PORTAL_GAME_REXAURA,
+};
+
+extern ConVar sv_portal_game;
+
 extern char *g_ppszPortalPassThroughMaterials[];
 
 #endif // PORTAL_SHAREDDEFS_H

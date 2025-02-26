@@ -124,6 +124,7 @@ extern ConVar tf_mm_servermode;
 #ifdef PORTAL
 #include "prop_portal_shared.h"
 #include "portal_player.h"
+#include "portal_shareddefs.h"
 #endif
 
 #if defined( REPLAY_ENABLED )
@@ -949,6 +950,21 @@ bool CServerGameDLL::IsRestoring()
 	return g_InRestore;
 }
 
+#ifdef PORTAL
+void UpdatePortalGameType( const char *pMapName )
+{
+	if ( V_stristr( pMapName, "p2coop_" ) || V_stristr( pMapName, "p3coop_" ) )
+	{
+		sv_portal_game.SetValue( PORTAL_GAME_PORTAL );
+	}
+	else if ( V_stristr( pMapName, "rex2c_" ) || V_stristr( pMapName, "rex3c_" ) )
+	{
+		sv_portal_game.SetValue( PORTAL_GAME_REXAURA );
+	}
+}
+
+#endif
+
 // Called any time a new level is started (after GameInit() also on level transitions within a game)
 bool CServerGameDLL::LevelInit( const char *pMapName, char const *pMapEntities, char const *pOldLevel, char const *pLandmarkName, bool loadGame, bool background )
 {
@@ -1033,6 +1049,9 @@ bool CServerGameDLL::LevelInit( const char *pMapName, char const *pMapEntities, 
 		{
 			gpGlobals->eLoadType = MapLoad_NewGame;
 		}
+#ifdef PORTAL
+		UpdatePortalGameType( pMapName );
+#endif
 
 		// Clear out entity references, and parse the entities into it.
 		g_MapEntityRefs.Purge();
