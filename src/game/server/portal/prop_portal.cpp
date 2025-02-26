@@ -1603,6 +1603,7 @@ void CProp_Portal::UpdatePortalLinkage( void )
 
 				m_hMicrophone = CreateEntityByName( "env_microphone" );
 				CEnvMicrophone *pMicrophone = static_cast<CEnvMicrophone*>( m_hMicrophone.Get() );
+				pMicrophone->SetOwnerEntity( this );
 				pMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
 				pMicrophone->AddSpawnFlags( SF_MICROPHONE_SOUND_COMBAT | SF_MICROPHONE_SOUND_WORLD | SF_MICROPHONE_SOUND_PLAYER | SF_MICROPHONE_SOUND_BULLET_IMPACT | SF_MICROPHONE_SOUND_EXPLOSION );
 			//	pMicrophone->KeyValue("ListenFilter", "weapon_portalgun_filter_disallow_in_code");
@@ -1635,6 +1636,7 @@ void CProp_Portal::UpdatePortalLinkage( void )
 
 				m_hLinkedPortal->m_hMicrophone = CreateEntityByName( "env_microphone" );
 				CEnvMicrophone *pLinkedMicrophone = static_cast<CEnvMicrophone*>( m_hLinkedPortal->m_hMicrophone.Get() );
+				pLinkedMicrophone->SetOwnerEntity( m_hLinkedPortal );
 				pLinkedMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
 				pLinkedMicrophone->AddSpawnFlags( SF_MICROPHONE_SOUND_COMBAT | SF_MICROPHONE_SOUND_WORLD | SF_MICROPHONE_SOUND_PLAYER | SF_MICROPHONE_SOUND_BULLET_IMPACT | SF_MICROPHONE_SOUND_EXPLOSION );
 			//	pLinkedMicrophone->KeyValue("ListenFilter", "weapon_portalgun_filter_disallow_in_code");
@@ -1649,7 +1651,6 @@ void CProp_Portal::UpdatePortalLinkage( void )
 					pLinkedMicrophone->SetName( iszMicName2 );
 					pLinkedMicrophone->Activate();
 					pLinkedMicrophone->SetSpeakerName( iszSpeakerName1 );
-					pLinkedMicrophone->SetSensitivity( 10.0f );
 				}
 				else
 				{
@@ -1657,8 +1658,9 @@ void CProp_Portal::UpdatePortalLinkage( void )
 					pLinkedMicrophone->SetName( iszMicName1 );
 					pLinkedMicrophone->Activate();
 					pLinkedMicrophone->SetSpeakerName( iszSpeakerName2 );
-					pLinkedMicrophone->SetSensitivity( 10.0f );
 				}
+
+				pLinkedMicrophone->SetSensitivity( 10.0f );
 			}
 			// Set microphone/speaker positions
 			Vector vZero( 0.0f, 0.0f, 0.0f );

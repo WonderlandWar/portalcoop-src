@@ -484,8 +484,9 @@ MicrophoneResult_t CEnvMicrophone::SoundPlayed( int entindex, const char *soundn
 	if ( !CanHearSound( entindex, soundlevel, flVolume, pOrigin ) )
 		return MicrophoneResult_Ok;
 
-#ifdef PORTAL // Music hack fix
-	if ( strstr( soundname, "music" ) || strstr( soundname, "Song" ) )
+#ifdef PORTAL
+	// Music hack fix
+	if ( V_stristr( soundname, "music" ) || V_stristr( soundname, "song" ) )
 	{
 		return MicrophoneResult_Ok;
 	}
@@ -500,6 +501,21 @@ MicrophoneResult_t CEnvMicrophone::SoundPlayed( int entindex, const char *soundn
 	{
 		return MicrophoneResult_Ok;
 	}
+
+#if 0 // Doesn't work; the soundlevel isn't accurate
+	// Now silence sounds that are too loud
+	CBaseEntity *pOwnerEntity = GetOwnerEntity();
+	if ( pOwnerEntity && FClassnameIs( pOwnerEntity, "prop_portal" ) )
+	{
+		if ( soundlevel >= SNDLVL_80dB )
+		{
+			return MicrophoneResult_Ok;
+		}
+	}
+
+	Msg( "soundname %s\n", soundname );
+	Msg( "soundlevel %i\n", soundlevel );
+#endif
 #endif
 
 	// We've heard it. Play it out our speaker. If our speaker's gone away, we're done.
@@ -533,19 +549,23 @@ MicrophoneResult_t CEnvMicrophone::SoundPlayed( int entindex, const char *soundn
 	EmitSound_t ep;
 	ep.m_nChannel = CHAN_STATIC;
 	ep.m_pSoundName = soundname;
-	ep.m_flVolume = flVolume;
+#if 0
 #ifdef PORTAL // Super super hacky
-	if ( soundlevel > SNDLVL_60dB )
+	CBaseEntity *pOwnerEntity = GetOwnerEntity();
+	bool bTestSilence = ( pOwnerEntity && FClassnameIs( pOwnerEntity, "prop_portal" ) );
+
+	if ( bTestSilence && soundlevel > SNDLVL_20dB )
 	{
-		ep.m_SoundLevel = SNDLVL_60dB;
+		ep.m_flVolume = flVolume * 0.2;
+		ep.m_SoundLevel = SNDLVL_20dB;
 	}
 	else
+#endif // PORTAL
+#endif // if 0
 	{
+		ep.m_flVolume = flVolume;
 		ep.m_SoundLevel = soundlevel;
 	}
-#else
-	ep.m_SoundLevel = soundlevel;
-#endif
 	ep.m_nFlags = iFlags;
 	ep.m_nPitch = iPitch;
 	ep.m_pOrigin = &m_hSpeaker->GetAbsOrigin();
