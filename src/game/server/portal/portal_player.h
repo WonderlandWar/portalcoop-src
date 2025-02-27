@@ -150,8 +150,6 @@ public:
 	virtual bool BumpWeapon( CBaseCombatWeapon *pWeapon );
 	virtual void ShutdownUseEntity( void );
 
-	virtual const Vector&	WorldSpaceCenter( ) const;
-
 	virtual void VPhysicsShadowUpdate( IPhysicsObject *pPhysics );
 
 	//virtual bool StartReplayMode( float fDelay, float fDuration, int iEntity  );
@@ -302,8 +300,6 @@ private:
 	string_t					m_iszExpressionScene;
 	EHANDLE						m_hExpressionSceneEnt;
 	float						m_flExpressionLoopTime;
-	
-	mutable Vector m_vWorldSpaceCenterHolder; //WorldSpaceCenter() returns a reference, need an actual value somewhere
 
 	Vector m_vEyeOffset;
 
