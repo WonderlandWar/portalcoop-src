@@ -61,6 +61,11 @@ public:
 #if defined( HL2_DLL ) || defined( HL2_CLIENT_DLL )
 		entitygroundcontact.RemoveAll();
 #endif
+		
+#if defined ( PORTAL )
+		command_acknowledgements_pending = 0;
+		predictedPortalTeleportations = 0;
+#endif // PORTAL2
 	}
 
 	CUserCmd& operator =( const CUserCmd& src )
@@ -90,6 +95,11 @@ public:
 #if defined( HL2_DLL ) || defined( HL2_CLIENT_DLL )
 		entitygroundcontact			= src.entitygroundcontact;
 #endif
+		
+#if defined ( PORTAL )
+		command_acknowledgements_pending = src.command_acknowledgements_pending;
+		predictedPortalTeleportations = src.predictedPortalTeleportations;
+#endif // PORTAL2
 
 		return *this;
 	}
@@ -117,6 +127,11 @@ public:
 		CRC32_ProcessBuffer( &crc, &random_seed, sizeof( random_seed ) );
 		CRC32_ProcessBuffer( &crc, &mousedx, sizeof( mousedx ) );
 		CRC32_ProcessBuffer( &crc, &mousedy, sizeof( mousedy ) );
+		
+#if defined ( PORTAL )
+		CRC32_ProcessBuffer( &crc, &command_acknowledgements_pending, sizeof( command_acknowledgements_pending ) );
+		CRC32_ProcessBuffer( &crc, &predictedPortalTeleportations, sizeof( predictedPortalTeleportations ) );
+#endif // PORTAL2
 		CRC32_Final( &crc );
 
 		return crc;
@@ -171,7 +186,11 @@ public:
 #if defined( HL2_DLL ) || defined( HL2_CLIENT_DLL )
 	CUtlVector< CEntityGroundContact > entitygroundcontact;
 #endif
-
+	
+#if defined ( PORTAL )
+	unsigned short command_acknowledgements_pending; //so we can properly sync portal teleportation angle changes. The server tells us the last command it acknowledged, now we also tell it how many acknowledgments we're waiting on (command_number - engine->GetLastAcknowledgedCommand())
+	uint8 predictedPortalTeleportations; //should probably enumerate which transforms we went through if we want perfect accuracy
+#endif // PORTAL
 };
 
 void ReadUsercmd( bf_read *buf, CUserCmd *move, CUserCmd *from );

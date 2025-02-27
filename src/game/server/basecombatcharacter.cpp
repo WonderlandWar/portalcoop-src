@@ -577,11 +577,11 @@ CProp_Portal* CBaseCombatCharacter::FInViewConeThroughPortal( const Vector &vecS
 			Vector facingDir = pPortal->GetAbsOrigin() - ptEyePosition;
 
 			// If the portal isn't facing the eye, bail
-			if ( facingDir.Dot( pPortal->m_plane_Origin.normal ) > 0.0f )
+			if ( facingDir.Dot( pPortal->m_plane_Origin.AsVector3D() ) > 0.0f )
 				continue;
 
 			// If the point is behind the linked portal, bail
-			if ( ( vecSpot - pPortal->m_hLinkedPortal->GetAbsOrigin() ).Dot( pPortal->m_hLinkedPortal->m_plane_Origin.normal ) < 0.0f )
+			if ( ( vecSpot - pPortal->m_hLinkedPortal->GetAbsOrigin() ).Dot( pPortal->m_hLinkedPortal->m_plane_Origin.AsVector3D() ) < 0.0f )
 				continue;
 
 			// Remove height from the equation

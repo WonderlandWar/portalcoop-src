@@ -957,8 +957,8 @@ void CProp_Portal::Activate( void )
 					Vector vWorldMins, vWorldMaxs;
 					pOtherCollision->WorldSpaceAABB( &vWorldMins, &vWorldMaxs );
 					Vector ptOtherCenter = (vWorldMins + vWorldMaxs) / 2.0f;
-
-					if( m_plane_Origin.normal.Dot( ptOtherCenter ) > m_plane_Origin.dist )
+					
+					if( m_plane_Origin.AsVector3D().Dot( ptOtherCenter ) > m_plane_Origin.w )
 					{
 						//we should be interacting with this object, add it to our environment
 						if( SharedEnvironmentCheck( pOther ) )
@@ -981,13 +981,13 @@ void CProp_Portal::Activate( void )
 
 void CProp_Portal::Touch( CBaseEntity *pOther )
 {
-	if ( sv_portal_with_gamemovement.GetBool() && pOther->IsPlayer() )
+	if ( pOther->IsPlayer() )
 		return;
 	BaseClass::Touch( pOther );
 	pOther->Touch( this );
 
 	// Don't do anything on touch if it's not active
-	if( !IsActive() || (m_hLinkedPortal.Get() == NULL) )
+	if( !m_bActivated || (m_hLinkedPortal.Get() == NULL) )
 	{
 		Assert( !m_PortalSimulator.OwnsEntity( pOther ) );
 		Assert( !pOther->IsPlayer() || (((CPortal_Player *)pOther)->m_hPortalEnvironment.Get() != this) );
@@ -1021,7 +1021,7 @@ void CProp_Portal::Touch( CBaseEntity *pOther )
 				{
 					DevMsg( "Moving brush intersected portal plane.\n" );
 
-					DoFizzleEffect( PORTAL_FIZZLE_KILLED, m_iPortalColorSet, false );
+					DoFizzleEffect( PORTAL_FIZZLE_KILLED, GetLinkageGroup(), false );
 					Fizzle();
 				}
 				else
@@ -1037,14 +1037,14 @@ void CProp_Portal::Touch( CBaseEntity *pOther )
 					{
 						DevMsg( "Surface removed from behind portal.\n" );
 
-						DoFizzleEffect( PORTAL_FIZZLE_KILLED, m_iPortalColorSet, false );
+						DoFizzleEffect( PORTAL_FIZZLE_KILLED, GetLinkageGroup(), false );
 						Fizzle();
 					}
 					else if ( tr.m_pEnt && tr.m_pEnt->IsMoving() )
 					{
 						DevMsg( "Surface behind portal is moving.\n" );
 
-						DoFizzleEffect( PORTAL_FIZZLE_KILLED, m_iPortalColorSet, false );
+						DoFizzleEffect( PORTAL_FIZZLE_KILLED, GetLinkageGroup(), false );
 						Fizzle();
 					}
 				}
@@ -1061,7 +1061,7 @@ void CProp_Portal::Touch( CBaseEntity *pOther )
 		//hmm, not in our environment, plane tests, sharing tests
 		if( SharedEnvironmentCheck( pOther ) )
 		{
-			bool bObjectCenterInFrontOfPortal	= (m_plane_Origin.normal.Dot( pOther->WorldSpaceCenter() ) > m_plane_Origin.dist);
+			bool bObjectCenterInFrontOfPortal	= (m_plane_Origin.AsVector3D().Dot( pOther->WorldSpaceCenter() ) > m_plane_Origin.w);
 			bool bIsStuckPlayer					= ( pOther->IsPlayer() )? ( !UTIL_IsSpaceEmpty( pOther, pOther->WorldAlignMins(), pOther->WorldAlignMaxs() ) ) : ( false );
 
 			if ( bIsStuckPlayer )
@@ -1103,7 +1103,7 @@ void CProp_Portal::Touch( CBaseEntity *pOther )
 
 void CProp_Portal::StartTouch( CBaseEntity *pOther )
 {
-	if ( sv_portal_with_gamemovement.GetBool() && pOther->IsPlayer() )
+	if ( pOther->IsPlayer() )
 		return;
 	BaseClass::StartTouch( pOther );
 
@@ -1121,7 +1121,7 @@ void CProp_Portal::StartTouch( CBaseEntity *pOther )
 	}
 #endif
 
-	if ((m_hLinkedPortal == NULL) || (IsActive() == false))
+	if( (m_hLinkedPortal == NULL) || (m_bActivated == false) )
 		return;
 
 	if( CProp_Portal_Shared::IsEntityTeleportable( pOther ) )
@@ -1131,7 +1131,7 @@ void CProp_Portal::StartTouch( CBaseEntity *pOther )
 		pOtherCollision->WorldSpaceAABB( &vWorldMins, &vWorldMaxs );
 		Vector ptOtherCenter = (vWorldMins + vWorldMaxs) / 2.0f;
 
-		if( m_plane_Origin.normal.Dot( ptOtherCenter ) > m_plane_Origin.dist )
+		if( m_plane_Origin.AsVector3D().Dot( ptOtherCenter ) > m_plane_Origin.w )
 		{
 			//we should be interacting with this object, add it to our environment
 			if( SharedEnvironmentCheck( pOther ) )
@@ -1151,7 +1151,7 @@ void CProp_Portal::StartTouch( CBaseEntity *pOther )
 
 void CProp_Portal::EndTouch( CBaseEntity *pOther )
 {
-	if ( sv_portal_with_gamemovement.GetBool() && pOther->IsPlayer() )
+	if ( pOther->IsPlayer() )
 		return;
 	BaseClass::EndTouch( pOther );
 
@@ -1159,7 +1159,7 @@ void CProp_Portal::EndTouch( CBaseEntity *pOther )
 	pOther->EndTouch( this );
 
 	// Don't do anything on end touch if it's not active
-	if( !IsActive() )
+	if( !m_bActivated )
 	{
 		return;
 	}
@@ -1460,55 +1460,49 @@ void CProp_Portal::ForceEntityToFitInPortalWall( CBaseEntity *pEntity )
 
 void CProp_Portal::UpdatePortalTeleportMatrix( void )
 {
+	//copied from client to ensure the numbers match as closely as possible.
+	{		
+		ALIGN16 matrix3x4_t finalMatrix;
+		if( GetMoveParent() )
+		{
+			// Construct the entity-to-world matrix
+			// Start with making an entity-to-parent matrix
+			ALIGN16 matrix3x4_t matEntityToParent;
+			AngleMatrix( GetLocalAngles(), matEntityToParent );
+			MatrixSetColumn( GetLocalOrigin(), 3, matEntityToParent );
+
+			// concatenate with our parent's transform
+			ALIGN16 matrix3x4_t scratchMatrix;
+			ConcatTransforms( GetParentToWorldTransform( scratchMatrix ), matEntityToParent, finalMatrix );
+
+			MatrixGetColumn( finalMatrix, 0, m_vForward );
+			MatrixGetColumn( finalMatrix, 1, m_vRight );
+			MatrixGetColumn( finalMatrix, 2, m_vUp );
+			Vector vTempOrigin;
+			MatrixGetColumn( finalMatrix, 3, vTempOrigin );
+			m_ptOrigin = vTempOrigin;
+			m_vRight = -m_vRight;
+
+			QAngle qTempAngle;
+			MatrixAngles( finalMatrix, qTempAngle );
+			m_qAbsAngle = qTempAngle;
+		}
+		else
+		{
+			AngleMatrix( m_qAbsAngle, finalMatrix );
+			MatrixGetColumn( finalMatrix, 0, m_vForward );
+			MatrixGetColumn( finalMatrix, 1, m_vRight );
+			MatrixGetColumn( finalMatrix, 2, m_vUp );
+			m_vRight = -m_vRight;
+		}		
+	}
+
 	ResetModel();
 
 	//setup our origin plane
-	GetVectors( &m_plane_Origin.normal, NULL, NULL );
-	m_plane_Origin.dist = m_plane_Origin.normal.Dot( GetAbsOrigin() );
-	m_plane_Origin.signbits = SignbitsForPlane( &m_plane_Origin );
-
-	Vector vAbsNormal;
-	vAbsNormal.x = fabs(m_plane_Origin.normal.x);
-	vAbsNormal.y = fabs(m_plane_Origin.normal.y);
-	vAbsNormal.z = fabs(m_plane_Origin.normal.z);
-
-	if( vAbsNormal.x > vAbsNormal.y )
-	{
-		if( vAbsNormal.x > vAbsNormal.z )
-		{
-			if( vAbsNormal.x > 0.999f )
-				m_plane_Origin.type = PLANE_X;
-			else
-				m_plane_Origin.type = PLANE_ANYX;
-		}
-		else
-		{
-			if( vAbsNormal.z > 0.999f )
-				m_plane_Origin.type = PLANE_Z;
-			else
-				m_plane_Origin.type = PLANE_ANYZ;
-		}
-	}
-	else
-	{
-		if( vAbsNormal.y > vAbsNormal.z )
-		{
-			if( vAbsNormal.y > 0.999f )
-				m_plane_Origin.type = PLANE_Y;
-			else
-				m_plane_Origin.type = PLANE_ANYY;
-		}
-		else
-		{
-			if( vAbsNormal.z > 0.999f )
-				m_plane_Origin.type = PLANE_Z;
-			else
-				m_plane_Origin.type = PLANE_ANYZ;
-		}
-	}
-
-
-
+	GetVectors( &m_plane_Origin.AsVector3D(), NULL, NULL );
+	m_plane_Origin.w = m_plane_Origin.AsVector3D().Dot( m_ptOrigin );
+	
 	if ( m_hLinkedPortal != NULL )
 	{
 		CProp_Portal_Shared::UpdatePortalTransformationMatrix( EntityToWorldTransform(), m_hLinkedPortal->EntityToWorldTransform(), &m_matrixThisToLinked );
@@ -2114,4 +2108,21 @@ void CFunc_Portalled::OnPostPortalled( CBaseEntity *pEntity, bool m_bFireType )
 
 	if (sFireType != NULL && m_bFireOnPlayer)
 		m_OnEntityPostPortalled.FireOutput( pEntity, this );
+}
+
+void EntityPortalled( CProp_Portal *pPortal, CBaseEntity *pOther, const Vector &vNewOrigin, const QAngle &qNewAngles, bool bForcedDuck )
+{
+	/*if( pOther->IsPlayer() )
+	{
+		Warning( "Server player portalled %f   %f %f %f   %f %f %f\n", gpGlobals->curtime, XYZ( vNewOrigin ), XYZ( ((CPortal_Player *)pOther)->pl.v_angle ) ); 
+	}*/
+
+	for( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CPortal_Player *pPlayer = (CPortal_Player *)UTIL_PlayerByIndex( i );
+		if( pPlayer )
+		{
+			pPlayer->NetworkPortalTeleportation( pOther, pPortal, gpGlobals->curtime, bForcedDuck );
+		}
+	}
 }

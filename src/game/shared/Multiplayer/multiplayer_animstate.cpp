@@ -1787,9 +1787,9 @@ const QAngle& CMultiPlayerAnimState::GetRenderAngles()
 	
 	if( pPlayer )
 	{		
-		if( pPlayer->GetOriginInterpolator().GetInterpolatedTime( pPlayer->GetEffectiveInterpolationCurTime( gpGlobals->curtime ) ) < pPlayer->GetLatestServerTeleport() )
+		if( pPlayer->GetOriginInterpolator().GetInterpolatedTime( pPlayer->GetEffectiveInterpolationCurTime( gpGlobals->curtime ) ) < pPlayer->m_fLatestServerTeleport )
 		{
-			m_angRender_InterpHistory = TransformAnglesToWorldSpace( m_angRender, pPlayer->GetLatestServerTeleportationInverseMatrix().As3x4() );
+			m_angRender_InterpHistory = TransformAnglesToWorldSpace( m_angRender, pPlayer->m_matLatestServerTeleportationInverseMatrix.As3x4() );
 			return m_angRender_InterpHistory;
 		}
 	}

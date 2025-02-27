@@ -13,6 +13,7 @@
 #include "prop_portal_shared.h"
 #include "rumble_shared.h"
 #include "portal_gamemovement.h"
+#include "portal/weapon_physcannon.h"
 
 #if defined( CLIENT_DLL )
 	#include "c_portal_player.h"
@@ -237,6 +238,7 @@ void CPortalGameMovement::ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMov
 
 #if USEMOVEMENTFORPORTALLING
 	m_vMoveStartPosition = mv->GetAbsOrigin();
+	m_vVelocityStart = mv->m_vecVelocity;
 #endif
 
 	m_bInPortalEnv = (((CPortal_Player *)pPlayer)->m_hPortalEnvironment != NULL);
@@ -247,8 +249,7 @@ void CPortalGameMovement::ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMov
 	// Run the command.
 	PlayerMove();
 #if USEMOVEMENTFORPORTALLING	
-	if ( sv_portal_with_gamemovement.GetBool() )
-		HandlePortalling();
+	HandlePortallingLegacy();
 #endif
 	FinishMove();
 
@@ -1456,47 +1457,23 @@ CBaseHandle CPortalGameMovement::TestPlayerPosition( const Vector& pos, int coll
 	}
 }
 
-void CPortalGameMovement::HandlePortalling( void )
+void CPortalGameMovement::HandlePortallingLegacy( void )
 {
-	matrix3x4_t matAngleTransformIn, matAngleTransformOut; //temps for angle transformation
-	CPortal_Player *pPortalPlayer = ToPortalPlayer( player );
-
-#if ( PLAYERPORTALDEBUGSPEW == 1 )
-#	if defined( CLIENT_DLL )
-	const char *szDLLName = "client";
-#	else
-	const char *szDLLName = "--server--";
-#	endif
-#endif
-
+	CPortal_Player *pPortalPlayer = GetPortalPlayer();
 #if defined( CLIENT_DLL )	
-	pPortalPlayer->UnrollPredictedTeleportations( player->m_pCurrentCommand->command_number );
-	pPortalPlayer->CheckPlayerAboutToTouchPortal();
+	pPortalPlayer->UnrollPredictedTeleportations(player->m_pCurrentCommand->command_number);
 #endif
 
-	Vector vOriginToCenter = (pPortalPlayer->GetPlayerMaxs() + pPortalPlayer->GetPlayerMins()) * 0.5f;
-	Vector vMoveCenter = mv->GetAbsOrigin() + vOriginToCenter;
-	Vector vPrevMoveCenter = m_vMoveStartPosition + vOriginToCenter; //whatever the origin was before we ran this move
-	Vector vPlayerExtentsFromCenter = (pPortalPlayer->GetPlayerMaxs() - pPortalPlayer->GetPlayerMins()) * 0.5f;
-	//Vector vAppliedMoveCenter = pPortalPlayer->GetAbsOrigin() + vOriginToCenter;
-
-#if defined( TRACE_DEBUG_ENABLED )
-	CheckStuck();
-#endif
-
-#if defined( DEBUG_FLINGS )
-	if( pPortalPlayer->GetGroundEntity() != NULL )
-	{
-		s_MovementDebug.bWatchFlingVelocity = false;
-	}
-#endif
-
-	CProp_Portal *pPortalEnvironment = pPortalPlayer->m_hPortalEnvironment.Get(); //the portal they were touching last move
+	CProp_Portal *pPortalEnvironment = pPortalPlayer->m_hPortalEnvironment;
+	Vector ptPrevPlayerCenter = m_vMoveStartPosition + ((GetPlayerMaxs() + GetPlayerMins()) * 0.5f);
+	Vector ptPlayerCenter = mv->GetAbsOrigin() + ((GetPlayerMaxs() + GetPlayerMins()) * 0.5f);
+	Vector vPlayerExtentsFromCenter = (GetPlayerMaxs() - GetPlayerMins()) * 0.5f;
+	
 	CProp_Portal *pPortal = NULL;
 	{
 		Ray_t ray;
-		ray.Init( m_vMoveStartPosition, mv->GetAbsOrigin(), pPortalPlayer->GetPlayerMins(), pPortalPlayer->GetPlayerMaxs() );
-		//ray.Init( mv->GetAbsOrigin(), mv->GetAbsOrigin(), pPortalPlayer->GetHullMins(), pPortalPlayer->GetHullMaxs() );
+		ray.Init( m_vMoveStartPosition, mv->GetAbsOrigin(), GetPlayerMins(), GetPlayerMaxs() );
+		//ray.Init( mv->GetAbsOrigin(), mv->GetAbsOrigin(), GetPlayerMins(), GetPlayerMaxs() );
 		
 		int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
 		CProp_Portal **pAllPortals = CProp_Portal_Shared::AllPortals.Base();
@@ -1511,7 +1488,7 @@ void CPortalGameMovement::HandlePortalling( void )
 				if( pAllPortals[i]->TestCollision( ray, CONTENTS_SOLID, tr ) )
 				{
 					const PS_InternalData_t &portalSimulator = pAllPortals[i]->m_PortalSimulator.GetInternalData();
-					if( portalSimulator.Placement.PortalPlane.m_Normal.Dot( vPrevMoveCenter ) <= portalSimulator.Placement.PortalPlane.m_Dist )
+					if( portalSimulator.Placement.PortalPlane.m_Normal.Dot( ptPrevPlayerCenter ) <= portalSimulator.Placement.PortalPlane.m_Dist )
 					{
 						//old origin must be in front of the plane
 
@@ -1519,11 +1496,11 @@ void CPortalGameMovement::HandlePortalling( void )
 							continue;
 					}
 
-					float fCenterDist = portalSimulator.Placement.PortalPlane.m_Normal.Dot( vMoveCenter ) - portalSimulator.Placement.PortalPlane.m_Dist;
+					float fCenterDist = portalSimulator.Placement.PortalPlane.m_Normal.Dot( ptPlayerCenter ) - portalSimulator.Placement.PortalPlane.m_Dist;
 					if( fCenterDist < 0.0f )
 					{
 						//if new origin is behind the plane, require that the player center hover over the portal quad to be considered
-						Vector vPortalPlayerOriginDiff = vMoveCenter - portalSimulator.Placement.ptCenter;
+						Vector vPortalPlayerOriginDiff = ptPlayerCenter - portalSimulator.Placement.ptCenter;
 						vPortalPlayerOriginDiff -= vPortalPlayerOriginDiff.Dot( portalSimulator.Placement.PortalPlane.m_Normal ) * portalSimulator.Placement.PortalPlane.m_Normal;
 
 						if( (fabs( vPortalPlayerOriginDiff.Dot( portalSimulator.Placement.vRight ) ) > PORTAL_HALF_WIDTH) ||
@@ -1536,7 +1513,7 @@ void CPortalGameMovement::HandlePortalling( void )
 					{
 						//require that a line from the center of the player to their most-penetrating extent passes through the portal quad
 						//Avoids case where you can butt up against a portal side on an angled panel
-						Vector vTestExtent = vMoveCenter;
+						Vector vTestExtent = ptPlayerCenter;
 						vTestExtent.x -= Sign( portalSimulator.Placement.PortalPlane.m_Normal.x ) * vPlayerExtentsFromCenter.x;
 						vTestExtent.y -= Sign( portalSimulator.Placement.PortalPlane.m_Normal.y ) * vPlayerExtentsFromCenter.y;
 						vTestExtent.z -= Sign( portalSimulator.Placement.PortalPlane.m_Normal.z ) * vPlayerExtentsFromCenter.z;
@@ -1548,7 +1525,7 @@ void CPortalGameMovement::HandlePortalling( void )
 							float fTotalDist = fCenterDist - fTestDist;
 							if( fTotalDist != 0.0f )
 							{
-								Vector vPlanePoint = (vTestExtent * (fCenterDist/fTotalDist)) - (vMoveCenter * (fTestDist/fTotalDist));
+								Vector vPlanePoint = (vTestExtent * (fCenterDist/fTotalDist)) - (ptPlayerCenter * (fTestDist/fTotalDist));
 								Vector vPortalCenterToPlanePoint = vPlanePoint - portalSimulator.Placement.ptCenter;
 
 								if( (fabs( vPortalCenterToPlanePoint.Dot( portalSimulator.Placement.vRight ) ) > PORTAL_HALF_WIDTH + 1.0f) ||
@@ -1561,7 +1538,7 @@ void CPortalGameMovement::HandlePortalling( void )
 					}
 
 
-					Vector vDiff = pAllPortals[i]->m_ptOrigin - vMoveCenter;
+					Vector vDiff = pAllPortals[i]->GetAbsOrigin() - ptPlayerCenter;
 					float fDistSqr = vDiff.LengthSqr();
 					if( fDistSqr < fMaxDistSquared )
 					{
@@ -1572,510 +1549,314 @@ void CPortalGameMovement::HandlePortalling( void )
 			}
 		}
 	}
-	//CPortal_Base2D *pPortal = UTIL_IntersectEntityExtentsWithPortal( player );
-	CProp_Portal *pPlayerTouchingPortal = pPortal;
 	
-	if( pPortal != NULL )
+	if ( pPortalEnvironment != pPortal )
 	{
-		CProp_Portal *pExitPortal = pPortal->m_hLinkedPortal;
-		float fPlaneDist = pPortal->m_plane_Origin.normal.Dot( vMoveCenter ) - pPortal->m_plane_Origin.dist;
-		if( (fPlaneDist < -FLT_EPSILON) )
-		{
-
-			// Capture our eye position before we start portalling
-			Vector vOldEyePos = mv->GetAbsOrigin() + pPortalPlayer->GetViewOffset();
-
-#if (PLAYERPORTALDEBUGSPEW == 1)
-			bool bStartedDucked = ((player->GetFlags() & FL_DUCKING) != 0);
-#endif
-
-			//compute when exactly we intersected the portal's plane
-			float fIntersectionPercentage;
-			float fPostPortalFrameTime;
-			{
-				float fOldPlaneDist = pPortal->m_plane_Origin.normal.Dot( vPrevMoveCenter ) - pPortal->m_plane_Origin.dist;
-				float fTotalDist = (fOldPlaneDist - fPlaneDist); //fPlaneDist is known to be negative
-				fIntersectionPercentage = (fTotalDist != 0.0f) ? (fOldPlaneDist / fTotalDist) : 0.5f; //but sometimes fOldPlaneDist is too, some kind of physics penetration seems to be the cause (bugbait #61331)
-				fPostPortalFrameTime = (1.0f - fIntersectionPercentage ) * gpGlobals->frametime;
-			}
-
-#if 0		//debug spew
-#	if defined( CLIENT_DLL )
-			if( pPortalPlayer->m_PredictedPortalTeleportations.Count() > 1 )
-			{
-				Warning( "==================CPortalGameMovement::HandlePortalling(client) has built up more than 1 teleportation=====================\n" );
-			}
-#	endif
-#endif
-
-#if defined( GAME_DLL )
-			{
-				pPortal->PreTeleportTouchingEntity( player );
-				
-				// Notify the entity that it's being teleported
-				// Tell the teleported entity of the portal it has just arrived at
-				notify_teleport_params_t paramsTeleport;
-				paramsTeleport.prevOrigin		= mv->GetAbsOrigin();
-				paramsTeleport.prevAngles		= mv->m_vecViewAngles;
-				paramsTeleport.physicsRotate	= true;
-				notify_system_event_params_t eventParams ( &paramsTeleport );
-				player->NotifySystemEvent( pPortal, NOTIFY_EVENT_TELEPORT, eventParams );
-			}
-			
-#if 0		//debug info for which portal teleported me
-			{
-				NDebugOverlay::EntityBounds( pPortal, 255, 0, 0, 100, 10.0f ); //portal that's teleporting us in red
-				NDebugOverlay::Box( pPortalPlayer->GetPreviouslyPredictedOrigin(), pPortalPlayer->GetHullMins(), pPortalPlayer->GetHullMaxs(), 0, 0, 255, 100, 10.0f ); //last player position in blue
-				NDebugOverlay::Box( mv->GetAbsOrigin(), pPortalPlayer->GetHullMins(), pPortalPlayer->GetHullMaxs(), 0, 255, 0, 100, 10.0f ); //current player position in green
-				NDebugOverlay::Box( (vOldMoveCenter * (1.0f - fIntersectionPercentage)) + (vMoveCenter * fIntersectionPercentage), -Vector( 1.0f, 1.0f, 1.0f ), Vector( 1.0f, 1.0f, 1.0f ), 0, 255, 255, 255, 10.0f );
-			}
-#endif
-#endif
-
-
-			matrix3x4_t matTransform = pPortal->MatrixThisToLinked().As3x4();
-			//bool bWasOnGround = (player->GetFlags() & FL_ONGROUND) != 0;
-
-			player->SetGroundEntity( NULL );
-
-			//velocity
-			{
-				//Vector vPostPortalGravityVelocity = bWasOnGround ? vec3_origin : 
-				//			( /*m_vGravityDirection * */ (sv_gravity.GetFloat() * fPostPortalFrameTime * ((player->GetGravity() != 0) ? player->GetGravity() : 1.0f)));
-				//Vector vPostPortalGravityVelocity = vec3_origin;
-				Vector vTransformedVelocity;
-				Vector vVelocity = mv->m_vecVelocity;
-
-				//subtract out gravity for the portion of the frame after we portalled.				
-				//vVelocity -= vPostPortalGravityVelocity;
-
-				// Take the implicit vertical speed we get when walking along a sloped surface into account,
-				// since player velocity is only ever in the xy-plane while on the ground.
-				// Ignore this if we're entering a floor portal.
-				const float COS_PI_OVER_SIX = 0.86602540378443864676372317075294f; // cos( 30 degrees ) in radians
-				if( pPortal->m_plane_Origin.normal.z <= COS_PI_OVER_SIX )
-				{
-#				ifdef PORTAL2
-					vVelocity += pPortalPlayer->GetImplicitVerticalStepSpeed() * pPortalPlayer->GetPortalPlayerLocalData().m_StickNormal;
-#				else
-					vVelocity.z += pPortalPlayer->GetImplicitVerticalStepSpeed();
-#				endif
-				}
-
-				VectorRotate( vVelocity, matTransform, vTransformedVelocity );
-
-				//now add gravity for the post-portal portion of the frame back on, but to the transformed velocity
-				vTransformedVelocity += player->GetGravity() * 1.008f; //Apply slightly more gravity on exit so that floor/floor portals trend towards decaying velocity. 1.008 is a magic number found through experimentation
-
-				//velocity hacks
-				{
-					float fExitMin, fExitMax;
-					Vector vTransformedMoveCenter;
-					VectorTransform( vMoveCenter, matTransform, vTransformedMoveCenter );
-					CProp_Portal::GetExitSpeedRange( pPortal, true, fExitMin, fExitMax, vTransformedMoveCenter, player );
-					
-					float fForwardSpeed = vTransformedVelocity.Dot( pExitPortal->m_vForward );
-				
-						if( fForwardSpeed < fExitMin )
-					{
-						vTransformedVelocity += pExitPortal->m_vForward * (fExitMin - fForwardSpeed);
-					}
-					else
-					{
-						float fSpeed = vTransformedVelocity.Length();
-						if( (fSpeed > fExitMax) && (fSpeed != 0.0f) )
-						{
-							vTransformedVelocity *= (fExitMax / fSpeed);
-						}
-					}
-
-					// Just do this hack and it's settled from the looks of it - Wonderland_War
-					for( int i = 0; i != 3; ++i )
-					{
-						if (vTransformedVelocity[i] > fExitMax)
-						{
-							vTransformedVelocity[i] = fExitMax;
-						}
-						else if (vTransformedVelocity[i] < -fExitMax)
-						{
-							vTransformedVelocity[i] = -fExitMax;
-						}
-					}
-#if 0
-					//Now for the minimum velocity
-					
-					const float COS_PI_OVER_SIX = 0.86602540378443864676372317075294f; // cos( 30 degrees ) in radians
-					bool bEntranceOnFloor = pPortal->m_plane_Origin.normal.z > COS_PI_OVER_SIX;
-					bool bExitOnFloor = pPortal->m_hLinkedPortal.Get()->m_plane_Origin.normal.z > COS_PI_OVER_SIX;
-
-					for( int i = 0; i != 3; ++i )
-					{
-						if (vTransformedVelocity[i] < fExitMin)
-						{
-							vTransformedVelocity[i] = fExitMin;
-						}
-						else if (vTransformedVelocity[i] > -fExitMin)
-						{
-							vTransformedVelocity[i] = -fExitMin;
-						}
-					}
-#endif
-				}
-
-#if 1
-				//cap it to the same absolute maximum that CGameMovement::CheckVelocity() would, but be quiet about it.
-				float fAbsoluteMaxVelocity = sv_maxvelocity.GetFloat();
-				for( int i = 0; i != 3; ++i )
-				{
-					if (vTransformedVelocity[i] > fAbsoluteMaxVelocity)
-					{
-						vTransformedVelocity[i] = fAbsoluteMaxVelocity;
-					}
-					else if (vTransformedVelocity[i] < -fAbsoluteMaxVelocity)
-					{
-						vTransformedVelocity[i] = -fAbsoluteMaxVelocity;
-					}
-				}
-#endif
-				mv->m_vecVelocity = vTransformedVelocity;
-			}
-
-		/*	pPlayerTouchingPortal->TransformPlayerTeleportingPlayerOrigin( pPortalPlayer, vMoveCenter, vOriginToCenter, mv->m_vecVelocity );
-			mv->SetAbsOrigin( vMoveCenter );*/
-
-
-			//bool bForceDuckToFit = ShouldPortalTransitionCrouch( pPlayerTouchingPortal );
-			bool bForceDuckToFit = false;
-			bool bForceDuck = bForceDuckToFit;
-
-			//reduced version of forced duckjump
-			if( bForceDuck )
-			{
-				if( (player->GetFlags() & FL_DUCKING) == 0 ) //not already ducking
-				{
-					//DevMsg( "HandlePortalling: Force Duck\n" );
-					player->m_Local.m_bInDuckJump = true;
-					player->m_Local.m_flDucktime = GAMEMOVEMENT_DUCK_TIME * gpGlobals->frametime;
-					FinishDuck(); //be ducked RIGHT NOW. Pulls feet up by delta between hull sizes.
-
-					Vector vNewOriginToCenter = (GetPlayerMaxs(true) + GetPlayerMins(true)) * 0.5f;
-					//Vector vNewCenter = mv->GetAbsOrigin() + vNewOriginToCenter;
-					//mv->SetAbsOrigin( mv->GetAbsOrigin() + (vMoveCenter - vNewCenter) ); //We need our center to where it started
-					vOriginToCenter = vNewOriginToCenter;
-				}
-			}
-
-			//transform by center
-			{
-#if defined( DEBUG_FLINGS )
-				s_MovementDebug.vCenterNudge = vec3_origin;
-#endif
-
-				Vector vTransformedMoveCenter;
-				VectorTransform( vMoveCenter, matTransform, vTransformedMoveCenter );
-#if 0
-				CProp_Portal *pExitPortal = pPortal->m_hLinkedPortal;
-				{
-					if( bForceDuckToFlingAssist || (bForceDuckToFit && (mv->m_vecVelocity.Dot( pPlayerTouchingPortal->m_hLinkedPortal->m_vForward ) > PLAYER_FLING_HELPER_MIN_SPEED)) )
-					{
-						Vector vExtents = (pPortalPlayer->GetDuckHullMaxs() - pPortalPlayer->GetDuckHullMins()) * 0.5f;
-
-						//HACK: people like to fling through portals, unfortunately their bbox changes enough to cause problems on fling exit
-						//the real world equivalent of stubbing your toe on the exit hole results in flinging straight up.
-						//The hack is to fix this by preventing you from stubbing your toe, move the player towards portal center axis
-						Vector vPortalToCenter = vTransformedMoveCenter - pExitPortal->m_ptOrigin;
-						Vector vOffCenter = vPortalToCenter - (vPortalToCenter.Dot( pExitPortal->m_vForward ) * pExitPortal->m_vForward);
-
-						//find the extent which is most likely to get hooked on the edge
-						Vector vTestPoint = vTransformedMoveCenter; //pExitPortal->m_ptOrigin + vOffCenter;
-						for( int k = 0; k != 3; ++k )
-						{
-							vTestPoint[k] += vExtents[k] * Sign( vOffCenter[k] );
-						}
-						Vector vPortalToTest = vTestPoint - pExitPortal->m_ptOrigin;
-						//project it onto the portal plane
-						//vPortalToTest = vPortalToTest - (vPortalToTest.Dot( pExitPortal->m_vForward ) * pExitPortal->m_vForward);
-
-						float fRight = vPortalToTest.Dot( pExitPortal->m_vRight );
-						float fUp = vPortalToTest.Dot( pExitPortal->m_vUp );
-
-						Vector vNudge = vec3_origin;
-						float fNudgeWidth = pExitPortal->GetHalfWidth() - 5.0f;
-						float fNudgeHeight = pExitPortal->GetHalfHeight() - 5.0f;
-						if( fRight > fNudgeWidth )
-						{
-							vNudge -= pExitPortal->m_vRight * (fRight - fNudgeWidth); 
-						}
-						else if( fRight < -fNudgeWidth )
-						{
-							vNudge -= pExitPortal->m_vRight * (fRight + fNudgeWidth);
-						}
-
-						if( fUp > fNudgeHeight )
-						{
-							vNudge -= pExitPortal->m_vUp * (fUp - fNudgeHeight); 
-						}
-						else if( fUp < -fNudgeHeight )
-						{
-							vNudge -= pExitPortal->m_vUp * (fUp + fNudgeHeight);
-						}
-
-						vTransformedMoveCenter += vNudge;
-
-#if defined( DEBUG_FLINGS )
-						s_MovementDebug.vCenterNudge = vNudge;
-#endif						
-					}
-				}
-#endif
-
-				mv->SetAbsOrigin( vTransformedMoveCenter - vOriginToCenter );
-
-#if defined( CLIENT_DLL )
-				{
-					C_Portal_Player::PredictedPortalTeleportation_t entry;
-					entry.flTime = gpGlobals->curtime;
-					entry.pEnteredPortal = pPortal;
-					entry.iCommandNumber = player->m_pCurrentCommand->command_number;
-					entry.fDeleteServerTimeStamp = -1.0f;
-					entry.matUnroll = pPortal->m_hLinkedPortal->MatrixThisToLinked();
-					entry.bDuckForced = bForceDuck;
-					pPortalPlayer->m_PredictedPortalTeleportations.AddToTail( entry );
-				}		
-#endif
-
-#	if ( PLAYERPORTALDEBUGSPEW == 1 )
-				Warning( "-->CPortalGameMovement::HandlePortalling(%s) teleport player, portal %d, time %f, %d, Start Center: %.2f %.2f %.2f (%s)  End: %.2f %.2f %.2f (%s)\n", szDLLName, pPortal->m_bIsPortal2 ? 2 : 1, gpGlobals->curtime, player->m_pCurrentCommand->command_number, XYZ( vMoveCenter ), bStartedDucked ? "duck":"stand", XYZ( vTransformedMoveCenter ), ((player->GetFlags() & FL_DUCKING) != 0) ? "duck":"stand" );
-#	endif
-			}
-
-#if defined( CLIENT_DLL )
-			//engine view angles (for mouse input smoothness)
-			{
-				QAngle qEngineAngles;
-				engine->GetViewAngles( qEngineAngles );
-				AngleMatrix( qEngineAngles, matAngleTransformIn );
-				ConcatTransforms( matTransform, matAngleTransformIn, matAngleTransformOut );
-				MatrixAngles( matAngleTransformOut, qEngineAngles );
-				engine->SetViewAngles( qEngineAngles );
-			}
-
-			//predicted view angles
-			{
-				QAngle qPredViewAngles;
-				prediction->GetViewAngles( qPredViewAngles );
-				
-				AngleMatrix( qPredViewAngles, matAngleTransformIn );
-				ConcatTransforms( matTransform, matAngleTransformIn, matAngleTransformOut );
-				MatrixAngles( matAngleTransformOut, qPredViewAngles );
-
-				prediction->SetViewAngles( qPredViewAngles );
-			}
-
-#endif
-
-			//pl.v_angle
-			{
-				AngleMatrix( player->pl.v_angle, matAngleTransformIn );
-				ConcatTransforms( matTransform, matAngleTransformIn, matAngleTransformOut );
-				MatrixAngles( matAngleTransformOut, player->pl.v_angle );
-			}
-
-			//player entity angle
-			{
-				QAngle qPlayerAngle;
-#if defined( GAME_DLL )
-				qPlayerAngle = player->GetAbsAngles();
-#else
-				qPlayerAngle = player->GetNetworkAngles();
-#endif
-				AngleMatrix( qPlayerAngle, matAngleTransformIn );
-				ConcatTransforms( matTransform, matAngleTransformIn, matAngleTransformOut );
-				MatrixAngles( matAngleTransformOut, qPlayerAngle );
-
-#if defined( GAME_DLL )
-				player->SetAbsAngles( qPlayerAngle );
-#else
-				player->SetNetworkAngles( qPlayerAngle );
-#endif
-			}
-
-#if defined( GAME_DLL )
-			//outputs that the portal usually fires
-			{
-				// Update the portal to know something moved through it
-				pPortal->OnEntityTeleportedFromPortal( player );
-				if ( pPortal->m_hLinkedPortal )
-				{
-					pPortal->m_hLinkedPortal->OnEntityTeleportedToPortal( player );
-				}
-			}
-
-			//notify clients of the teleportation
-//			EntityPortalled( pPortal, player, mv->GetAbsOrigin(), mv->m_vecAngles, bForceDuck );
-#endif
-
-#if defined( DEBUG_FLINGS )
-			//movement debugging
-			{
-				Vector vHullMins = pPortalPlayer->GetHullMins();
-				Vector vHullMaxs = pPortalPlayer->GetHullMaxs();
-				Vector vHullExtents = (vHullMaxs - vHullMins) * 0.5f;
-				Vector vHullCenter = mv->GetAbsOrigin() + ((vHullMaxs + vHullMins) * 0.5f);
-				s_MovementDebug.pPlayer = pPortalPlayer;
-				s_MovementDebug.pPortal = pPortal;
-				s_MovementDebug.vTeleportPos = vHullCenter;
-				s_MovementDebug.vTeleportExtents = vHullExtents;
-				s_MovementDebug.vTeleportVel = mv->m_vecVelocity;
-				s_MovementDebug.bWatchFlingVelocity = true;
-			}
-#endif
-
-			pPlayerTouchingPortal = pPortal->m_hLinkedPortal.Get();
-
-#if defined( GAME_DLL )
-			pPortalPlayer->ApplyPortalTeleportation( pPortal, mv );
-			pPortal->PostTeleportTouchingEntity( player );
-#else
-			pPortalPlayer->ApplyPredictedPortalTeleportation( pPortal, mv, bForceDuck );		
-#endif
-
-			//Fix us up if we got stuck
-			//if( sv_portal_new_player_trace.GetBool() )
-			{
-				CProp_Portal *pPortalEnvBackup = pPortalPlayer->m_hPortalEnvironment.Get();
-				pPortalPlayer->m_hPortalEnvironment = pPlayerTouchingPortal; //we need to trace against the new environment now instead of waiting for it to update naturally.
-				trace_t portalTrace;
-				TracePlayerBBox( mv->GetAbsOrigin(), mv->GetAbsOrigin(), MASK_PLAYERSOLID, COLLISION_GROUP_PLAYER_MOVEMENT, portalTrace );
-
-				if( portalTrace.startsolid )
-				{
-					Vector vPlayerCenter = mv->GetAbsOrigin() + vOriginToCenter;
-					Vector vPortalToCenter = vPlayerCenter - pPlayerTouchingPortal->m_ptOrigin;
-					Vector vPortalNormal = pPlayerTouchingPortal->m_PortalSimulator.GetInternalData().Placement.PortalPlane.m_Normal;
-					Vector vOffCenter = vPortalToCenter - (vPortalToCenter.Dot( vPortalNormal ) * vPortalNormal);
-					//AABB's going through portals are likely to cause weird collision bugs. Just try to get them close
-					TracePlayerBBox( mv->GetAbsOrigin() - vOffCenter, mv->GetAbsOrigin(), MASK_PLAYERSOLID, COLLISION_GROUP_PLAYER_MOVEMENT, portalTrace );
-					if( !portalTrace.startsolid )
-					{
-						mv->SetAbsOrigin( portalTrace.endpos );
-					}
-					else
-					{
-						Vector vNewCenter = vec3_origin;
-						Vector vExtents = (pPortalPlayer->GetPlayerMaxs() - pPortalPlayer->GetPlayerMins()) * 0.5f;
-						CTraceFilterSimple traceFilter( pPortalPlayer, COLLISION_GROUP_PLAYER_MOVEMENT );
-
-						if( UTIL_FindClosestPassableSpace_InPortal_CenterMustStayInFront( pPlayerTouchingPortal, vPlayerCenter, vExtents, pPlayerTouchingPortal->m_plane_Origin.normal, &traceFilter, MASK_PLAYERSOLID, 100, vNewCenter ) &&
-							((pPlayerTouchingPortal->m_plane_Origin.normal.Dot( vNewCenter ) - pPlayerTouchingPortal->m_plane_Origin.dist) >= 0.0f) )
-						{
-							TracePlayerBBox( vNewCenter - vOriginToCenter, mv->GetAbsOrigin(), MASK_PLAYERSOLID, COLLISION_GROUP_PLAYER_MOVEMENT, portalTrace );
-							if( !portalTrace.startsolid )
-							{
-								mv->SetAbsOrigin( portalTrace.endpos );
-							}
-							else
-							{
-								mv->SetAbsOrigin( vNewCenter - vOriginToCenter );
-							}
-						}						
-					}
-				}
-
-				pPortalPlayer->m_hPortalEnvironment = pPortalEnvBackup;
-
-				// Transform our old eye position through the portals so we can set an offset of where our eye
-				// would have been and where it actually is
-				Vector vTransformedEyePos;
-				VectorTransform( vOldEyePos, pPortal->m_matrixThisToLinked.As3x4(), vTransformedEyePos );
-				Vector vNewEyePos = mv->GetAbsOrigin() + pPortalPlayer->GetViewOffset();
-				pPortalPlayer->SetEyeOffset( vTransformedEyePos, vNewEyePos );
-
-			}
-		}
-#if ( PLAYERPORTALDEBUGSPEW == 1 ) && 0 //debugging spew
-		else
-		{
-			static float fMaxTime = 0.0f; //prediction can produce lots and lots and lots of spew if we allow it to repeat itself
-			if( fMaxTime < gpGlobals->curtime )
-			{
-				Warning( "CPortalGameMovement::HandlePortalling(%s) %f player touching portal %i without teleporting  dist %f vel %f\n", szDLLName, gpGlobals->curtime, pPortal->m_bIsPortal2 ? 2 : 1,
-							(pPortal->m_plane_Origin.normal.Dot( vMoveCenter ) - pPortal->m_plane_Origin.dist), pPortal->m_plane_Origin.normal.Dot( mv->m_vecVelocity ) );
-			
-				fMaxTime = gpGlobals->curtime;
-			}
-		}
-#endif
-
-	}
-
-
-	
-	pPortalEnvironment = pPortalPlayer->m_hPortalEnvironment.Get();
-
-	if( pPlayerTouchingPortal != pPortalEnvironment )
-	{
-		if( pPortalEnvironment )
+		if ( pPortalEnvironment )
 		{
 			pPortalEnvironment->m_PortalSimulator.ReleaseOwnershipOfEntity( player );
 		}
-
-		pPortalPlayer->m_hPortalEnvironment = pPlayerTouchingPortal;
-		if( pPlayerTouchingPortal )
+		if ( pPortal )
 		{
-			pPlayerTouchingPortal->m_PortalSimulator.TakeOwnershipOfEntity( player );
+			pPortalPlayer->m_hPortalEnvironment = pPortal;
+			pPortal->m_PortalSimulator.TakeOwnershipOfEntity( player );
+		}
+	}
+
+	if ( !pPortal ) // Found nothing, so don't handle teleportations
+		return;
+
+	// Check to see if we should teleport
+	
+	CPortalSimulator *pPortalSimulator = &pPortal->m_PortalSimulator;
+	
+	if( !pPortalSimulator->OwnsEntity( player ) ) //can't teleport an entity we don't own
+	{
+		return;
+	}
+
+	if( m_vVelocityStart.Dot( pPortal->m_PortalSimulator.GetInternalData().Placement.vForward ) > 0.0f )
+	{
+		return;
+	}
+
+	bool bPastPortalHole = false;
+	// Test for entity's center being past portal plane
+	if(pPortalSimulator->GetInternalData().Placement.PortalPlane.m_Normal.Dot( ptPlayerCenter ) < pPortalSimulator->GetInternalData().Placement.PortalPlane.m_Dist)
+	{
+		//entity wants to go further into the plane
+		if( pPortalSimulator->EntityIsInPortalHole( player ) )
+		{
+			bPastPortalHole = true;
+		}
+	}
+
+	if ( !bPastPortalHole )
+		return;
+
+	// Now do the teleportation
+	
+	const PS_InternalData_t &RemotePortalDataAccess = pPortal->m_hLinkedPortal->m_PortalSimulator.GetInternalData();
+	const PS_InternalData_t &LocalPortalDataAccess = pPortalSimulator->GetInternalData();
+
+	bool bForcedDuck = false;
+	
+	if( fabs( LocalPortalDataAccess.Placement.vForward.z ) > 0.0f )
+	{
+		//we may have to compensate for the fact that AABB's don't rotate ever
+			
+		float fAbsLocalZ = fabs( LocalPortalDataAccess.Placement.vForward.z );
+		float fAbsRemoteZ = fabs( RemotePortalDataAccess.Placement.vForward.z );
+			
+		bForcedDuck = ( (fabs(fAbsLocalZ - 1.0f) < 0.01f) &&
+							(fabs(fAbsRemoteZ - 1.0f) < 0.01f) );
+
+		if( bForcedDuck )
+			//(fabs( LocalPortalDataAccess.Placement.vForward.z + RemotePortalDataAccess.Placement.vForward.z ) < 0.01f) )
+		{
+			//portals are both aligned on the z axis, no need to shrink the player
+				
 		}
 		else
 		{
-			//we're switching out the portal collision for real collision. Unlike entering from the real world to the portal, we can't wait for it to opportunistically
-			//find a non-stuck case to transition. Fix it now if the player is stuck (so far it's always been a floating point precision problem)
-			trace_t realTrace;
-			TracePlayerBBox( mv->GetAbsOrigin(), mv->GetAbsOrigin(), MASK_PLAYERSOLID, COLLISION_GROUP_PLAYER_MOVEMENT, realTrace );
-			if( realTrace.startsolid )
-			{
-				//crap
-				trace_t portalTrace;
-				pPortalPlayer->m_hPortalEnvironment = pPortalEnvironment; //try it again with the old environment to be sure
-				TracePlayerBBox( mv->GetAbsOrigin(), mv->GetAbsOrigin(), MASK_PLAYERSOLID, COLLISION_GROUP_PLAYER_MOVEMENT, portalTrace );
-				pPortalPlayer->m_hPortalEnvironment = NULL;
+			//curl the player up into a little ball
+			pPortalPlayer->SetGroundEntity( NULL ); // No need to use CGameMovement::SetGroundEntity in this case.
 
-				if( !portalTrace.startsolid ) //if we startsolid in the portal environment, leave the position alone for now on the assumption that it might be exploitable otherwise
-				{
-					//fix it
-					CTraceFilterSimple traceFilter( player, COLLISION_GROUP_PLAYER_MOVEMENT );
-					
-					Vector vResult = vec3_origin;
-					Vector vExtents = (pPortalPlayer->GetPlayerMaxs() - pPortalPlayer->GetPlayerMins()) * 0.5f;
-					UTIL_FindClosestPassableSpace( mv->GetAbsOrigin() + vOriginToCenter, vExtents, Vector( 0.0f, 0.0f, 1.0f ), &traceFilter, MASK_PLAYERSOLID, 100, vResult );
-					mv->SetAbsOrigin( vResult - vOriginToCenter );
-				}
+			if( !pPortalPlayer->IsDucked() )
+			{
+				pPortalPlayer->ForceDuckThisFrame( mv->GetAbsOrigin(), m_vVelocityStart );
+
+				if( LocalPortalDataAccess.Placement.vForward.z > 0.0f )
+					ptPlayerCenter.z -= 16.0f; //portal facing up, shrink downwards
+				else
+					ptPlayerCenter.z += 16.0f; //portal facing down, shrink upwards
 			}
+		}			
+	}
+
+	Vector ptNewOrigin;
+	Vector vNewVelocity;
+
+	ptNewOrigin = pPortal->m_matrixThisToLinked * ptPlayerCenter;
+	ptNewOrigin += mv->GetAbsOrigin() - ptPlayerCenter;
+
+	// Reorient the velocity		
+	vNewVelocity = pPortal->m_matrixThisToLinked.ApplyRotation( m_vVelocityStart );
+
+	//help camera reorientation for the player
+	{	
+		Vector vPlayerForward;
+		AngleVectors( mv->m_vecViewAngles, &vPlayerForward, NULL, NULL );
+
+		float fPlayerForwardZ = vPlayerForward.z;
+		vPlayerForward.z = 0.0f;
+
+		float fForwardLength = vPlayerForward.Length();
+
+		if ( fForwardLength > 0.0f )
+		{
+			VectorNormalize( vPlayerForward );
 		}
-		
+
+		float fPlayerFaceDotPortalFace = LocalPortalDataAccess.Placement.vForward.Dot( vPlayerForward );
+		float fPlayerFaceDotPortalUp = LocalPortalDataAccess.Placement.vUp.Dot( vPlayerForward );
+
+		CBaseEntity *pHeldEntity = GetPlayerHeldEntity( player );
+
+		// Sometimes reorienting by pitch is more desirable than by roll depending on the portals' orientations and the relative player facing direction
+		if ( pHeldEntity )	// never pitch reorient while holding an object
+		{
+			pPortalPlayer->m_bPitchReorientation = false;
+		}
+		else if ( LocalPortalDataAccess.Placement.vUp.z > 0.99f && // entering wall portal
+					( fForwardLength == 0.0f ||			// facing strait up or down
+					fPlayerFaceDotPortalFace > 0.5f ||	// facing mostly away from portal
+					fPlayerFaceDotPortalFace < -0.5f )	// facing mostly toward portal
+				)
+		{
+			pPortalPlayer->m_bPitchReorientation = true;
+		}
+		else if ( ( LocalPortalDataAccess.Placement.vForward.z > 0.99f || LocalPortalDataAccess.Placement.vForward.z < -0.99f ) &&	// entering floor or ceiling portal
+					( RemotePortalDataAccess.Placement.vForward.z > 0.99f || RemotePortalDataAccess.Placement.vForward.z < -0.99f ) && // exiting floor or ceiling portal 
+					(	fPlayerForwardZ < -0.5f || fPlayerForwardZ > 0.5f )		// facing mustly up or down
+				)
+		{
+			pPortalPlayer->m_bPitchReorientation = true;
+		}
+		else if ( ( RemotePortalDataAccess.Placement.vForward.z > 0.75f && RemotePortalDataAccess.Placement.vForward.z <= 0.99f ) && // exiting wedge portal
+					( fPlayerFaceDotPortalUp > 0.0f ) // facing toward the top of the portal
+				)
+		{
+			pPortalPlayer->m_bPitchReorientation = true;
+		}
+		else
+		{
+			pPortalPlayer->m_bPitchReorientation = false;
+		}
 	}
 	
-#if defined( TRACE_DEBUG_ENABLED )
-	CheckStuck();
-#endif
-
-#if defined( GAME_DLL ) && 0
-	if( pPortalEnvironment )
+	//velocity hacks
 	{
-		bool bShowBox = true;
-#if 1 //only draw the box if we're tracing the other side
-		Ray_t ray;
-		ray.Init( mv->GetAbsOrigin(), mv->GetAbsOrigin(), GetPlayerMins(), GetPlayerMaxs() );
+		//minimum floor exit velocity if both portals are on the floor or the player is coming out of the floor
+		if( RemotePortalDataAccess.Placement.vForward.z > 0.7071f )
+		{
+			if( vNewVelocity.z < MINIMUM_FLOOR_PORTAL_EXIT_VELOCITY_PLAYER ) 
+				vNewVelocity.z = MINIMUM_FLOOR_PORTAL_EXIT_VELOCITY_PLAYER;
+		}
 
-		bShowBox = pPortalEnvironment->m_PortalSimulator.IsRayInPortalHole( ray ) == RIPHR_TOUCHING_HOLE_NOT_WALL;
+
+		if ( vNewVelocity.LengthSqr() > (MAXIMUM_PORTAL_EXIT_VELOCITY * MAXIMUM_PORTAL_EXIT_VELOCITY)  )
+			vNewVelocity *= (MAXIMUM_PORTAL_EXIT_VELOCITY / vNewVelocity.Length());
+	}
+	
+	//untouch the portal(s), will force a touch on destination after the teleport
+	{
+		pPortalSimulator->ReleaseOwnershipOfEntity( player, true );
+		//this->PhysicsNotifyOtherOfUntouch( this, pOther );
+		//pOther->PhysicsNotifyOtherOfUntouch( pOther, this );
+
+		pPortal->m_hLinkedPortal->m_PortalSimulator.TakeOwnershipOfEntity( player );
+
+		//m_hLinkedPortal->PhysicsNotifyOtherOfUntouch( m_hLinkedPortal, pOther );
+		//pOther->PhysicsNotifyOtherOfUntouch( pOther, m_hLinkedPortal );
+	}
+	
+	pPortalPlayer->SetGroundEntity( NULL );
+	
+#ifdef GAME_DLL
+	//NDebugOverlay::Box(ptNewOrigin, Vector(4, 4, 4), -Vector(4, 4, 4), 255, 0, 0, 128, 3.0 );
 #endif
 
-		if( bShowBox )
+	mv->SetAbsOrigin( ptNewOrigin );
+	
+	
+#if defined( CLIENT_DLL )
+	{
+		C_Portal_Player::PredictedPortalTeleportation_t entry;
+		entry.flTime = gpGlobals->curtime;
+		entry.pEnteredPortal = pPortal;
+		entry.iCommandNumber = player->m_pCurrentCommand->command_number;
+		entry.fDeleteServerTimeStamp = -1.0f;
+		entry.matUnroll = pPortal->m_hLinkedPortal->MatrixThisToLinked();
+		entry.bDuckForced = bForcedDuck;
+		pPortalPlayer->m_PredictedPortalTeleportations.AddToTail(entry);
+	}
+#endif
+	
+#if defined( CLIENT_DLL )
+	//engine view angles (for mouse input smoothness)
+	{
+		QAngle qEngineAngles;
+		engine->GetViewAngles( qEngineAngles );
+		engine->SetViewAngles( TransformAnglesToWorldSpace( qEngineAngles, pPortal->MatrixThisToLinked().As3x4() ) );
+	}
+
+	//predicted view angles
+	{
+		QAngle qPredViewAngles;
+		prediction->GetViewAngles( qPredViewAngles );
+		prediction->SetViewAngles( TransformAnglesToWorldSpace( qPredViewAngles, pPortal->MatrixThisToLinked().As3x4() ) );
+	}
+
+#endif
+
+	//pl.v_angle
+	{
+		player->pl.v_angle = TransformAnglesToWorldSpace( player->pl.v_angle, pPortal->MatrixThisToLinked().As3x4() );
+	}
+
+	//player entity angle
+	{
+		QAngle qPlayerAngle;
+#if defined( GAME_DLL )
+		qPlayerAngle = player->GetAbsAngles();
+#else
+		qPlayerAngle = player->GetNetworkAngles();
+#endif
+
+		qPlayerAngle = TransformAnglesToWorldSpace( qPlayerAngle, pPortal->MatrixThisToLinked().As3x4() );
+
+#if defined( GAME_DLL )
+		player->SetAbsAngles( qPlayerAngle );
+#else
+		player->SetNetworkAngles( qPlayerAngle );
+#endif
+	}
+
+
+	mv->m_vecVelocity = vNewVelocity;
+	
+#if defined( GAME_DLL )
+	pPortalPlayer->ApplyPortalTeleportation( pPortal, mv );
+#else
+	pPortalPlayer->ApplyPredictedPortalTeleportation( pPortal, mv, bForcedDuck );		
+#endif
+#if 0
+	CBaseEntity *pHeldEntity = GetPlayerHeldEntity( player );
+	if( pHeldEntity )
+	{
+		pPortalPlayer->ToggleHeldObjectOnOppositeSideOfPortal();
+		if( pPortalPlayer->IsHeldObjectOnOppositeSideOfPortal() )
 		{
-			Vector vExtent_WH( 0.0f, pPortalEnvironment->GetHalfWidth(), pPortalEnvironment->GetHalfHeight() );
-			NDebugOverlay::BoxAngles( pPortalEnvironment->GetAbsOrigin(), -vExtent_WH, vExtent_WH + Vector( 2.0f, 0.0f, 0.0f ), pPortalEnvironment->GetAbsAngles(), 255, 0, 0, 100, 0.0f );
+			pPortalPlayer->SetHeldObjectPortal( pPortal->m_hLinkedPortal );
+		}
+		else
+		{
+			pPortalPlayer->SetHeldObjectPortal( NULL );
+
+			//we need to make sure the held object and player don't interpenetrate when the player's shape changes
+			Vector vTargetPosition;
+			QAngle qTargetOrientation;
+			UpdateGrabControllerTargetPosition( pPortalPlayer, &vTargetPosition, &qTargetOrientation );
+
+#ifdef GAME_DLL
+			pHeldEntity->Teleport( &vTargetPosition, &qTargetOrientation, 0 );
+#else
+			pHeldEntity->SetAbsOrigin( vTargetPosition );
+			pHeldEntity->SetAbsAngles( qTargetOrientation );
+#endif
+			FindClosestPassableSpace( pHeldEntity, RemotePortalDataAccess.Placement.vForward );
 		}
 	}
 #endif
+	//force the entity to be touching the other portal right this millisecond
+	{
+		trace_t Trace;
+		memset( &Trace, 0, sizeof(trace_t) );
+		//UTIL_TraceEntity( pOther, ptNewOrigin, ptNewOrigin, MASK_SOLID, pOther, COLLISION_GROUP_NONE, &Trace ); //fires off some asserts, and we just need a dummy anyways
+
+		player->PhysicsMarkEntitiesAsTouching( pPortal->m_hLinkedPortal.Get(), Trace );
+		pPortal->m_hLinkedPortal.Get()->PhysicsMarkEntitiesAsTouching( player, Trace );
+	}
+	
+#ifdef GAME_DLL
+	// Notify the entity that it's being teleported
+	// Tell the teleported entity of the portal it has just arrived at
+	notify_teleport_params_t paramsTeleport;
+	paramsTeleport.prevOrigin		= mv->GetAbsOrigin();
+	paramsTeleport.prevAngles		= mv->m_vecViewAngles;
+	paramsTeleport.physicsRotate	= true;
+	notify_system_event_params_t eventParams ( &paramsTeleport );
+	player->NotifySystemEvent( pPortal, NOTIFY_EVENT_TELEPORT, eventParams );
+	
+	//notify clients of the teleportation
+	EntityPortalled( pPortal, player, ptNewOrigin, mv->m_vecAngles, false );
+
+#ifdef _DEBUG
+	{
+		Vector ptTestCenter = mv->GetAbsOrigin() + ((GetPlayerMaxs() + GetPlayerMins()) * 0.5f);
+
+		float fNewDist, fOldDist;
+		fNewDist = RemotePortalDataAccess.Placement.PortalPlane.m_Normal.Dot( ptTestCenter ) - RemotePortalDataAccess.Placement.PortalPlane.m_Dist;
+		fOldDist = LocalPortalDataAccess.Placement.PortalPlane.m_Normal.Dot( ptPlayerCenter ) - LocalPortalDataAccess.Placement.PortalPlane.m_Dist;
+		AssertMsg( fNewDist >= 0.0f, "Entity portalled behind the destination portal." );
+	}
+#endif
+
+
+	player->NetworkProp()->NetworkStateForceUpdate();
+#endif
+	player->pl.NetworkStateChanged();
 }
 #endif
 

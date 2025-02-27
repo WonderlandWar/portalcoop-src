@@ -24,14 +24,30 @@ class CPortal_Player;
 #include "func_liquidportal.h"
 #include "ai_speech.h"			// For expresser host
 
+class CEntityPortalledNetworkMessage
+{
+public:
+	DECLARE_CLASS_NOBASE( CEntityPortalledNetworkMessage );
+
+	CEntityPortalledNetworkMessage( void );
+
+	CHandle<CBaseEntity> m_hEntity;
+	CHandle<CProp_Portal> m_hPortal;
+	float m_fTime;
+	bool m_bForcedDuck;
+	uint32 m_iMessageCount;
+};
+
 struct PortalGunSpawnInfo_t
 {
 	PortalGunSpawnInfo_t()
 	{
+		m_bSpawnWithPortalgun = false;
 		m_bCanFirePortal1 = true;
 		m_bCanFirePortal2 = true;
 	}
 
+	bool m_bSpawnWithPortalgun;
 	bool m_bCanFirePortal1;
 	bool m_bCanFirePortal2;
 };
@@ -183,8 +199,19 @@ public:
 	
 	float GetImplicitVerticalStepSpeed() const;
 	void SetImplicitVerticalStepSpeed( float speed );
+	
+	void NetworkPortalTeleportation( CBaseEntity *pOther, CProp_Portal *pPortal, float fTime, bool bForcedDuck );
 
-	void ForceDuckThisFrame( void );
+	//encoding these messages directly in the player to ensure it's received in sync with the corresponding entity post-teleport update
+	//each player has their own copy of the buffer that is only sent to them
+	CUtlVector<CEntityPortalledNetworkMessage> m_EntityPortalledNetworkMessages; 
+	enum 
+	{
+		MAX_ENTITY_PORTALLED_NETWORK_MESSAGES = 32,
+	};
+	CNetworkVar( uint32, m_iEntityPortalledNetworkMessageCount ); //always ticks up by one per add
+	
+	void ForceDuckThisFrame( Vector origin, Vector velocity );
 	void UnDuck ( void );
 	inline void ForceJumpThisFrame( void ) { ForceButtons( IN_JUMP ); }
 
@@ -234,8 +261,6 @@ public:
 	void SetLookingForUseEntity( bool bLookingForUseEntity ) { m_bLookingForUseEntity = bLookingForUseEntity; }
 	void SetLookForUseEntity( bool bLookForUseEntity ) { m_bLookForUseEntity = bLookForUseEntity; }
 
-	bool m_bGotPortalMessage;
-
 	CNetworkHandle( CProp_Portal, m_hHeldObjectPortal );	// networked entity handle
 
 private:
@@ -273,11 +298,6 @@ private:
 
 	float m_fNeuroToxinDamageTime;
 			
-	QAngle						m_qPrePortalledViewAngles;
-	bool						m_bFixEyeAnglesFromPortalling;
-	float						m_flTimeToWaitForPortalMessage;
-	bool						m_bPendingPortalMessage;
-	VMatrix						m_matLastPortalled;
 	CAI_Expresser				*m_pExpresser;
 	string_t					m_iszExpressionScene;
 	EHANDLE						m_hExpressionSceneEnt;
@@ -297,11 +317,6 @@ private:
 
 	CUtlVector<RecentPortalTransform_t> m_PendingPortalTransforms; //portal transforms we've sent to the client but they have not yet acknowledged, needed for some input fixup
 	
-	// stick camera
-	void RotateUpVector( Vector& vForward, Vector& vUp );
-	void SnapCamera( bool bLookingInBadDirection );
-	void PostTeleportationCameraFixup( const CProp_Portal *pEnteredPortal );
-
 public:
 	
 	CNetworkVar( bool, m_bPitchReorientation );

@@ -54,8 +54,8 @@ public:
 	CHandle<C_Prop_Portal>	GetLinkedPortal() { return m_hLinkedPortal; } //the portal this portal is linked to
 
 	bool					m_bSharedEnvironmentConfiguration; //this will be set by an instance of CPortal_Environment when two environments are in close proximity
-	
-	cplane_t				m_plane_Origin;	// The plane on which this portal is placed, normal facing outward (matching model forward vec)
+
+	Vector4D				m_plane_Origin;	// The plane on which this portal is placed, normal facing outward (matching model forward vec)
 
 	virtual void			Spawn( void );
 	virtual void			Precache( void );
@@ -209,7 +209,6 @@ private:
 	friend class CPortalRenderable;
 
 
-	friend void __MsgFunc_EntityPortalled(bf_read &msg);
 protected:
 	bool					m_bActivated; //a portal can exist and not be active
 	bool					m_bOldActivatedState; //state the portal was in before it was created this instance

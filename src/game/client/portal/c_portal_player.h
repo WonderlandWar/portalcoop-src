@@ -18,6 +18,18 @@
 #include "colorcorrectionmgr.h"
 #include "in_buttons.h"
 
+class C_EntityPortalledNetworkMessage : public CMemZeroOnNew
+{
+public:	
+	DECLARE_CLASS_NOBASE( C_EntityPortalledNetworkMessage );
+
+	CHandle<C_BaseEntity> m_hEntity;
+	CHandle<C_Prop_Portal> m_hPortal;
+	float m_fTime;
+	bool m_bForcedDuck;
+	uint32 m_iMessageCount;
+};
+
 //=============================================================================
 // >> Portal_Player
 //=============================================================================
@@ -84,7 +96,6 @@ public:
 	virtual void			OnPreDataChanged( DataUpdateType_t type );
 	virtual void			PreDataUpdate( DataUpdateType_t updateType );
 	virtual void			OnDataChanged( DataUpdateType_t type );
-	bool					DetectAndHandlePortalTeleportation( C_Prop_Portal *pPortal ); //detects if the player has portalled and fixes views
 	virtual float			GetFOV( void );
 	virtual CStudioHdr*		OnNewModel( void );
 	virtual void			TraceAttack( const CTakeDamageInfo &info, const Vector &vecDir, trace_t *ptr );
@@ -101,13 +112,12 @@ public:
 
 	virtual Vector			EyePosition();
 	Vector					EyeFootPosition( const QAngle &qEyeAngles );//interpolates between eyes and feet based on view angle roll
-	inline Vector			EyeFootPosition( void ) { return EyeFootPosition( EyeAngles() ); }; 
-	void					PrePlayerPortalled( void ); // Save my angles for when I teleport
+	inline Vector			EyeFootPosition( void ) { return EyeFootPosition( EyeAngles() ); };
 	void					PlayerPortalled( C_Prop_Portal *pEnteredPortal, float fTime, bool bForcedDuck );
 	void					CheckPlayerAboutToTouchPortal( void );
 
 	virtual void	CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, float &zFar, float &fov );
-	void			CalcPortalView( Vector &eyeOrigin, QAngle &eyeAngles );
+	void			CalcPortalView( Vector &eyeOrigin, QAngle &eyeAngles, float &fov );
 	virtual void	CalcViewModelView( const Vector& eyeOrigin, const QAngle& eyeAngles);
 	virtual void	ForceDropOfCarriedPhysObjects( CBaseEntity *pOnlyIfHoldindThis );
 
@@ -168,8 +178,8 @@ public:
 	
 	float GetImplicitVerticalStepSpeed() const;
 	void SetImplicitVerticalStepSpeed( float speed );
-
-	void ForceDuckThisFrame( void );
+	
+	void ForceDuckThisFrame( Vector origin, Vector velocity );
 	void UnDuck ( void );
 	inline void ForceJumpThisFrame( void ) { ForceButtons( IN_JUMP ); }
 	
@@ -214,12 +224,9 @@ public:
 
 	bool IsSuppressingCrosshair( void ) { return m_bSuppressingCrosshair; }
 	
-	C_Prop_Portal *m_pPrePortalledPortal;
-	
 	int m_iCustomPortalColorSet;
 	
 	float GetLatestServerTeleport() { return m_fLatestServerTeleport; }
-	VMatrix GetLatestServerTeleportationInverseMatrix() { return m_matLatestServerTeleportationInverseMatrix; }
 
 	CSoundPatch		*m_pWooshSound;
 	bool	m_bIntersectingPortalPlane;
@@ -240,9 +247,6 @@ protected:
 private:
 	
 	bool m_bIsListenServerHost;
-
-	float m_fLatestServerTeleport;
-	VMatrix m_matLatestServerTeleportationInverseMatrix;
 	
 	C_Portal_Player( const C_Portal_Player & );
 
@@ -313,25 +317,19 @@ private:
 		CHandle<C_Func_LiquidPortal>	m_hSurroundingLiquidPortal;
 		//Vector					m_ptPlayerPosition;
 		QAngle					m_qEyeAngles;
+		uint32					m_iEntityPortalledNetworkMessageCount;
 	} PreDataChanged_Backup;
 
 	Vector	m_ptEyePosition_LastCalcView;
 	QAngle	m_qEyeAngles_LastCalcView; //we've got some VERY persistent single frame errors while teleporting, this will be updated every frame in CalcView() and will serve as a central source for fixed angles
-	C_Prop_Portal *m_pPortalEnvironment_LastCalcView;
 #ifdef CCDEATH
 	ClientCCHandle_t	m_CCDeathHandle;	// handle to death cc effect
 	float				m_flDeathCCWeight;	// for fading in cc effect	
 #endif //CCDEATH
-	bool	m_bPortalledMessagePending; //Player portalled. It's easier to wait until we get a OnDataChanged() event or a CalcView() before we do anything about it. Otherwise bits and pieces can get undone
 
 	bool m_bToolMode_EyeHasPortalled_LastRecord; //when recording, keep track of whether we teleported the camera position last capture or not. Need to avoid interpolating when switching
 
 	Vector m_vEyeOffset;
-	
-	// stick camera
-	void RotateUpVector( Vector& vForward, Vector& vUp );
-	void SnapCamera( bool bLookingInBadDirection );
-	void PostTeleportationCameraFixup( const C_Prop_Portal *pEnteredPortal );
 
 public:
 
@@ -342,12 +340,22 @@ public:
 	bool	m_bEyePositionIsTransformedByPortal; //when the eye and body positions are not on the same side of a portal
 
 	CHandle<C_Prop_Portal>	m_hPortalEnvironment; //a portal whose environment the player is currently in, should be invalid most of the time
-	CHandle<C_Prop_Portal>	m_hOldPortalEnvironment;
 
 	CHandle<C_Prop_Portal>	m_hPortalLastEnvironment;
 
+	float m_fLatestServerTeleport;
+	VMatrix m_matLatestServerTeleportationInverseMatrix;
+
 	void FixPortalEnvironmentOwnership( void ); //if we run prediction, there are multiple cases where m_hPortalEnvironment != CPortalSimulator::GetSimulatorThatOwnsEntity( this ), and that's bad
 	CHandle<C_Func_LiquidPortal>	m_hSurroundingLiquidPortal; //a liquid portal whose volume the player is standing in
+private:
+	
+	CUtlVector<C_EntityPortalledNetworkMessage> m_EntityPortalledNetworkMessages;
+	enum 
+	{
+		MAX_ENTITY_PORTALLED_NETWORK_MESSAGES = 32,
+	};
+	uint32 m_iEntityPortalledNetworkMessageCount;
 
 };
 

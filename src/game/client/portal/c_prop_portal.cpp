@@ -115,212 +115,12 @@ END_PREDICTION_DATA()
 
 extern ConVar use_server_portal_particles;
 
-#if !USEMOVEMENTFORPORTALLING
-void EntityPortalledMessageHandler( C_BaseEntity *pEntity, C_Portal_Base2D *pPortal, float fTime, bool bForcedDuck )
-{
-#if( PLAYERPORTALDEBUGSPEW == 1 )
-	Warning( "EntityPortalledMessageHandler() %f -=- %f %i======================\n", fTime, engine->GetLastTimeStamp(), prediction->GetLastAcknowledgedCommandNumber() );
-#endif
-
-	C_PortalGhostRenderable *pGhost = pPortal->GetGhostRenderableForEntity( pEntity );
-	if( !pGhost )
-	{
-		//high velocity edge case. Entity portalled before it ever created a clone. But will need one for the interpolated origin history
-		if( C_PortalGhostRenderable::ShouldCloneEntity( pEntity, pPortal, false ) )
-		{
-			pGhost = C_PortalGhostRenderable::CreateGhostRenderable( pEntity, pPortal );
-			if( pGhost )
-			{
-				Assert( !pPortal->m_hGhostingEntities.IsValidIndex( pPortal->m_hGhostingEntities.Find( pEntity ) ) );
-				pPortal->m_hGhostingEntities.AddToTail( pEntity );
-				Assert( pPortal->m_GhostRenderables.IsValidIndex( pPortal->m_GhostRenderables.Find( pGhost ) ) );
-				pGhost->PerFrameUpdate();
-			}
-		}
-	}
-
-	if( pGhost )
-	{
-		C_PortalGhostRenderable::CreateInversion( pGhost, pPortal, fTime );
-	}
-	
-	if( pEntity->IsPlayer() )
-	{
-		((C_Portal_Player *)pEntity)->PlayerPortalled( pPortal, fTime, bForcedDuck );
-		return;
-	}	
-
-	pEntity->AddEFlags( EFL_DIRTY_ABSTRANSFORM );
-
-	VMatrix matTransform = pPortal->MatrixThisToLinked();
-
-	CDiscontinuousInterpolatedVar< QAngle > &rotInterp = pEntity->GetRotationInterpolator();
-	CDiscontinuousInterpolatedVar< Vector > &posInterp = pEntity->GetOriginInterpolator();
-
-
-	if( cl_portal_teleportation_interpolation_fixup_method.GetInt() == 0 )
-	{
-		UTIL_TransformInterpolatedAngle( rotInterp, matTransform.As3x4(), fTime );
-		UTIL_TransformInterpolatedPosition( posInterp, matTransform, fTime );
-	}
-	else
-	{
-		rotInterp.InsertDiscontinuity( matTransform.As3x4(), fTime );
-		posInterp.InsertDiscontinuity( matTransform.As3x4(), fTime );
-	}
-
-	if ( pEntity->IsToolRecording() )
-	{
-		static EntityTeleportedRecordingState_t state;
-
-		KeyValues *msg = new KeyValues( "entity_teleported" );
-		msg->SetPtr( "state", &state );
-		state.m_bTeleported = true;
-		state.m_bViewOverride = false;
-		state.m_vecTo = pEntity->GetAbsOrigin();
-		state.m_qaTo = pEntity->GetAbsAngles();
-		state.m_teleportMatrix = matTransform.As3x4();
-
-		// Post a message back to all IToolSystems
-		Assert( (int)pEntity->GetToolHandle() != 0 );
-		ToolFramework_PostToolMessage( pEntity->GetToolHandle(), msg );
-
-		msg->deleteThis();
-	}
-	
-	C_Portal_Player* pPlayer = C_Portal_Player::GetLocalPortalPlayer( GET_ACTIVE_SPLITSCREEN_SLOT() );
-	if ( pPlayer && pEntity == pPlayer->GetAttachedObject() )
-	{
-		C_BaseAnimating *pAnim = pEntity->GetBaseAnimating();	
-		if ( pAnim && pAnim->IsUsingRenderOriginOverride() )
-		{
-			pPlayer->ResetHeldObjectOutOfEyeTransitionDT();
-		}
-	}
-}
-#else
-void __MsgFunc_EntityPortalled(bf_read &msg)
-{
-	long iEncodedEHandle;
-	int iEntity, iSerialNum;
-
-
-	//grab portal EHANDLE
-	iEncodedEHandle = msg.ReadLong();
-
-	if( iEncodedEHandle == INVALID_NETWORKED_EHANDLE_VALUE )
-		return;
-
-	iEntity = iEncodedEHandle & ((1 << MAX_EDICT_BITS) - 1);
-	iSerialNum = iEncodedEHandle >> MAX_EDICT_BITS;
-
-	EHANDLE hPortal( iEntity, iSerialNum );
-	C_Prop_Portal *pPortal = ( C_Prop_Portal *)(hPortal.Get());
-
-	if( pPortal == NULL )
-		return;
-
-	//grab other entity's EHANDLE
-
-	iEncodedEHandle = msg.ReadLong();
-
-	if( iEncodedEHandle == INVALID_NETWORKED_EHANDLE_VALUE )
-		return;	
-
-	iEntity = iEncodedEHandle & ((1 << MAX_EDICT_BITS) - 1);
-	iSerialNum = iEncodedEHandle >> MAX_EDICT_BITS;
-
-	EHANDLE hEntity( iEntity, iSerialNum );
-	C_BaseEntity *pEntity = hEntity.Get();
-	if( pEntity == NULL )
-		return;
-
-
-
-	bool bIsPlayer = pEntity->IsPlayer();
-
-	Vector ptNewPosition;
-	ptNewPosition.x = msg.ReadFloat();
-	ptNewPosition.y = msg.ReadFloat();
-	ptNewPosition.z = msg.ReadFloat();
-	QAngle qNewAngles;
-	qNewAngles.x = msg.ReadFloat();
-	qNewAngles.y = msg.ReadFloat();
-	qNewAngles.z = msg.ReadFloat();
-
-	Vector vecOldInterpolatedPos;
-	QAngle qaOldInterpolatedRot;
-	if ( pEntity->IsToolRecording() )
-	{
-		vecOldInterpolatedPos = pEntity->GetOriginInterpolator().GetCurrent();
-		qaOldInterpolatedRot = pEntity->GetRotationInterpolator().GetCurrent();
-	}
-
-	pEntity->AddEFlags( EFL_DIRTY_ABSTRANSFORM );
-
-	VMatrix matTransform = pPortal->MatrixThisToLinked();
-	//VMatrix matInvTransform = pPortal->m_hLinkedPortal->MatrixThisToLinked();
-
-	CInterpolatedVar< QAngle > &rotInterp = pEntity->GetRotationInterpolator();
-	CInterpolatedVar< Vector > &posInterp = pEntity->GetOriginInterpolator();
-
-	Vector ptCurrentPosition = posInterp.GetCurrent();
-	Vector ptInvCurrentPosition = matTransform * ptCurrentPosition;
-	bool bAlreadyTeleported = ((ptCurrentPosition - ptNewPosition).LengthSqr() < (ptInvCurrentPosition - ptNewPosition).LengthSqr()); //newest network update closer to destination than transformed to destination indicates it's already been transformed
-
-
-	UTIL_TransformInterpolatedAngle( rotInterp, matTransform.As3x4(), bAlreadyTeleported );
-
-	if( bIsPlayer ) //the player's origin != player's center, transforms are performed about centers
-	{
-		VMatrix matShiftOrigin;
-		matShiftOrigin.Identity();
-		Vector vTranslate( 0.0f, 0.0f, 36.0f );
-		matShiftOrigin.SetTranslation( vTranslate );
-		matTransform = matTransform * matShiftOrigin;
-		vTranslate = -vTranslate;
-		matShiftOrigin.SetTranslation( vTranslate );
-		matTransform = matShiftOrigin * matTransform;
-	}
-
-	UTIL_TransformInterpolatedPosition( posInterp, matTransform, bAlreadyTeleported );
-
-
-	if( bIsPlayer )
-		((C_Portal_Player *)pEntity)->PlayerPortalled( pPortal, gpGlobals->curtime, false );
-
-	if ( pEntity->IsToolRecording() )
-	{
-		static EntityTeleportedRecordingState_t state;
-
-		KeyValues *msg = new KeyValues( "entity_teleported" );
-		msg->SetPtr( "state", &state );
-		state.m_bTeleported = true;
-		state.m_bViewOverride = false;
-		state.m_vecTo = ptNewPosition;
-		state.m_qaTo = qNewAngles;
-		state.m_teleportMatrix = matTransform.As3x4();
-
-		// Post a message back to all IToolSystems
-		Assert( (int)pEntity->GetToolHandle() != 0 );
-		ToolFramework_PostToolMessage( pEntity->GetToolHandle(), msg );
-
-		msg->deleteThis();
-	}
-}
-#endif // USEMOVEMENTFORPORTALLING
-
 static ConVar portal_demohack( "portal_demohack", "0", FCVAR_ARCHIVE, "Do the demo_legacy_rollback setting to help during demo playback of going through portals." );
-
-extern void __MsgFunc_PrePlayerPortalled(bf_read &msg);
 
 class C_PortalInitHelper : public CAutoGameSystem
 {
 	virtual bool Init()
 	{
-		//HOOK_MESSAGE( PlayerPortalled );
-		HOOK_MESSAGE( PrePlayerPortalled );
-		HOOK_MESSAGE( EntityPortalled );
 		if ( portal_demohack.GetBool() )
 		{
 			ConVarRef demo_legacy_rollback_ref( "demo_legacy_rollback" );
@@ -565,7 +365,7 @@ void C_Prop_Portal::Activate( void )
 					pOtherCollision->WorldSpaceAABB( &vWorldMins, &vWorldMaxs );
 					Vector ptOtherCenter = (vWorldMins + vWorldMaxs) / 2.0f;
 
-					if( m_plane_Origin.normal.Dot( ptOtherCenter ) > m_plane_Origin.dist )
+					if( m_plane_Origin.AsVector3D().Dot( ptOtherCenter ) > m_plane_Origin.w )
 					{
 						//we should be interacting with this object, add it to our environment
 						if( SharedEnvironmentCheck( pOther ) )
@@ -586,6 +386,139 @@ void C_Prop_Portal::Activate( void )
 	}
 
 	BaseClass::Activate();
+}
+
+ConVar cl_portal_teleportation_interpolation_fixup_method( "cl_portal_teleportation_interpolation_fixup_method", "1", 0, "0 = transform history only, 1 = insert discontinuity transform" );
+
+void EntityPortalledMessageHandler( C_BaseEntity *pEntity, C_Prop_Portal *pPortal, float fTime, bool bForcedDuck )
+{
+#if( PLAYERPORTALDEBUGSPEW == 1 )
+	Warning( "EntityPortalledMessageHandler() %f -=- %f %i======================\n", fTime, engine->GetLastTimeStamp(), prediction->GetLastAcknowledgedCommandNumber() );
+#endif
+#if 0
+	C_PortalGhostRenderable *pGhost = pPortal->GetGhostRenderableForEntity( pEntity );
+	if( !pGhost )
+	{
+		//high velocity edge case. Entity portalled before it ever created a clone. But will need one for the interpolated origin history
+		if( C_PortalGhostRenderable::ShouldCloneEntity( pEntity, pPortal, false ) )
+		{
+			pGhost = C_PortalGhostRenderable::CreateGhostRenderable( pEntity, pPortal, pEntity == C_BasePlayer::GetLocalPlayer() );
+			if( pGhost )
+			{
+				Assert( !pPortal->m_hGhostingEntities.IsValidIndex( pPortal->m_hGhostingEntities.Find( pEntity ) ) );
+				pPortal->m_hGhostingEntities.AddToTail( pEntity );
+				Assert( pPortal->m_GhostRenderables.IsValidIndex( pPortal->m_GhostRenderables.Find( pGhost ) ) );
+				pGhost->PerFrameUpdate();
+			}
+		}
+	}
+
+	if( pGhost )
+	{
+		C_PortalGhostRenderable::CreateInversion( pGhost, pPortal, fTime );
+	}
+#endif
+	if( pEntity->IsPlayer() )
+	{
+		((C_Portal_Player *)pEntity)->PlayerPortalled( pPortal, fTime, bForcedDuck );
+		return;
+	}	
+
+	pEntity->AddEFlags( EFL_DIRTY_ABSTRANSFORM );
+
+	VMatrix matTransform = pPortal->MatrixThisToLinked();
+
+	CDiscontinuousInterpolatedVar< QAngle > &rotInterp = pEntity->GetRotationInterpolator();
+	CDiscontinuousInterpolatedVar< Vector > &posInterp = pEntity->GetOriginInterpolator();
+
+
+	if( cl_portal_teleportation_interpolation_fixup_method.GetInt() == 0 )
+	{
+		UTIL_TransformInterpolatedAngle( rotInterp, matTransform.As3x4(), fTime );
+		UTIL_TransformInterpolatedPosition( posInterp, matTransform, fTime );
+	}
+	else
+	{
+		rotInterp.InsertDiscontinuity( matTransform.As3x4(), fTime );
+		posInterp.InsertDiscontinuity( matTransform.As3x4(), fTime );
+	}
+
+	if ( pEntity->IsToolRecording() )
+	{
+		static EntityTeleportedRecordingState_t state;
+
+		KeyValues *msg = new KeyValues( "entity_teleported" );
+		msg->SetPtr( "state", &state );
+		state.m_bTeleported = true;
+		state.m_bViewOverride = false;
+		state.m_vecTo = pEntity->GetAbsOrigin();
+		state.m_qaTo = pEntity->GetAbsAngles();
+		state.m_teleportMatrix = matTransform.As3x4();
+
+		// Post a message back to all IToolSystems
+		Assert( (int)pEntity->GetToolHandle() != 0 );
+		ToolFramework_PostToolMessage( pEntity->GetToolHandle(), msg );
+
+		msg->deleteThis();
+	}
+#if 0
+	C_Portal_Player* pPlayer = C_Portal_Player::GetLocalPortalPlayer();
+	if ( pPlayer && pEntity == pPlayer->GetAttachedObject() )
+	{
+		C_BaseAnimating *pAnim = pEntity->GetBaseAnimating();	
+		if ( pAnim && pAnim->IsUsingRenderOriginOverride() )
+		{
+			pPlayer->ResetHeldObjectOutOfEyeTransitionDT();
+		}
+	}
+#endif
+}
+
+
+struct PortalTeleportationLogEntry_t
+{
+	CHandle<C_BaseEntity> hEntity;
+	CHandle<C_Prop_Portal> hPortal;
+	float fTeleportTime;
+	bool bForcedDuck;
+};
+
+static CThreadFastMutex s_PortalTeleportationLogMutex;
+static CUtlVector<PortalTeleportationLogEntry_t> s_PortalTeleportationLog;
+
+void RecieveEntityPortalledMessage( CHandle<C_BaseEntity> hEntity, CHandle<C_Prop_Portal> hPortal, float fTime, bool bForcedDuck )
+{
+	PortalTeleportationLogEntry_t temp;
+	temp.hEntity = hEntity;
+	temp.hPortal = hPortal;
+	temp.fTeleportTime = fTime;
+	temp.bForcedDuck = bForcedDuck;
+
+	s_PortalTeleportationLogMutex.Lock();
+	s_PortalTeleportationLog.AddToTail( temp );
+	s_PortalTeleportationLogMutex.Unlock();
+}
+
+void ProcessPortalTeleportations( void )
+{
+	s_PortalTeleportationLogMutex.Lock();
+	for( int i = 0; i != s_PortalTeleportationLog.Count(); ++i )
+	{
+		PortalTeleportationLogEntry_t &entry = s_PortalTeleportationLog[i];
+
+		C_Prop_Portal *pPortal = entry.hPortal;
+		if( pPortal == NULL )
+			continue;
+
+		//grab other entity's EHANDLE
+		C_BaseEntity *pEntity = entry.hEntity;
+		if( pEntity == NULL )
+			continue;
+
+		EntityPortalledMessageHandler( pEntity, pPortal, entry.fTeleportTime, entry.bForcedDuck );
+	}
+	s_PortalTeleportationLog.RemoveAll();
+	s_PortalTeleportationLogMutex.Unlock();
 }
 
 void C_Prop_Portal::ClientThink( void )
@@ -672,12 +605,11 @@ void C_Prop_Portal::Simulate()
 		
 	if( iEntsNearPortal != 0 )
 	{
-
 		float fClipPlane[4];
-		fClipPlane[0] = m_plane_Origin.normal.x;
-		fClipPlane[1] = m_plane_Origin.normal.y;
-		fClipPlane[2] = m_plane_Origin.normal.z;
-		fClipPlane[3] = m_plane_Origin.dist - 0.3f;
+		fClipPlane[0] = m_plane_Origin.x;
+		fClipPlane[1] = m_plane_Origin.y;
+		fClipPlane[2] = m_plane_Origin.z;
+		fClipPlane[3] = m_plane_Origin.w - 0.3f;
 		
 		for( int i = 0; i != iEntsNearPortal; ++i )
 		{
@@ -734,7 +666,7 @@ void C_Prop_Portal::Simulate()
 			if( bActivePlayerWeapon )
 				ptEntCenter = pWeapon->GetOwner()->WorldSpaceCenter();
 
-			if( (m_plane_Origin.normal.Dot( ptEntCenter ) - m_plane_Origin.dist) < -5.0f )
+			if( (m_plane_Origin.AsVector3D().Dot( ptEntCenter ) - m_plane_Origin.w) < -5.0f )
 				continue; //entity is behind the portal, most likely behind the wall the portal is placed on
 
 			if( !CProp_Portal_Shared::IsEntityTeleportable( pEntity ) )
@@ -881,10 +813,10 @@ void C_Prop_Portal::Simulate()
 	//ensure the shared clip plane is up to date
 	C_Prop_Portal *pLinkedPortal = m_hLinkedPortal.Get();
 
-	m_fGhostRenderablesClip[0] = pLinkedPortal->m_plane_Origin.normal.x;
-	m_fGhostRenderablesClip[1] = pLinkedPortal->m_plane_Origin.normal.y;
-	m_fGhostRenderablesClip[2] = pLinkedPortal->m_plane_Origin.normal.z;
-	m_fGhostRenderablesClip[3] = pLinkedPortal->m_plane_Origin.dist - 0.75f;
+	m_fGhostRenderablesClip[0] = pLinkedPortal->m_plane_Origin.x;
+	m_fGhostRenderablesClip[1] = pLinkedPortal->m_plane_Origin.y;
+	m_fGhostRenderablesClip[2] = pLinkedPortal->m_plane_Origin.z;
+	m_fGhostRenderablesClip[3] = pLinkedPortal->m_plane_Origin.w - 0.75f;
 }
 
 
@@ -1262,49 +1194,13 @@ void C_Prop_Portal::GetToolRecordingState( KeyValues *msg )
 void C_Prop_Portal::UpdateOriginPlane( void )
 {
 	//setup our origin plane
-	GetVectors( &m_plane_Origin.normal, NULL, NULL );
-	m_plane_Origin.dist = m_plane_Origin.normal.Dot( GetAbsOrigin() );
-	m_plane_Origin.signbits = SignbitsForPlane( &m_plane_Origin );
+	GetVectors( &m_plane_Origin.AsVector3D(), NULL, NULL );
+	m_plane_Origin.w = m_plane_Origin.AsVector3D().Dot( GetAbsOrigin() );
 
 	Vector vAbsNormal;
-	vAbsNormal.x = fabs(m_plane_Origin.normal.x);
-	vAbsNormal.y = fabs(m_plane_Origin.normal.y);
-	vAbsNormal.z = fabs(m_plane_Origin.normal.z);
-
-	if( vAbsNormal.x > vAbsNormal.y )
-	{
-		if( vAbsNormal.x > vAbsNormal.z )
-		{
-			if( vAbsNormal.x > 0.999f )
-				m_plane_Origin.type = PLANE_X;
-			else
-				m_plane_Origin.type = PLANE_ANYX;
-		}
-		else
-		{
-			if( vAbsNormal.z > 0.999f )
-				m_plane_Origin.type = PLANE_Z;
-			else
-				m_plane_Origin.type = PLANE_ANYZ;
-		}
-	}
-	else
-	{
-		if( vAbsNormal.y > vAbsNormal.z )
-		{
-			if( vAbsNormal.y > 0.999f )
-				m_plane_Origin.type = PLANE_Y;
-			else
-				m_plane_Origin.type = PLANE_ANYY;
-		}
-		else
-		{
-			if( vAbsNormal.z > 0.999f )
-				m_plane_Origin.type = PLANE_Z;
-			else
-				m_plane_Origin.type = PLANE_ANYZ;
-		}
-	}
+	vAbsNormal.x = fabs(m_plane_Origin.x);
+	vAbsNormal.y = fabs(m_plane_Origin.y);
+	vAbsNormal.z = fabs(m_plane_Origin.z);
 }
 
 void C_Prop_Portal::SetIsPortal2( bool bValue )
@@ -1355,7 +1251,7 @@ void C_Prop_Portal::Touch(C_BaseEntity *pOther)
 		//hmm, not in our environment, plane tests, sharing tests
 		if( SharedEnvironmentCheck( pOther ) )
 		{
-			bool bObjectCenterInFrontOfPortal	= (m_plane_Origin.normal.Dot( pOther->WorldSpaceCenter() ) > m_plane_Origin.dist);
+			bool bObjectCenterInFrontOfPortal	= (m_plane_Origin.AsVector3D().Dot( pOther->WorldSpaceCenter() ) > m_plane_Origin.w);
 			bool bIsStuckPlayer					= ( pOther->IsPlayer() )? ( !UTIL_IsSpaceEmpty( pOther, pOther->WorldAlignMins(), pOther->WorldAlignMaxs() ) ) : ( false );
 
 			if ( bIsStuckPlayer )
@@ -1422,7 +1318,7 @@ void C_Prop_Portal::StartTouch(C_BaseEntity *pOther)
 		pOtherCollision->WorldSpaceAABB( &vWorldMins, &vWorldMaxs );
 		Vector ptOtherCenter = (vWorldMins + vWorldMaxs) / 2.0f;
 
-		if( m_plane_Origin.normal.Dot( ptOtherCenter ) > m_plane_Origin.dist )
+		if( m_plane_Origin.AsVector3D().Dot( ptOtherCenter ) > m_plane_Origin.w )
 		{
 			//we should be interacting with this object, add it to our environment
 			if( SharedEnvironmentCheck( pOther ) )

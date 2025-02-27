@@ -2397,6 +2397,10 @@ void CHLClient::FrameStageNotify( ClientFrameStage_t curStage )
 	case FRAME_NET_UPDATE_POSTDATAUPDATE_END:
 		{
 			VPROF( "CHLClient::FrameStageNotify FRAME_NET_UPDATE_POSTDATAUPDATE_END" );
+#if defined( PORTAL )
+			extern void ProcessPortalTeleportations();
+			ProcessPortalTeleportations();
+#endif
 			PREDICTION_ENDTRACKVALUE();
 			// Let prediction copy off pristine data
 			prediction->PostEntityPacketReceived();

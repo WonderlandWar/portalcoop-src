@@ -371,7 +371,7 @@ CProp_Portal* UTIL_Portal_FirstAlongRay( const Ray_t &ray, float &fMustBeCloserT
 				if( fIntersection >= 0.0f && fIntersection < fMustBeCloserThan )
 				{
 					//within range, now check directionality
-					if( pTempPortal->m_plane_Origin.normal.Dot( ray.m_Delta ) < 0.0f )
+					if( pTempPortal->m_plane_Origin.AsVector3D().Dot( ray.m_Delta ) < 0.0f )
 					{
 						//qualifies for consideration, now it just has to compete for closest
 						pIntersectedPortal = pTempPortal;
@@ -404,7 +404,7 @@ CProp_Portal* UTIL_Portal_FirstAlongRayAll(const Ray_t &ray, float &fMustBeClose
                 if (fIntersection >= 0.0f && fIntersection < fMustBeCloserThan)
                 {
                     //within range, now check directionality
-                    if (pTempPortal->m_plane_Origin.normal.Dot(ray.m_Delta) < 0.0f)
+                    if (pTempPortal->m_plane_Origin.AsVector3D().Dot(ray.m_Delta) < 0.0f)
                     {
                         //qualifies for consideration, now it just has to compete for closest
                         pIntersectedPortal = pTempPortal;
@@ -1463,8 +1463,8 @@ float UTIL_Portal_ShortestDistanceSqr( const Vector &vPoint1, const Vector &vPoi
 				{
 					//worth investigating further
 					//find out if it's a straight line through the portal, or if we have to wrap around a corner
-					float fPoint1TransformedDist = pLinkedPortal->m_plane_Origin.normal.Dot( vPoint1Transformed ) - pLinkedPortal->m_plane_Origin.dist;
-					float fPoint2Dist = pLinkedPortal->m_plane_Origin.normal.Dot( vPoint2 ) - pLinkedPortal->m_plane_Origin.dist;
+					float fPoint1TransformedDist = pLinkedPortal->m_plane_Origin.AsVector3D().Dot( vPoint1Transformed ) - pLinkedPortal->m_plane_Origin.w;
+					float fPoint2Dist = pLinkedPortal->m_plane_Origin.AsVector3D().Dot( vPoint2 ) - pLinkedPortal->m_plane_Origin.w;
 
 					bool bStraightLine = true;
 					if( (fPoint1TransformedDist > 0.0f) || (fPoint2Dist < 0.0f) ) //straight line through portal impossible, part of the line has to backtrack to get to the portal surface
@@ -1897,7 +1897,7 @@ static void PortalTraceFunc_CenterMustStayInFront( const Ray_t &ray, trace_t *pR
 		if( !pResult->DidHit() )
 		{
 			pResult->m_pEnt = (CProp_Portal *)pCastedData->pPortal;
-			pResult->plane	= pCastedData->pPortal->m_plane_Origin;
+			pResult->plane.normal = pCastedData->pPortal->m_plane_Origin.AsVector3D();
 			pResult->plane.dist = pCastedData->shiftedPlane.m_Dist;
 		}
 		
@@ -1937,9 +1937,9 @@ bool UTIL_FindClosestPassableSpace_InPortal_CenterMustStayInFront( const CProp_P
 
 	adapter.pPortal = pPortal;
 
-	adapter.vExtentSigns.x = -Sign( pPortal->m_plane_Origin.normal.x );
-	adapter.vExtentSigns.y = -Sign( pPortal->m_plane_Origin.normal.y );
-	adapter.vExtentSigns.z = -Sign( pPortal->m_plane_Origin.normal.z );
+	adapter.vExtentSigns.x = -Sign( pPortal->m_plane_Origin.x );
+	adapter.vExtentSigns.y = -Sign( pPortal->m_plane_Origin.y );
+	adapter.vExtentSigns.z = -Sign( pPortal->m_plane_Origin.z );
 	
 	//when caclulating the shift plane, all we need to be sure of is that the most penetrating extent is coplanar with the shift plane when the center would be coplanar with the original plane
 	Vector vCoplanarExtent;
@@ -1947,8 +1947,8 @@ bool UTIL_FindClosestPassableSpace_InPortal_CenterMustStayInFront( const CProp_P
 	vCoplanarExtent.y = vExtents.y * adapter.vExtentSigns.y;
 	vCoplanarExtent.z = vExtents.z * adapter.vExtentSigns.z;
 
-	adapter.shiftedPlane.m_Normal = pPortal->m_plane_Origin.normal;
-	adapter.shiftedPlane.m_Dist = pPortal->m_plane_Origin.dist + (pPortal->m_plane_Origin.normal.Dot( vCoplanarExtent ) ); //the dot is known to be negative, shifting the plane back so the extent is coplanar with it.
+	adapter.shiftedPlane.m_Normal = pPortal->m_plane_Origin.AsVector3D();
+	adapter.shiftedPlane.m_Dist = pPortal->m_plane_Origin.w + (pPortal->m_plane_Origin.AsVector3D().Dot( vCoplanarExtent ) ); //the dot is known to be negative, shifting the plane back so the extent is coplanar with it.
 	
 	return UTIL_FindClosestPassableSpace( vCenter, vExtents, vIndecisivePush, iIterations, vCenterOut, FL_AXIS_DIRECTION_NONE, &adapter );
 }
@@ -2163,7 +2163,7 @@ CProp_Portal *UTIL_PointIsOnPortalQuad(const Vector vPoint, float fOnPlaneEpsilo
 	int iPlanarCandidateCount = 0;
 	for( int i = 0; i != iArraySize; ++i )
 	{
-		if( fabs( pPortalsToCheck[i]->m_plane_Origin.normal.Dot( vPoint ) - pPortalsToCheck[i]->m_plane_Origin.dist ) < fOnPlaneEpsilon )
+		if( fabs( pPortalsToCheck[i]->m_plane_Origin.AsVector3D().Dot( vPoint ) - pPortalsToCheck[i]->m_plane_Origin.w ) < fOnPlaneEpsilon )
 		{
 			pPlanarCandidates[iPlanarCandidateCount] = pPortalsToCheck[i];
 			++iPlanarCandidateCount;

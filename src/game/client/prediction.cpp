@@ -103,6 +103,7 @@ CPrediction::CPrediction( void )
 
 	m_nIncomingPacketNumber = 0;
 	m_flIdealPitch = 0.0f;
+	m_nLastCommandAcknowledged = 0;
 
 	m_nPreviousStartFrame = -1;
 
@@ -285,6 +286,7 @@ void CPrediction::OnReceivedUncompressedPacket( void )
 	m_nCommandsPredicted = 0;
 	m_nServerCommandsAcknowledged = 0;
 	m_nPreviousStartFrame = -1;
+	m_nLastCommandAcknowledged = 0;
 #endif
 }
 
@@ -1709,6 +1711,8 @@ void CPrediction::_Update( bool received_new_world_update, bool validframe,
 	if ( !localPlayer )
 		return;
 
+	m_nLastCommandAcknowledged = incoming_acknowledged;
+
 	// Always using current view angles no matter what
 	// NOTE: ViewAngles are always interpreted as being *relative* to the player
 	QAngle viewangles;
@@ -1772,6 +1776,19 @@ bool CPrediction::IsFirstTimePredicted( void ) const
 	return m_bFirstTimePredicted;
 #else
 	return false;
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: For verifying/fixing operations that don't save/load in a datatable very well
+// Output : Returns the how many commands the server has processed and sent results for
+//-----------------------------------------------------------------------------
+int CPrediction::GetLastAcknowledgedCommandNumber( void ) const
+{
+#if !defined( NO_ENTITY_PREDICTION )
+	return m_nLastCommandAcknowledged;
+#else
+	return 0;
 #endif
 }
 

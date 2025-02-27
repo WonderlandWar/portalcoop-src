@@ -84,7 +84,7 @@ public:
 	COutputEvent m_OnFizzled;
 	COutputEvent m_OnStolen;
 
-	cplane_t m_plane_Origin; //a portal plane on the entity origin
+	Vector4D m_plane_Origin; //a portal plane on the entity origin
 	
 	CNetworkVector( m_ptOrigin );
 	Vector m_vForward, m_vUp, m_vRight;
@@ -255,5 +255,6 @@ inline const VMatrix& CProp_Portal::MatrixThisToLinked() const
 	return m_matrixThisToLinked;
 }
 
+extern void EntityPortalled( CProp_Portal *pPortal, CBaseEntity *pOther, const Vector &vNewOrigin, const QAngle &qNewAngles, bool bForcedDuck );
 
 #endif //#ifndef PROP_PORTAL_H

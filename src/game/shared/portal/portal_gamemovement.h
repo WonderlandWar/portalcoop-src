@@ -96,9 +96,10 @@ public:
 #endif
 
 #if USEMOVEMENTFORPORTALLING
-	void HandlePortalling( void );
+	void HandlePortallingLegacy( void );
 
 	Vector m_vMoveStartPosition; //where the player started before the movement code ran
+	Vector m_vVelocityStart;
 
 #endif
 

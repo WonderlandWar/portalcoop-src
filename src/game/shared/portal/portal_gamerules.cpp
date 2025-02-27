@@ -349,13 +349,13 @@ void CPortalGameRules::ClientSettingsChanged( CBasePlayer *pPlayer )
 	
 	if (!strcmp(szColorSet, "0"))
 		pPortalPlayer->m_iCustomPortalColorSet = 0;
-	if (!strcmp(szColorSet, "1"))
+	else if (!strcmp(szColorSet, "1"))
 		pPortalPlayer->m_iCustomPortalColorSet = 1;
-	if (!strcmp(szColorSet, "2"))
+	else if (!strcmp(szColorSet, "2"))
 		pPortalPlayer->m_iCustomPortalColorSet = 2;
-	if (!strcmp(szColorSet, "3"))
+	else if (!strcmp(szColorSet, "3"))
 		pPortalPlayer->m_iCustomPortalColorSet = 3;
-	if (!strcmp(szColorSet, "4"))
+	else if (!strcmp(szColorSet, "4"))
 		pPortalPlayer->m_iCustomPortalColorSet = 4;
 
 	CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(pPortalPlayer->Weapon_OwnsThisType("weapon_portalgun"));
@@ -470,13 +470,14 @@ const char *CPortalGameRules::GetGameDescription( void )
 		}
 		else
 		{
-			// Sooo the reason why we can't use the info_player_portalcoop entity directly is because the portalgun spawns too fast, I think.
-			// We know for sure that spawning under the gamerules works fine, so we'll use it and we'll let cvars override our values. - Wonderland_War
-			CWeaponPortalgun *pPortalgun = (CWeaponPortalgun *)pPlayer->GiveNamedItem( "weapon_portalgun" );
-			if ( pPortalgun )
+			if ( ((CPortal_Player*)pPlayer)->m_PortalGunSpawnInfo.m_bSpawnWithPortalgun )
 			{
-				pPortalgun->m_bCanFirePortal1 = ((CPortal_Player*)pPlayer)->m_PortalGunSpawnInfo.m_bCanFirePortal1;
-				pPortalgun->m_bCanFirePortal2 = ((CPortal_Player*)pPlayer)->m_PortalGunSpawnInfo.m_bCanFirePortal2;
+				CWeaponPortalgun *pPortalgun = (CWeaponPortalgun *)pPlayer->GiveNamedItem( "weapon_portalgun" );
+				if ( pPortalgun )
+				{
+					pPortalgun->m_bCanFirePortal1 = ((CPortal_Player*)pPlayer)->m_PortalGunSpawnInfo.m_bCanFirePortal1;
+					pPortalgun->m_bCanFirePortal2 = ((CPortal_Player*)pPlayer)->m_PortalGunSpawnInfo.m_bCanFirePortal2;
+				}
 			}
 		}
 

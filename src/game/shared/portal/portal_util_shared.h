@@ -12,8 +12,6 @@
 
 #include "engine/IEngineTrace.h"
 
-extern ConVar sv_portal_with_gamemovement;
-
 extern bool g_bBulletPortalTrace;
 
 

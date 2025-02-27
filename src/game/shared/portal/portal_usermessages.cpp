@@ -49,8 +49,6 @@ void RegisterUserMessages()
 
 
 	//new stuff for portal
-	usermessages->Register( "PrePlayerPortalled", sizeof( long ) + sizeof( long ) ); //player was teleported, store their angles!
-	usermessages->Register( "EntityPortalled", sizeof( long ) + sizeof( long ) + sizeof( Vector ) + sizeof( QAngle ) ); //something got teleported through a portal
 	usermessages->Register( "KillCam", -1 );
 	usermessages->Register( "HudPingIndicator", sizeof( Vector ) );
 

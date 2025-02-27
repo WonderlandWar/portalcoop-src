@@ -187,6 +187,28 @@ void WriteUsercmd( bf_write *buf, const CUserCmd *to, const CUserCmd *from )
 		buf->WriteOneBit( 0 );
 	}
 #endif
+	
+#if defined ( PORTAL )
+	if( to->command_acknowledgements_pending != from->command_acknowledgements_pending )
+	{
+		buf->WriteOneBit( 1 );
+		buf->WriteShort( to->command_acknowledgements_pending );
+	}
+	else
+	{
+		buf->WriteOneBit( 0 );
+	}
+
+	if( to->predictedPortalTeleportations != from->predictedPortalTeleportations )
+	{
+		buf->WriteOneBit( 1 );
+		buf->WriteByte( to->predictedPortalTeleportations );
+	}
+	else
+	{
+		buf->WriteOneBit( 0 );
+	}
+#endif 
 }
 
 //-----------------------------------------------------------------------------
@@ -303,4 +325,16 @@ void ReadUsercmd( bf_read *buf, CUserCmd *move, CUserCmd *from )
 		}
 	}
 #endif
+	
+#if defined ( PORTAL )
+	if ( buf->ReadOneBit() )
+	{
+		move->command_acknowledgements_pending = buf->ReadShort();
+	}
+
+	if ( buf->ReadOneBit() )
+	{
+		move->predictedPortalTeleportations = buf->ReadByte();
+	}
+#endif 
 }

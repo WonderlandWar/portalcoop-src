@@ -54,6 +54,7 @@ public:
 
 	virtual bool	InPrediction( void ) const;
 	virtual bool	IsFirstTimePredicted( void ) const;
+	virtual int		GetLastAcknowledgedCommandNumber( void ) const;
 
 #if !defined( NO_ENTITY_PREDICTION )
 	virtual int		GetIncomingPacketNumber( void ) const;
@@ -143,6 +144,7 @@ private:
 
 #endif
 	float			m_flIdealPitch;
+	int				m_nLastCommandAcknowledged;
 
 };
  

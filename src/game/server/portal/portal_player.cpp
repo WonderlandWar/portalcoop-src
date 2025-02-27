@@ -37,6 +37,7 @@
 #include "trains.h"
 #include "point_ping_linker.h"
 #include "hierarchy.h"
+#include "dt_utlvector_send.h"
 
 extern CBaseEntity* g_pLastSpawn;
 
@@ -63,10 +64,11 @@ void CInfoPlayerPortalCoop::PlayerSpawned( CBasePlayer *pPlayer )
 {
 	Assert( !m_iValidPlayerIndex || m_iValidPlayerIndex == pPlayer->entindex() );
 
+	PortalGunSpawnInfo_t info;
+	info.m_bSpawnWithPortalgun = m_bSpawnWithPortalgun;
+
 	if ( m_bSpawnWithPortalgun )
 	{
-		PortalGunSpawnInfo_t info;
-
 		if (m_iPortalgunType == 0)
 		{
 			info.m_bCanFirePortal1 = false;
@@ -87,16 +89,10 @@ void CInfoPlayerPortalCoop::PlayerSpawned( CBasePlayer *pPlayer )
 			info.m_bCanFirePortal1 = true;
 			info.m_bCanFirePortal2 = true;
 		}
-
-			CPortal_Player *pPortalPlayer = ToPortalPlayer(pPlayer);
-			pPortalPlayer->m_PortalGunSpawnInfo = info;
-			
-			// We can't do this because the view model effects get messed up, see portal_gamerules.cpp
-			/*
-			DispatchSpawn(pPortalgun);
-			pPlayer->Weapon_Equip(pPortalgun);
-			*/
 	}
+
+	CPortal_Player *pPortalPlayer = ToPortalPlayer(pPlayer);
+	pPortalPlayer->m_PortalGunSpawnInfo = info;
 
 	m_OnPlayerSpawned.FireOutput(pPlayer, pPlayer);
 }
@@ -241,6 +237,33 @@ DEFINE_FIELD(m_vecRagdollVelocity, FIELD_VECTOR),
 
 END_DATADESC()
 
+CEntityPortalledNetworkMessage::CEntityPortalledNetworkMessage( void )
+{
+	m_hEntity = NULL;
+	m_hPortal = NULL;
+	m_fTime = 0.0f;
+	m_bForcedDuck = false;
+	m_iMessageCount = 0;;
+}
+
+BEGIN_SEND_TABLE_NOBASE( CEntityPortalledNetworkMessage, DT_EntityPortalledNetworkMessage )
+		SendPropEHandle( SENDINFO_NOCHECK(m_hEntity) ),
+		SendPropEHandle( SENDINFO_NOCHECK(m_hPortal) ),
+		SendPropFloat( SENDINFO_NOCHECK(m_fTime), -1, SPROP_NOSCALE, 0.0f, HIGH_DEFAULT ),
+		SendPropBool( SENDINFO_NOCHECK(m_bForcedDuck) ),
+		SendPropInt( SENDINFO_NOCHECK(m_iMessageCount) ),
+END_SEND_TABLE()
+
+extern void SendProxy_Origin( const SendProp *pProp, const void *pStruct, const void *pData, DVariant *pOut, int iElement, int objectID );
+
+// specific to the local player
+BEGIN_SEND_TABLE_NOBASE( CPortal_Player, DT_PortalLocalPlayerExclusive )
+	//a message buffer for entity teleportations that's guaranteed to be in sync with the post-teleport updates for said entities
+	SendPropUtlVector( SENDINFO_UTLVECTOR( m_EntityPortalledNetworkMessages ), CPortal_Player::MAX_ENTITY_PORTALLED_NETWORK_MESSAGES, SendPropDataTable( NULL, 0, &REFERENCE_SEND_TABLE( DT_EntityPortalledNetworkMessage ) ) ),
+	SendPropInt( SENDINFO( m_iEntityPortalledNetworkMessageCount ) ),
+	//SendPropBool( SENDINFO( m_bPaused ) ),
+END_SEND_TABLE()
+
 enum
 {
 	MODEL_CHELL,
@@ -260,40 +283,43 @@ const char *g_ppszPortalMPModels[] =
 LINK_ENTITY_TO_CLASS(player, CPortal_Player);
 
 IMPLEMENT_SERVERCLASS_ST(CPortal_Player, DT_Portal_Player)
-/*
-SendPropExclude("DT_BaseAnimating", "m_flPlaybackRate"),
-SendPropExclude("DT_BaseAnimating", "m_nSequence"),
-SendPropExclude("DT_BaseAnimating", "m_nNewSequenceParity"),
-SendPropExclude("DT_BaseAnimating", "m_nResetEventsParity"),
-*/
+	/*
+	SendPropExclude("DT_BaseAnimating", "m_flPlaybackRate"),
+	SendPropExclude("DT_BaseAnimating", "m_nSequence"),
+	SendPropExclude("DT_BaseAnimating", "m_nNewSequenceParity"),
+	SendPropExclude("DT_BaseAnimating", "m_nResetEventsParity"),
+	*/
 
-SendPropExclude("DT_BaseEntity", "m_angRotation"),
-SendPropExclude("DT_BaseAnimatingOverlay", "overlay_vars"),
-SendPropExclude("DT_BaseFlex", "m_viewtarget"),
-SendPropExclude("DT_BaseFlex", "m_flexWeight"),
-SendPropExclude("DT_BaseFlex", "m_blinktoggle"),
-SendPropExclude("DT_BaseAnimating", "m_flPoseParameter"),
+	SendPropExclude("DT_BaseEntity", "m_angRotation"),
+	SendPropExclude("DT_BaseAnimatingOverlay", "overlay_vars"),
+	SendPropExclude("DT_BaseFlex", "m_viewtarget"),
+	SendPropExclude("DT_BaseFlex", "m_flexWeight"),
+	SendPropExclude("DT_BaseFlex", "m_blinktoggle"),
+	SendPropExclude("DT_BaseAnimating", "m_flPoseParameter"),
 
-// portal_playeranimstate and clientside animation takes care of these on the client
-//SendPropExclude("DT_ServerAnimationData", "m_flCycle"),
-//SendPropExclude("DT_AnimTimeMustBeFirst", "m_flAnimTime"),
+	// portal_playeranimstate and clientside animation takes care of these on the client
+	//SendPropExclude("DT_ServerAnimationData", "m_flCycle"),
+	//SendPropExclude("DT_AnimTimeMustBeFirst", "m_flAnimTime"),
 
 
-SendPropAngle(SENDINFO_VECTORELEM(m_angEyeAngles, 0), 11, SPROP_CHANGES_OFTEN),
-SendPropAngle(SENDINFO_VECTORELEM(m_angEyeAngles, 1), 11, SPROP_CHANGES_OFTEN),
-SendPropEHandle(SENDINFO(m_hRagdoll)),
-SendPropInt(SENDINFO(m_iSpawnInterpCounter), 4),
-SendPropBool(SENDINFO(m_bPitchReorientation)),
-SendPropEHandle(SENDINFO(m_hPortalEnvironment)),
-SendPropEHandle(SENDINFO(m_hSurroundingLiquidPortal)),
-SendPropEHandle(SENDINFO(m_hHeldObjectPortal)),
-SendPropBool(SENDINFO(m_bHasSprintDevice)),
-SendPropBool(SENDINFO(m_bSprintEnabled)),
-SendPropBool(SENDINFO(m_bSilentDropAndPickup)),
-SendPropBool(SENDINFO(m_bSuppressingCrosshair)),
-SendPropBool(SENDINFO(m_bIsListenServerHost)),
-SendPropBool(SENDINFO(m_bHeldObjectOnOppositeSideOfPortal)),
-SendPropInt(SENDINFO(m_iCustomPortalColorSet)),
+	SendPropAngle(SENDINFO_VECTORELEM(m_angEyeAngles, 0), 11, SPROP_CHANGES_OFTEN),
+	SendPropAngle(SENDINFO_VECTORELEM(m_angEyeAngles, 1), 11, SPROP_CHANGES_OFTEN),
+	SendPropEHandle(SENDINFO(m_hRagdoll)),
+	SendPropInt(SENDINFO(m_iSpawnInterpCounter), 4),
+	SendPropBool(SENDINFO(m_bPitchReorientation)),
+	SendPropEHandle(SENDINFO(m_hPortalEnvironment)),
+	SendPropEHandle(SENDINFO(m_hSurroundingLiquidPortal)),
+	SendPropEHandle(SENDINFO(m_hHeldObjectPortal)),
+	SendPropBool(SENDINFO(m_bHasSprintDevice)),
+	SendPropBool(SENDINFO(m_bSprintEnabled)),
+	SendPropBool(SENDINFO(m_bSilentDropAndPickup)),
+	SendPropBool(SENDINFO(m_bSuppressingCrosshair)),
+	SendPropBool(SENDINFO(m_bIsListenServerHost)),
+	SendPropBool(SENDINFO(m_bHeldObjectOnOppositeSideOfPortal)),
+	SendPropInt(SENDINFO(m_iCustomPortalColorSet)),
+
+	// Data that only gets sent to the local player
+	SendPropDataTable( "portallocaldata", 0, &REFERENCE_SEND_TABLE(DT_PortalLocalPlayerExclusive), SendProxy_SendLocalDataTable ),
 
 END_SEND_TABLE()
 
@@ -327,9 +353,6 @@ DEFINE_SOUNDPATCH(m_pWooshSound),
 	DEFINE_FIELD(m_bSilentDropAndPickup, FIELD_BOOLEAN),
 	DEFINE_FIELD(m_hRagdoll, FIELD_EHANDLE),
 	DEFINE_FIELD(m_angEyeAngles, FIELD_VECTOR),
-	DEFINE_FIELD(m_qPrePortalledViewAngles, FIELD_VECTOR),
-	DEFINE_FIELD(m_bFixEyeAnglesFromPortalling, FIELD_BOOLEAN),
-	DEFINE_FIELD(m_matLastPortalled, FIELD_VMATRIX_WORLDSPACE),
 	DEFINE_FIELD(m_vWorldSpaceCenterHolder, FIELD_POSITION_VECTOR),
 	DEFINE_FIELD(m_hSurroundingLiquidPortal, FIELD_EHANDLE),
 	DEFINE_FIELD(m_flLastPingTime, FIELD_FLOAT),
@@ -375,27 +398,6 @@ ConVar sv_portal_coop_allow_ping("sv_portal_coop_allow_ping", "1", FCVAR_REPLICA
 #define COOP_PING_PARTICLE_NAME_PURPLE "command_target_ping_purple"
 #define COOP_PING_PARTICLE_NAME_GREEN "command_target_ping_green"
 
-#if FIXANGLEMETHOD_CONCOMMAND
-CON_COMMAND_F( gotportalmessage, "Lets the client tell us if they received the portal message", FCVAR_HIDDEN | FCVAR_SERVER_CAN_EXECUTE )
-{
-	CPortal_Player *pPlayer = (CPortal_Player*)UTIL_GetCommandClient();
-
-	if (pPlayer)
-	{
-
-		if (pPlayer->m_bGotPortalMessage)
-		{
-			Warning("m_bGotPortalMessage is already true!\n");
-		}
-
-		pPlayer->m_bGotPortalMessage = true;
-	}
-
-	Msg("gotportalmessage: called\n");
-
-}
-#endif
-
 extern float IntervalDistance(float x, float x0, float x1);
 
 //disable 'this' : used in base member initializer list
@@ -427,11 +429,11 @@ CPortal_Player::CPortal_Player()
 	
 	m_flImplicitVerticalStepSpeed = 0.0f;
 	
+	m_EntityPortalledNetworkMessages.SetCount( MAX_ENTITY_PORTALLED_NETWORK_MESSAGES );
+	
 	m_iszExpressionScene = NULL_STRING;
 	m_hExpressionSceneEnt = NULL;
 	m_flExpressionLoopTime = 0.0f;
-
-	m_bGotPortalMessage = false;
 
 }
 
@@ -1561,19 +1563,6 @@ void CPortal_Player::PostThink(void)
 		Teleport(&vNewPos, NULL, &vForward);
 		m_bStuckOnPortalCollisionObject = false;
 	}
-
-	// Unfortunately packet losses happen, and it happened to one of our playtesters,
-	// so let's do this fix so that cl_got_portal_message is set to 0 after a certain amount of time.
-	if ( m_bPendingPortalMessage && gpGlobals->curtime >= m_flTimeToWaitForPortalMessage )
-	{
-		m_bPendingPortalMessage = false;
-		m_bFixEyeAnglesFromPortalling = false;
-		m_flTimeToWaitForPortalMessage = gpGlobals->curtime;
-		m_bGotPortalMessage = false;
-#if FIXANGLEMETHOD_CONVAR
-		engine->ClientCommand(edict(), "cl_got_portal_message 0");
-#endif
-	}	
 }
 
 ConVar sv_portalgun_fizzle_on_owner_death_always ("sv_portalgun_fizzle_on_owner_death_always", "1", FCVAR_REPLICATED, "Sets if the portalgun should always die if the player dies");
@@ -2285,86 +2274,39 @@ void CPortal_Player::VPhysicsShadowUpdate(IPhysicsObject* pPhysics)
 
 void CPortal_Player::PlayerRunCommand(CUserCmd* ucmd, IMoveHelper* moveHelper)
 {
-#if 1
-#if FIXANGLEMETHOD_CONVAR
-	const char *pszMessageValue = engine->GetClientConVarValue(engine->IndexOfEdict(edict()), "cl_got_portal_message");
+	//============================================================================
+	// Fix the eye angles after portalling. The client may have sent commands with
+	// the old view angles before it knew about the teleportation.
 
-	bool m_bGotPortalMessage = !strcmp("1", pszMessageValue);
-#endif
-	// Convar ref can actually be used here because it's a check for the listen server host
-	bool bFakeLag = false;
-	ConVarRef net_fakelag("net_fakelag");
-	if (net_fakelag.IsValid())
+	//sorry for crappy name, the client sent us a command, we acknowledged it, and they are now telling us the latest one they received an acknowledgement for in this brand new command
+	int iLastCommandAcknowledgementReceivedOnClientForThisCommand = ucmd->command_number - ucmd->command_acknowledgements_pending;
+	while( (m_PendingPortalTransforms.Count() > 0) && (iLastCommandAcknowledgementReceivedOnClientForThisCommand >= m_PendingPortalTransforms[0].command_number) )
 	{
-		bFakeLag = (net_fakelag.GetInt() != 0);
+		m_PendingPortalTransforms.Remove( 0 );
 	}
-	
-	// This is a good enough solution for now
-	if ( (!m_bGotPortalMessage && ( !m_bIsListenServerHost || bFakeLag ) ) && m_bFixEyeAnglesFromPortalling )
-	{
-#if FIXANGLEMETHOD_CONVAR
-		//Msg("cl_got_portal_message: %s\n", pszMessageValue);
-#endif
 
-		//if ( m_bFixEyeAnglesFromPortalling )
+	// The server changed the angles, and the user command was created after the teleportation, but before the client knew they teleported. Need to fix up the angles into the new space
+	if( m_PendingPortalTransforms.Count() > ucmd->predictedPortalTeleportations )
+	{
+		matrix3x4_t matComputeFinalTransform[2];
+		int iFlip = 0;
+
+		//most common case will be exactly 1 transform
+		matComputeFinalTransform[0] = m_PendingPortalTransforms[ucmd->predictedPortalTeleportations].matTransform;
+
+		for( int i = ucmd->predictedPortalTeleportations + 1; i < m_PendingPortalTransforms.Count(); ++i )
 		{
-			//the idea here is to handle the notion that the player has portalled, but they sent us an angle update before receiving that message.
-			//If we don't handle this here, we end up sending back their old angles which makes them hiccup their angles for a frame
-			float fOldAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, m_qPrePortalledViewAngles.x));
-			fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, m_qPrePortalledViewAngles.y));
-			fOldAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, m_qPrePortalledViewAngles.z));
-
-			float fCurrentAngleDiff = fabs(AngleDistance(ucmd->viewangles.x, pl.v_angle.x));
-			fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.y, pl.v_angle.y));
-			fCurrentAngleDiff += fabs(AngleDistance(ucmd->viewangles.z, pl.v_angle.z));
-
-			if (fCurrentAngleDiff > fOldAngleDiff)
-			{
-				//if (m_bFixEyeAnglesFromPortalling)
-				//{
-				//	m_qStoredCMDAngle = TransformAnglesToWorldSpace( ucmd->viewangles, m_matLastPortalled.As3x4() );
-				//	m_bFixEyeAnglesFromPortalling = false;
-				//}
-				
-				SetLocalAngles( TransformAnglesToWorldSpace( ucmd->viewangles, m_matLastPortalled.As3x4() ) );
-				ucmd->viewangles = TransformAnglesToWorldSpace( ucmd->viewangles, m_matLastPortalled.As3x4() );
-			}
+			ConcatTransforms( m_PendingPortalTransforms[i].matTransform, matComputeFinalTransform[iFlip], matComputeFinalTransform[1-iFlip] );
+			iFlip = 1 - iFlip;
 		}
-	}
-	else
-	{
-		if (m_bGotPortalMessage)
-		{
-#if FIXANGLEMETHOD_CONVAR
-			engine->ClientCommand(edict(), "cl_got_portal_message 0");
-#endif
-			m_bFixEyeAnglesFromPortalling = false;
-			m_bPendingPortalMessage = false;
-			m_bGotPortalMessage = false;
-		}
-	}
-#else
 
-	if( m_bFixEyeAnglesFromPortalling )
-	{
-		//the idea here is to handle the notion that the player has portalled, but they sent us an angle update before receiving that message.
-		//If we don't handle this here, we end up sending back their old angles which makes them hiccup their angles for a frame
-		float fOldAngleDiff = fabs( AngleDistance( ucmd->viewangles.x, m_qPrePortalledViewAngles.x ) );
-		fOldAngleDiff += fabs( AngleDistance( ucmd->viewangles.y, m_qPrePortalledViewAngles.y ) );
-		fOldAngleDiff += fabs( AngleDistance( ucmd->viewangles.z, m_qPrePortalledViewAngles.z ) );
-
-		float fCurrentAngleDiff = fabs( AngleDistance( ucmd->viewangles.x, pl.v_angle.x ) );
-		fCurrentAngleDiff += fabs( AngleDistance( ucmd->viewangles.y, pl.v_angle.y ) );
-		fCurrentAngleDiff += fabs( AngleDistance( ucmd->viewangles.z, pl.v_angle.z ) );
-
-		if( fCurrentAngleDiff > fOldAngleDiff )
-			ucmd->viewangles = TransformAnglesToWorldSpace( ucmd->viewangles, m_matLastPortalled.As3x4() );
-
-		m_bFixEyeAnglesFromPortalling = false;
+		//apply the final transform
+		matrix3x4_t matAngleTransformIn, matAngleTransformOut;
+		AngleMatrix( ucmd->viewangles, matAngleTransformIn );
+		ConcatTransforms( matComputeFinalTransform[iFlip], matAngleTransformIn, matAngleTransformOut );
+		MatrixAngles( matAngleTransformOut, ucmd->viewangles );
 	}
 
-#endif
-	
 	BaseClass::PlayerRunCommand(ucmd, moveHelper);
 }
 
@@ -2954,25 +2896,16 @@ void CPortal_Player::ApplyPortalTeleportation( const CProp_Portal *pEnteredPorta
 			m_PendingPortalTransforms.Remove( 0 );
 		}
 	}
-
+#if 1
 	CBaseEntity *pHeldEntity = GetPlayerHeldEntity( this );
 	if ( pHeldEntity )
 	{
 		ToggleHeldObjectOnOppositeSideOfPortal();
 		SetHeldObjectPortal( IsHeldObjectOnOppositeSideOfPortal() ? pEnteredPortal->m_hLinkedPortal.Get() : NULL );
 	}
-
+#endif
 	//transform m_PlayerAnimState yaws
 	m_PlayerAnimState->TransformYAWs( pEnteredPortal->m_matrixThisToLinked.As3x4() );
-
-	for ( int i = 0; i < MAX_VIEWMODELS; i++ )
-	{
-		CBaseViewModel *pViewModel = GetViewModel( i );
-		if ( !pViewModel )
-			continue;
-
-		pViewModel->m_vecLastFacing = pEnteredPortal->m_matrixThisToLinked.ApplyRotation( pViewModel->m_vecLastFacing );
-	}
 
 	//physics transform
 	{
@@ -2995,10 +2928,22 @@ void CPortal_Player::ApplyPortalTeleportation( const CProp_Portal *pEnteredPorta
 	}
 
 	CollisionRulesChanged();
-	
-	PostTeleportationCameraFixup( pEnteredPortal );
-	m_bFixEyeAnglesFromPortalling = true;
+}
 
+
+void CPortal_Player::NetworkPortalTeleportation( CBaseEntity *pOther, CProp_Portal *pPortal, float fTime, bool bForcedDuck )
+{
+	CEntityPortalledNetworkMessage &writeTo = m_EntityPortalledNetworkMessages[m_iEntityPortalledNetworkMessageCount % MAX_ENTITY_PORTALLED_NETWORK_MESSAGES];
+
+	writeTo.m_hEntity = pOther;
+	writeTo.m_hPortal = pPortal;
+	writeTo.m_fTime = fTime;
+	writeTo.m_bForcedDuck = bForcedDuck;
+	writeTo.m_iMessageCount = m_iEntityPortalledNetworkMessageCount;
+	++m_iEntityPortalledNetworkMessageCount;
+
+	//NetworkProp()->NetworkStateChanged( offsetof( CPortal_Player, m_EntityPortalledNetworkMessages ) );
+	NetworkProp()->NetworkStateChanged();
 }
 
 CON_COMMAND(startadmiregloves, "Starts the admire gloves animation.")

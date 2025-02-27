@@ -513,7 +513,6 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 		pOtherAsPlayer = (CPortal_Player *)pOther;
 		qPlayerEyeAngles = pOtherAsPlayer->pl.v_angle;
 #if USEMOVEMENTFORPORTALLING
-		if ( sv_portal_with_gamemovement.GetBool() )
 		Warning( "PORTALLING PLAYER SHOULD BE DONE IN GAMEMOVEMENT\n" );
 #endif
 	}
@@ -541,38 +540,6 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 	{
 		qOtherAngles = pOtherAsPlayer->EyeAngles();
 
-#ifdef GAME_DLL
-		pOtherAsPlayer->m_qPrePortalledViewAngles = qOtherAngles;
-		pOtherAsPlayer->m_bFixEyeAnglesFromPortalling = true;
-		pOtherAsPlayer->m_matLastPortalled = m_matrixThisToLinked;
-
-		pOtherAsPlayer->m_bPendingPortalMessage = true;
-		pOtherAsPlayer->m_flTimeToWaitForPortalMessage = gpGlobals->curtime + 1.5;
-		pOtherAsPlayer->m_bGotPortalMessage = false;
-		
-		//Same concept as using m_bFixEyeAnglesFromPortalling, but takes ping into account
-		/*
-		{
-			int ping;
-			int packetlost;
-
-			UTIL_GetPlayerConnectionInfo( pOtherAsPlayer->entindex(), ping, packetlost );
-
-			float flPing = ping;
-
-			// TODO: Could the math for this be improved? Ideally, we should make this number as small as it needs to be, but 0.125 seems to be the best number that works ok (enough) for all pings.
-			float flTimeToStopEyeFix = gpGlobals->curtime + ( (flPing / 100) * 0.125 ) ;
-
-			
-			//Msg("gpGlobals->curtime: %f\n", gpGlobals->curtime);
-			//Msg("ping: %i\n", ping);
-			//Msg("flTimeToStopEyeFix: %f\n", flTimeToStopEyeFix);
-			
-
-			pOtherAsPlayer->m_flTimeToStopAngleUpdate = flTimeToStopEyeFix;
-		}
-		*/
-#endif
 		bNonPhysical = true;
 		//if( (fabs( RemotePortalDataAccess.Placement.vForward.z ) + fabs( LocalPortalDataAccess.Placement.vForward.z )) > 0.7071f ) //some combination of floor/ceiling
 		if( fabs( LocalPortalDataAccess.Placement.vForward.z ) > 0.0f )
@@ -596,7 +563,7 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 //#ifdef GAME_DLL
 				if( !pOtherAsPlayer->IsDucked() )
 				{
-					pOtherAsPlayer->ForceDuckThisFrame();
+					pOtherAsPlayer->ForceDuckThisFrame( pOtherAsPlayer->GetAbsOrigin(), pOtherAsPlayer->GetAbsVelocity() );
 					pOtherAsPlayer->m_Local.m_bInDuckJump = true;
 
 					if( LocalPortalDataAccess.Placement.vForward.z > 0.0f )
@@ -753,20 +720,7 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 		pOther->SetGroundEntity( NULL );
 
 		if( bPlayer )
-		{
-#ifdef GAME_DLL
-	//notify clients of the teleportation
-	{
-		CBroadcastRecipientFilter filter;
-		filter.MakeReliable();
-		UserMessageBegin( filter, "PrePlayerPortalled" );
-		WRITE_EHANDLE( this );
-		WRITE_EHANDLE( pOther );
-		MessageEnd();
-	}
-
-#endif
-	
+		{	
 			QAngle qTransformedEyeAngles = TransformAnglesToWorldSpace( qPlayerEyeAngles, m_matrixThisToLinked.As3x4() );
 			qTransformedEyeAngles.x = AngleNormalizePositive( qTransformedEyeAngles.x );
 			qTransformedEyeAngles.y = AngleNormalizePositive( qTransformedEyeAngles.y );
@@ -920,11 +874,6 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 #endif
 
 #endif
-
-#ifdef CLIENT_DLL
-		//		pOtherAsPlayer->PlayerPortalled(this);
-		//		pOtherAsPlayer->DetectAndHandlePortalTeleportation( this );
-#endif
 				FindClosestPassableSpace( pHeldEntity, RemotePortalDataAccess.Placement.vForward );
 			}
 		}
@@ -953,22 +902,9 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 	paramsTeleport.physicsRotate	= true;
 	notify_system_event_params_t eventParams ( &paramsTeleport );
 	pOther->NotifySystemEvent( this, NOTIFY_EVENT_TELEPORT, eventParams );
-
+	
 	//notify clients of the teleportation
-	{
-		CBroadcastRecipientFilter filter;
-		filter.MakeReliable();
-		UserMessageBegin( filter, "EntityPortalled" );
-		WRITE_EHANDLE( this );
-		WRITE_EHANDLE( pOther );
-		WRITE_FLOAT( ptNewOrigin.x );
-		WRITE_FLOAT( ptNewOrigin.y );
-		WRITE_FLOAT( ptNewOrigin.z );
-		WRITE_FLOAT( qNewAngles.x );
-		WRITE_FLOAT( qNewAngles.y );
-		WRITE_FLOAT( qNewAngles.z );
-		MessageEnd();
-	}
+	EntityPortalled( this, pOther, ptNewOrigin, qNewAngles, false );
 #endif
 #ifdef _DEBUG
 	{
@@ -1159,8 +1095,8 @@ void CProp_Portal::GetExitSpeedRange( CProp_Portal *pEntrancePortal, bool bPlaye
 	}
 		
 	const float COS_PI_OVER_SIX = 0.86602540378443864676372317075294f; // cos( 30 degrees ) in radians
-	bool bEntranceOnFloor = pEntrancePortal->m_plane_Origin.normal.z > COS_PI_OVER_SIX;
-	bool bExitOnFloor = pExitPortal->m_plane_Origin.normal.z > COS_PI_OVER_SIX;
+	bool bEntranceOnFloor = pEntrancePortal->m_plane_Origin.z > COS_PI_OVER_SIX;
+	bool bExitOnFloor = pExitPortal->m_plane_Origin.z > COS_PI_OVER_SIX;
 
 	fExitMinimum = pExitPortal->GetMinimumExitSpeed( bPlayer, bEntranceOnFloor, bExitOnFloor, vEntityCenterAtExit, pEntity );
 	fExitMaximum = pExitPortal->GetMaximumExitSpeed( bPlayer, bEntranceOnFloor, bExitOnFloor, vEntityCenterAtExit, pEntity );
