@@ -22,16 +22,6 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-//trace that has special understanding of how to handle portals
-class CTrace_PlayerAABB_vs_Portals : public CGameTrace
-{
-public:
-	CTrace_PlayerAABB_vs_Portals( void );
-	bool HitPortalRamp( const Vector &vUp );
-
-	bool m_bContactedPortalTransitionRamp;
-};
-
 class CReservePlayerSpot;
 
 extern bool g_bAllowForcePortalTrace;
@@ -79,7 +69,6 @@ public:
 	virtual void CategorizePosition( void );
 
 	// Traces the player bbox as it is swept from start to end
-	virtual void TracePlayerBBox( const Vector& start, const Vector& end, unsigned int fMask, int collisionGroup, CTrace_PlayerAABB_vs_Portals& pm );
 	virtual void TracePlayerBBox( const Vector& start, const Vector& end, unsigned int fMask, int collisionGroup, trace_t& pm );
 
 	// Tests the player position

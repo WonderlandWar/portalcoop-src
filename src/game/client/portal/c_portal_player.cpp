@@ -349,6 +349,8 @@ BEGIN_PREDICTION_DATA( C_Portal_Player )
 	DEFINE_FIELD( m_fLatestServerTeleport, FIELD_FLOAT ),
 	DEFINE_FIELD( m_matLatestServerTeleportationInverseMatrix, FIELD_VMATRIX ),
 
+	DEFINE_FIELD( m_bIntersectingPortalPlane, FIELD_BOOLEAN ),
+
 END_PREDICTION_DATA()
 
 #define	_WALK_SPEED 150
@@ -418,12 +420,14 @@ C_Portal_Player::~C_Portal_Player( void )
 
 void C_Portal_Player::Spawn( void )
 {
+	BaseClass::Spawn();
 	CreateSounds();
 }
 
 void C_Portal_Player::CreateSounds( void )
 {
-	if (prediction->InPrediction() && GetPredictable())
+	if ( !IsLocalPlayer() )
+		return;
 
 	if (!m_pWooshSound)
 	{
@@ -463,13 +467,6 @@ void C_Portal_Player::UpdatePortalPlaneSounds(void)
 
 			Vector vEarCenter = (vMax + vMin) / 2.0f;
 			Vector vDiagonal = vMax - vMin;
-			
-			/*
-			if (pPortal && m_bIntersectingPortalPlane)
-			{
-				pPortal->Touch(this);
-			}
-			*/
 
 			if (!m_bIntersectingPortalPlane)
 			{
@@ -479,15 +476,18 @@ void C_Portal_Player::UpdatePortalPlaneSounds(void)
 				{
 					m_bIntersectingPortalPlane = true;
 
-					CPASAttenuationFilter filter(this);
-					CSoundParameters params;
-					if (GetParametersForSound("PortalPlayer.EnterPortal", params, NULL))
+					if ( prediction->IsFirstTimePredicted() )
 					{
-						EmitSound_t ep(params);
-						ep.m_nPitch = 80.0f + vVelocity.Length() * 0.03f;
-						ep.m_flVolume = min(0.3f + vVelocity.Length() * 0.00075f, 1.0f);
+						CPASAttenuationFilter filter(this);
+						CSoundParameters params;
+						if (GetParametersForSound("PortalPlayer.EnterPortal", params, NULL))
+						{
+							EmitSound_t ep(params);
+							ep.m_nPitch = 80.0f + vVelocity.Length() * 0.03f;
+							ep.m_flVolume = min(0.3f + vVelocity.Length() * 0.00075f, 1.0f);
 
-						EmitSound(filter, entindex(), ep);
+							EmitSound(filter, entindex(), ep);
+						}
 					}
 				}
 			}
@@ -498,16 +498,19 @@ void C_Portal_Player::UpdatePortalPlaneSounds(void)
 				if (!UTIL_IsBoxIntersectingPortal(vEarCenter, vDiagonal, pPortal))
 				{
 					m_bIntersectingPortalPlane = false;
-
-					CPASAttenuationFilter filter(this);
-					CSoundParameters params;
-					if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
+					
+					if ( prediction->IsFirstTimePredicted() )
 					{
-						EmitSound_t ep(params);
-						ep.m_nPitch = 80.0f + vVelocity.Length() * 0.03f;
-						ep.m_flVolume = min(0.3f + vVelocity.Length() * 0.00075f, 1.0f);
+						CPASAttenuationFilter filter(this);
+						CSoundParameters params;
+						if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
+						{
+							EmitSound_t ep(params);
+							ep.m_nPitch = 80.0f + vVelocity.Length() * 0.03f;
+							ep.m_flVolume = min(0.3f + vVelocity.Length() * 0.00075f, 1.0f);
 
-						EmitSound(filter, entindex(), ep);
+							EmitSound(filter, entindex(), ep);
+						}
 					}
 				}
 			}
@@ -516,18 +519,21 @@ void C_Portal_Player::UpdatePortalPlaneSounds(void)
 	else if (m_bIntersectingPortalPlane)
 	{
 		m_bIntersectingPortalPlane = false;
-
-		CPASAttenuationFilter filter(this);
-		CSoundParameters params;
-		if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
+		
+		if ( prediction->IsFirstTimePredicted() )
 		{
-			EmitSound_t ep(params);
-			Vector vVelocity;
-			GetVelocity(&vVelocity, NULL);
-			ep.m_nPitch = 80.0f + vVelocity.Length() * 0.03f;
-			ep.m_flVolume = min(0.3f + vVelocity.Length() * 0.00075f, 1.0f);
+			CPASAttenuationFilter filter(this);
+			CSoundParameters params;
+			if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
+			{
+				EmitSound_t ep(params);
+				Vector vVelocity;
+				GetVelocity(&vVelocity, NULL);
+				ep.m_nPitch = 80.0f + vVelocity.Length() * 0.03f;
+				ep.m_flVolume = min(0.3f + vVelocity.Length() * 0.00075f, 1.0f);
 
-			EmitSound(filter, entindex(), ep);
+				EmitSound(filter, entindex(), ep);
+			}
 		}
 	}
 #endif
@@ -1098,16 +1104,6 @@ void C_Portal_Player::ClientThink( void )
 
 	UpdateIDTarget();
 	UpdatePortalTarget();
-	
-	if (IsLocalPlayer())
-	{
-		UpdatePortalPlaneSounds();
-	}
-
-	if (prediction->InPrediction() && GetPredictable())
-	{
-		UpdateWooshSounds();
-	}
 }
 
 void C_Portal_Player::FixTeleportationRoll( void )
@@ -1255,6 +1251,14 @@ void C_Portal_Player::FixTeleportationRoll( void )
 		g_bUpsideDown = ( vCurrentUp.z < 0.0f );
 	else
 		g_bUpsideDown = false;
+}
+
+void C_Portal_Player::PostThink( void )
+{
+	BaseClass::PostThink();
+	
+	UpdatePortalPlaneSounds();
+	UpdateWooshSounds();
 }
 
 const QAngle& C_Portal_Player::GetRenderAngles()

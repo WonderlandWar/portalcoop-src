@@ -52,6 +52,7 @@ public:
 	virtual void StopLoopingSounds( void );
 	void ClientThink( void );
 	void FixTeleportationRoll( void );
+	void PostThink( void );
 	
 	static inline C_Portal_Player* GetLocalPortalPlayer()
 	{

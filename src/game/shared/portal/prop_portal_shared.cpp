@@ -750,19 +750,11 @@ void CProp_Portal::TeleportTouchingEntity( CBaseEntity *pOther )
 
 			if (pOtherAsPlayer->IsLocalPlayer() && pOtherAsPlayer->m_hPortalEnvironment.Get() == this)
 			{
-				Msg("TELEPORT PLAYER!!!\n");
 				pOtherAsPlayer->SetAbsOrigin( ptNewOrigin );
 				pOtherAsPlayer->SetLocalOrigin( ptNewOrigin );
 				pOtherAsPlayer->SetNetworkOrigin( ptNewOrigin );
 				
-				//pOtherAsPlayer->m_bMoveUseOriginHack = true;
-				//pOtherAsPlayer->m_vMoveOriginHack = ptNewOrigin;
-				
-//				CPortalGameMovement *pPortalMove = dynamic_cast<CPortalGameMovement*>(g_pGameMovement);
-				
 
-
-				//pPortalMove->ProcessMovement( pOtherAsPlayer, moveData );
 				pOtherAsPlayer->SetAbsAngles( qNewAngles );
 				pOtherAsPlayer->SetLocalAngles( qNewAngles );
 				pOtherAsPlayer->SetNetworkAngles( qNewAngles );
