@@ -2350,3 +2350,12 @@ bool UTIL_IsCollideableIntersectingPhysCollide( ICollideable *pCollideable, cons
 
 	return false;
 }
+
+float GetReliableCurrentTime()
+{
+#ifdef CLIENT_DLL
+	return Plat_FloatTime();
+#else
+	return gpGlobals->curtime;
+#endif
+}

@@ -135,5 +135,7 @@ CProp_Portal *UTIL_Portal_GetPortalWhoOwnsPlane( CBaseEntity *pEntity );
 
 bool UTIL_IsCollideableIntersectingPhysCollide( ICollideable *pCollideable, const CPhysCollide *pCollide, const Vector &vPhysCollideOrigin, const QAngle &qPhysCollideAngles );
 
+float GetReliableCurrentTime();
+
 #endif //#ifndef PORTAL_UTIL_SHARED_H
 

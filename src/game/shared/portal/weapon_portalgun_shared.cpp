@@ -543,7 +543,10 @@ void CWeaponPortalgun::UpdateOnRemove(void)
 
 void CWeaponPortalgun::DoEffectBlast(CBaseEntity *pOwner, bool bPortal2, int iPlacedBy, const Vector &ptStart, const Vector &ptFinalPos, const QAngle &qStartAngles, float fDelay, int iPortalLinkageGroup)
 {
-
+#ifdef CLIENT_DLL
+	if ( !prediction->IsFirstTimePredicted() )
+		return;
+#endif
 	if (use_server_portal_particles.GetBool())
 	{
 		IPredictionSystem::SuppressHostEvents( this );
@@ -562,33 +565,18 @@ void CWeaponPortalgun::DoEffectBlast(CBaseEntity *pOwner, bool bPortal2, int iPl
 	fxData.m_nDamageType = iPlacedBy;
 	fxData.m_nHitBox = iPortalLinkageGroup; //Use m_nHitBox as a dummy var
 #ifdef CLIENT_DLL
-	fxData.m_hEntity = pOwner ? pOwner->GetRefEHandle() : GetRefEHandle();
+	AssertMsg( GetOwner() == C_BasePlayer::GetLocalPlayer(), "This should only run in prediction, and the owner should be the local player!" );
+	fxData.m_hEntity = GetOwner();
 #else
 	fxData.m_nEntIndex = pOwner ? pOwner->entindex() : entindex();
 #endif
-
-#if 0
+	
 #ifdef CLIENT_DLL
-	Msg("/======================================\n");
-	Msg("/ C_WeaponPortalgun::DoEffectBlast\n");
-	Msg("/======================================\n\n");
-
-	Msg("ptStart: %f %f %f\n", ptStart.x, ptStart.y, ptStart.z);
-	Msg("ptFinalPos: %f %f %f\n", ptFinalPos.x, ptFinalPos.y, ptFinalPos.z);
-	Msg("qStartAngles: %f %f %f\n", qStartAngles[0], qStartAngles[1], qStartAngles[2]);
+	extern void PortalBlastCallback( const CEffectData & data );
+	PortalBlastCallback( fxData );
 #else
-	Msg("/======================================\n");
-	Msg("/ CWeaponPortalgun::DoEffectBlast\n");
-	Msg("/======================================\n\n");
-
-	Msg("ptStart: %f %f %f\n", ptStart.x, ptStart.y, ptStart.z);
-	Msg("ptFinalPos: %f %f %f\n", ptFinalPos.x, ptFinalPos.y, ptFinalPos.z);
-	Msg("qStartAngles: %f %f %f\n", qStartAngles[0], qStartAngles[1], qStartAngles[2]);
-
-#endif
-#endif
-
 	DispatchEffect( "PortalBlast", fxData );
+#endif
 }
 
 #ifdef CLIENT_DLL
