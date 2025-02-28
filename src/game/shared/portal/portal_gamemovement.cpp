@@ -1555,6 +1555,7 @@ void CPortalGameMovement::HandlePortallingLegacy( void )
 		if ( pPortalEnvironment )
 		{
 			pPortalEnvironment->m_PortalSimulator.ReleaseOwnershipOfEntity( player );
+			pPortalPlayer->m_hPortalEnvironment = NULL;
 		}
 		if ( pPortal )
 		{
