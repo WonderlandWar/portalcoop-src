@@ -140,7 +140,7 @@ public:
 	EHANDLE		m_hPlacedBy;
 
 	virtual void			OnPreDataChanged( DataUpdateType_t updateType );
-	void					HandleNetworkChanges( bool bForceChanges = false );
+	void					HandleNetworkChanges( void );
 	virtual void			OnDataChanged( DataUpdateType_t updateType );
 	virtual int				DrawModel( int flags );
 	void					UpdateOriginPlane( void );

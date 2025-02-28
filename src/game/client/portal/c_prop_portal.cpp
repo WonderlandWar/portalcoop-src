@@ -929,11 +929,11 @@ void C_Prop_Portal::OnPreDataChanged( DataUpdateType_t updateType )
 //ConVar r_portal_light_outerangle( "r_portal_light_outerangle", "90.0", FCVAR_CLIENTDLL );
 //ConVar r_portal_light_forward( "r_portal_light_forward", "0.0", FCVAR_CLIENTDLL );
 
-void C_Prop_Portal::HandleNetworkChanges( bool bForcedChanges )
+void C_Prop_Portal::HandleNetworkChanges( void )
 {
 	C_Prop_Portal *pRemote = m_hLinkedPortal;
 	m_pLinkedPortal = pRemote;
-	
+
 	//get absolute origin and angles, but cut out interpolation, use the network position and angles as transformed by any move parent
 	{		
 		ALIGN16 matrix3x4_t finalMatrix;
@@ -945,146 +945,59 @@ void C_Prop_Portal::HandleNetworkChanges( bool bForcedChanges )
 		m_vRight = -m_vRight;
 	}
 
-	GetVectors( &m_vForward, &m_vRight, &m_vUp );
-	m_ptOrigin = GetNetworkOrigin();
-	
+	const PS_PlacementData_t &placement = m_PortalSimulator.GetInternalData().Placement;
+
 	bool bActivityChanged = PreDataChanged.m_bActivated != IsActive();
-
-	bool bPortalMoved = ( (PreDataChanged.m_vOrigin != m_ptOrigin ) ||
-						(PreDataChanged.m_qAngles != m_qAbsAngle) || 
-						(PreDataChanged.m_bActivated == false) ||
-						(PreDataChanged.m_bIsPortal2 != m_bIsPortal2) );
-
+	bool bPortalMoved = ((/*(m_ptOrigin != PreDataChanged.m_vOrigin) &&*/ (m_ptOrigin != placement.ptCenter)) || //moved
+							(/*(m_qAbsAngle != PreDataChanged.m_qAngles) &&*/ (m_qAbsAngle != placement.qAngles)) ||  //rotated
+							(PreDataChanged.m_bIsPortal2 != m_bIsPortal2) ); //swapped portal id
+							
 	bool bNewLinkage = ( (PreDataChanged.m_hLinkedTo.Get() != m_hLinkedPortal.Get()) );
+
 	if( bNewLinkage )
 		m_PortalSimulator.DetachFromLinked(); //detach now so moves are theoretically faster
 
-	if( IsActive() )
+	if( m_bActivated )
 	{
 		//generic stuff we'll need
-		Vector vRemoteUp, vRemoteRight, vRemoteForward, ptRemoteOrigin;
-		if( pRemote )
-		{
-			pRemote->GetVectors( &vRemoteForward, &vRemoteRight, &vRemoteUp );
-			ptRemoteOrigin = pRemote->GetNetworkOrigin();
-		}
 		g_pPortalRender->AddPortal( this ); //will know if we're already added and avoid adding twice
 		 
-		if ( bPortalMoved || bActivityChanged || bForcedChanges )
-		{			
-			Vector ptForwardOrigin = m_ptOrigin + m_vForward;// * 3.0f;
-			Vector vScaledRight = m_vRight * (PORTAL_HALF_WIDTH * 0.95f);
-			Vector vScaledUp = m_vUp * (PORTAL_HALF_HEIGHT  * 0.95f);
-			
+		if( bPortalMoved || bActivityChanged )
+		{
 			m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
-			NewLocation(m_ptOrigin, m_qAbsAngle);
-
-			//Reset the portals
-			g_pPortalRender->RemovePortal(this);
-			g_pPortalRender->AddPortal(this); 
-#ifndef DISABLE_CLONE_AREA
-		if( m_pAttachedCloningArea )
-			m_pAttachedCloningArea->UpdatePosition();
-#endif
-			//update our associated portal environment
-			//CPortal_PhysicsEnvironmentMgr::CreateEnvironment( this );
-
-			m_fOpenAmount = 0.0f;
-			//m_fStaticAmount = 1.0f; // This will cause the portal we are opening to show the static effect
-			//SetNextClientThink( CLIENT_THINK_ALWAYS ); //we need this to help open up
-			m_bDoRenderThink = true;
-
-			//add static to the remote
-			if( pRemote )
-			{
-				pRemote->m_fStaticAmount = 1.0f; // This will cause the other portal to show the static effect
-				//pRemote->SetNextClientThink( CLIENT_THINK_ALWAYS );
-				pRemote->m_bDoRenderThink = true;
-			}
-
-			dlight_t *pFakeLight = NULL;
-			ClientShadowHandle_t ShadowHandle = CLIENTSHADOW_INVALID_HANDLE;
-			if( pRemote )
-			{
-				pFakeLight = pRemote->TransformedLighting.m_pEntityLight;
-				ShadowHandle = pRemote->TransformedLighting.m_LightShadowHandle;
-				AssertMsg( (ShadowHandle == CLIENTSHADOW_INVALID_HANDLE) || (TransformedLighting.m_LightShadowHandle == CLIENTSHADOW_INVALID_HANDLE), "Two shadow handles found, should only have one shared handle" );
-				AssertMsg( (pFakeLight == NULL) || (TransformedLighting.m_pEntityLight == NULL), "two lights found, should only have one shared light" );
-				pRemote->TransformedLighting.m_pEntityLight = NULL;
-				pRemote->TransformedLighting.m_LightShadowHandle = CLIENTSHADOW_INVALID_HANDLE;
-			}
-
-			if( TransformedLighting.m_pEntityLight )
-			{
-				pFakeLight = TransformedLighting.m_pEntityLight;
-				TransformedLighting.m_pEntityLight = NULL;
-			}
-
-			if( TransformedLighting.m_LightShadowHandle != CLIENTSHADOW_INVALID_HANDLE )
-			{
-				ShadowHandle = TransformedLighting.m_LightShadowHandle;
-				TransformedLighting.m_LightShadowHandle = CLIENTSHADOW_INVALID_HANDLE;
-			}
-
-			
-
-
-			if( pFakeLight != NULL )
-			{
-				//turn off the light so it doesn't interfere with absorbed light calculations
-				pFakeLight->color.r = 0;
-				pFakeLight->color.g = 0;
-				pFakeLight->color.b = 0;
-				pFakeLight->flags = DLIGHT_NO_WORLD_ILLUMINATION | DLIGHT_NO_MODEL_ILLUMINATION;
-				pFakeLight->radius = 0.0f;
-				render->TouchLight( pFakeLight );
-			}
-
-			if( pRemote ) //now, see if we need to fake light coming through a portal
-			{
-
-			}
 		}
+
+		if( pRemote )
+			m_PortalSimulator.AttachTo( &pRemote->m_PortalSimulator );
 	}
 	else
 	{
 		g_pPortalRender->RemovePortal( this );
-
 		m_PortalSimulator.DetachFromLinked();
 
-		if( TransformedLighting.m_pEntityLight )
+		if( bPortalMoved || bActivityChanged )
 		{
-			TransformedLighting.m_pEntityLight->die = gpGlobals->curtime;
-			TransformedLighting.m_pEntityLight = NULL;
-		}
-
-		if( TransformedLighting.m_LightShadowHandle != CLIENTSHADOW_INVALID_HANDLE )
-		{
-			g_pClientShadowMgr->DestroyFlashlight( TransformedLighting.m_LightShadowHandle );
-			TransformedLighting.m_LightShadowHandle = CLIENTSHADOW_INVALID_HANDLE;
+			m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
 		}
 	}
 
-	if( (PreDataChanged.m_hLinkedTo.Get() != m_hLinkedPortal.Get()) && m_hLinkedPortal.Get() )
-		m_PortalSimulator.AttachTo( &m_hLinkedPortal.Get()->m_PortalSimulator );
-
-	if( bNewLinkage || bPortalMoved || bActivityChanged || bForcedChanges )
+	if( bNewLinkage || bPortalMoved || bActivityChanged )
 	{
 		//Warning_SpewCallStack( 10, "C_Portal_Base2D::HandleNetworkChanges( %.2f )\n", gpGlobals->curtime );
 		PortalMoved(); //updates link matrix and internals
 		UpdateOriginPlane();
 
-		if ( bPortalMoved || bForcedChanges )
+		if ( bPortalMoved )
 		{
 			OnPortalMoved();
 		}
 
-		if ( bActivityChanged || bForcedChanges )
+		if( bActivityChanged )
 		{
 			OnActiveStateChanged();
 		}
 
-		if( bNewLinkage || bForcedChanges )
+		if( bNewLinkage )
 		{
 			OnLinkageChanged( PreDataChanged.m_hLinkedTo.Get() );
 		}
@@ -1517,9 +1430,12 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 
 	AddEffects( EF_NOINTERP );
 	//PredictClearNoInterpEffect();
+	
+	// The Abs origin must be set for the sounds, otherwise they play in the wrong spot
+	SetAbsOrigin( vOrigin );
+
 	if( GetMoveParent() )
 	{
-		SetAbsOrigin( vOrigin );
 		SetAbsAngles( qAngles );
 	}
 	else
@@ -1552,10 +1468,25 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 		pRemote->UpdateGhostRenderables();
 
 	g_pPortalRender->AddPortal( this ); //will know if we're already added and avoid adding twice
+	
+	if ( prediction->IsFirstTimePredicted() )
+	{
+		if ( m_bIsPortal2 )
+		{
+			EmitSound( "Portal.open_red" );
+		}
+		else
+		{
+			EmitSound( "Portal.open_blue" );
+		}
+	}
 }
 
 void C_Prop_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelayedPos /*= true*/ )
 {	
+	Assert( prediction->InPrediction() );
+	if ( !prediction->IsFirstTimePredicted() )
+		return;
 	if ( use_server_portal_particles.GetBool() )
 		return;
 

@@ -533,36 +533,36 @@ void CPrediction::PostNetworkDataReceived( int commands_acknowledged )
 #endif
 		}
 	
-			//Give entities with predicted fields that are not networked a chance to fix their current values for those fields.
-			//We do this in two passes. One pass to fix the fields, then another to save off the changes after they've all finished (to handle interdependancies, portals)
-			if( m_bPreviousAckHadErrors )
+		//Give entities with predicted fields that are not networked a chance to fix their current values for those fields.
+		//We do this in two passes. One pass to fix the fields, then another to save off the changes after they've all finished (to handle interdependancies, portals)
+		if( m_bPreviousAckHadErrors )
+		{
+			//give each predicted entity a chance to fix up its non-networked predicted fields
+			for ( i = 0; i < c; i++ )
 			{
-				//give each predicted entity a chance to fix up its non-networked predicted fields
-				for ( i = 0; i < c; i++ )
-				{
-					C_BaseEntity *ent = predictables->GetPredictable(i);
-					if ( !ent )
-						continue;
+				C_BaseEntity *ent = predictables->GetPredictable(i);
+				if ( !ent )
+					continue;
 
-					if ( !ent->GetPredictable() )
-						continue;
+				if ( !ent->GetPredictable() )
+					continue;
 
-					ent->HandlePredictionError( bHadErrors[i] );
-				}
-
-				//save off any changes
-				for ( i = 0; i < c; i++ )
-				{
-					C_BaseEntity *ent = predictables->GetPredictable(i);
-					if ( !ent )
-						continue;
-
-					if ( !ent->GetPredictable() )
-						continue;
-
-					ent->SaveData( "PostNetworkDataReceived() Ack Errors", C_BaseEntity::SLOT_ORIGINALDATA, PC_EVERYTHING );
-				}
+				ent->HandlePredictionError( bHadErrors[i] );
 			}
+
+			//save off any changes
+			for ( i = 0; i < c; i++ )
+			{
+				C_BaseEntity *ent = predictables->GetPredictable(i);
+				if ( !ent )
+					continue;
+
+				if ( !ent->GetPredictable() )
+					continue;
+
+				ent->SaveData( "PostNetworkDataReceived() Ack Errors", C_BaseEntity::SLOT_ORIGINALDATA, PC_EVERYTHING );
+			}
+		}
 
 		if ( showlist >= 2 )
 		{

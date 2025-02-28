@@ -1689,7 +1689,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 					m_bIntersectingPortalPlane = true;
 
 					CPASAttenuationFilter filter(this);
-					filter.RemoveRecipient(this);
+					//filter.RemoveRecipient(this);
 					CSoundParameters params;
 					if (GetParametersForSound("PortalPlayer.EnterPortal", params, NULL))
 					{
@@ -1710,7 +1710,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 					m_bIntersectingPortalPlane = false;
 
 					CPASAttenuationFilter filter(this);
-					filter.RemoveRecipient(this);
+					//filter.RemoveRecipient(this);
 					CSoundParameters params;
 					if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
 					{
@@ -1729,7 +1729,7 @@ void CPortal_Player::UpdatePortalPlaneSounds(void)
 		m_bIntersectingPortalPlane = false;
 
 		CPASAttenuationFilter filter(this);
-		filter.RemoveRecipient(this);
+		//filter.RemoveRecipient(this);
 		CSoundParameters params;
 		if (GetParametersForSound("PortalPlayer.ExitPortal", params, NULL))
 		{

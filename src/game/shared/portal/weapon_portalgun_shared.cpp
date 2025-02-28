@@ -603,11 +603,16 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 	
 	CBaseEntity *pOwner = GetOwner();
 	CPortal_Player *pPlayer = ToPortalPlayer(pOwner);
+#ifdef CLIENT_DLL
+	bool bIsFirstTimePredicted = prediction->IsFirstTimePredicted();
+#endif
 
 	if( pPlayer )
 	{
-
-		if ( !bTest && pPlayer )
+#ifdef CLIENT_DLL
+		if ( bIsFirstTimePredicted )
+#endif
+		if ( !bTest )
 		{
 			pPlayer->DoAnimationEvent( PLAYERANIMEVENT_ATTACK_PRIMARY, 0 );
 		}
@@ -619,7 +624,21 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 
 
 		pPlayer->EyeVectors( &vDirection, NULL, NULL );
-		vEye = pPlayer->EyePosition();
+#ifdef CLIENT_DLL
+		if ( !bTest )
+		{
+			if ( bIsFirstTimePredicted )
+			{
+				m_vFirstPredictedShotPos = pPlayer->EyePosition();
+			}
+
+			vEye = m_vFirstPredictedShotPos;
+		}
+		else
+#endif
+		{
+			vEye = pPlayer->EyePosition();
+		}
 
 		// Check if the players eye is behind the portal they're in and translate it
 		VMatrix matThisToLinked;
@@ -750,16 +769,19 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 		if ( fPlacementSuccess < 0.5f ) //0.5f or greater is a success
 			vFinalPosition = tr.endpos;
 		
-#if 1
-		vFinalPosition.x = floor(vFinalPosition.x * 512.0f) / 512.0f;
-		vFinalPosition.y = floor(vFinalPosition.y * 512.0f) / 512.0f;
-		vFinalPosition.z = floor(vFinalPosition.z * 512.0f) / 512.0f;
-#endif
-		
 		QAngle qFireAngles;
 		VectorAngles( vDirection, qFireAngles );
-
-		float fDelay = vTracerOrigin.DistTo( tr.endpos ) / ( ( pPlayer ) ? ( BLAST_SPEED ) : ( BLAST_SPEED_NON_PLAYER ) );
+		
+		float fDelay;
+		bool bInstantPlacement = pPlayer != NULL;  // Do delayed placement for pedestal portalguns, but not the player
+		if ( !bInstantPlacement )
+		{
+			fDelay = vTracerOrigin.DistTo( tr.endpos ) / ( ( pPlayer ) ? ( BLAST_SPEED ) : ( BLAST_SPEED_NON_PLAYER ) );
+		}
+		else
+		{
+			fDelay = 0.1;
+		}
 
 		DoEffectBlast(pOwner, pPortal->m_bIsPortal2, ePlacedBy, vTracerOrigin, vFinalPosition, qFireAngles, fDelay, m_iPortalColorSet );
 		if (fPlacementSuccess == PORTAL_ANALOG_SUCCESS_NEAR && pHitPortal)
@@ -774,10 +796,20 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 		{
 			pPortal->PlacePortal(vFinalPosition, qFinalAngles, fPlacementSuccess, true);
 
-			pPortal->SetContextThink( &CProp_Portal::DelayedPlacementThink, gpGlobals->curtime + fDelay, s_pDelayedPlacementContext ); 
 			pPortal->m_vDelayedPosition = vFinalPosition;
 
 			pPortal->m_hPlacedBy = this;
+
+#ifdef GAME_DLL
+			if ( !bInstantPlacement )
+			{
+				pPortal->SetContextThink( &CProp_Portal::DelayedPlacementThink, gpGlobals->curtime + fDelay, s_pDelayedPlacementContext ); 
+			}
+			else
+#endif
+			{
+				pPortal->DelayedPlacementThink();
+			}
 		}
 	}
 

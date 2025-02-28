@@ -453,7 +453,7 @@ void C_Portal_Player::StopLoopingSounds( void )
 }
 void C_Portal_Player::UpdatePortalPlaneSounds(void)
 {
-#if 1
+#if 0
 	CProp_Portal* pPortal = m_hPortalEnvironment;
 	if (pPortal && pPortal->IsActive())
 	{
@@ -462,9 +462,14 @@ void C_Portal_Player::UpdatePortalPlaneSounds(void)
 
 		if (!vVelocity.IsZero())
 		{
+#if 1
 			Vector vMin, vMax;
 			CollisionProp()->WorldSpaceAABB(&vMin, &vMax);
-
+#else
+			bool bDucked = GetFlags() & FL_DUCKING;
+			Vector vMin = (bDucked ? VEC_DUCK_HULL_MIN_SCALED( this ) : VEC_HULL_MIN_SCALED( this )) + GetNetworkOrigin();
+			Vector vMax = (bDucked ? VEC_DUCK_HULL_MAX_SCALED( this ) : VEC_HULL_MAX_SCALED( this )) + GetNetworkOrigin();
+#endif
 			Vector vEarCenter = (vMax + vMin) / 2.0f;
 			Vector vDiagonal = vMax - vMin;
 

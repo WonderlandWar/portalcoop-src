@@ -569,6 +569,8 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 
 	// Just a little hack to always prevent particle inconsistencies.
 	SetupPortalColorSet();
+
+	bool bFilterUsePredictionRules = true;
 		
 	// Pick a fizzle effect
 	switch ( iEffect )
@@ -655,6 +657,8 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 			else
 				DispatchParticleEffect( ( ( m_bIsPortal2 ) ? ( "portal_2_close" ) : ( "portal_1_close" ) ), fxData.m_vOrigin, fxData.m_vAngles );
 			ep.m_pSoundName = "Portal.fizzle_moved";
+
+			bFilterUsePredictionRules = false;
 			break;
 		}
 		case PORTAL_FIZZLE_CLEANSER:
@@ -763,6 +767,11 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 		case PORTAL_FIZZLE_NONE:
 			// Don't do anything!
 			return;
+	}
+
+	if ( bFilterUsePredictionRules )
+	{
+		filter.UsePredictionRules();
 	}
 
 	EmitSound( filter, SOUND_FROM_WORLD, ep );
@@ -1798,13 +1807,16 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 		}
 	}
 
+	CRecipientFilter filter;
+	filter.UsePredictionRules();
+
 	if ( m_bIsPortal2 )
 	{
-		EmitSound( "Portal.open_red" );
+		EmitSound( filter, entindex(), "Portal.open_red" );
 	}
 	else
 	{
-		EmitSound( "Portal.open_blue" );
+		EmitSound( filter, entindex(), "Portal.open_blue" );
 	}
 }
 
