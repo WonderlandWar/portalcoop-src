@@ -953,13 +953,17 @@ bool CServerGameDLL::IsRestoring()
 #ifdef PORTAL
 void UpdatePortalGameType( const char *pMapName )
 {
-	if ( V_stristr( pMapName, "p2coop_" ) || V_stristr( pMapName, "p3coop_" ) )
+	/*if ( V_stristr( pMapName, "p2coop_" ) || V_stristr( pMapName, "p3coop_" ) )
 	{
 		sv_portal_game.SetValue( PORTAL_GAME_PORTAL );
 	}
-	else if ( V_stristr( pMapName, "rex2c_" ) || V_stristr( pMapName, "rex3c_" ) )
+	else*/ if ( V_stristr( pMapName, "rex2c_" ) || V_stristr( pMapName, "rex3c_" ) )
 	{
 		sv_portal_game.SetValue( PORTAL_GAME_REXAURA );
+	}
+	else // Use Portal by default
+	{
+		sv_portal_game.SetValue( PORTAL_GAME_PORTAL );
 	}
 }
 
