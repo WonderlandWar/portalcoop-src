@@ -921,7 +921,6 @@ void CPortalSimulator::ReleaseOwnershipOfEntity( CBaseEntity *pEntity, bool bMov
 		RecheckEntityCollision( pEntity );
 	}
 	
-	if (m_pCallbacks)
 	m_pCallbacks->PortalSimulator_ReleasedOwnershipOfEntity( pEntity );
 
 	CUtlVector<CBaseEntity *> childrenList;

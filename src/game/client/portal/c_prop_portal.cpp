@@ -107,6 +107,7 @@ BEGIN_PREDICTION_DATA(C_Prop_Portal)
 	DEFINE_FIELD( m_vRight, FIELD_VECTOR ),
 	DEFINE_FIELD( m_vUp, FIELD_VECTOR ),
 	DEFINE_FIELD( m_matrixThisToLinked, FIELD_VMATRIX ),
+	//DEFINE_FIELD( m_plane_Origin, FIELD_QUATERNION ),
 	//DEFINE_FIELD( m_iPortalColorSet, FIELD_INTEGER ),
 
 	DEFINE_PRED_FIELD( m_nPlacementAttemptParity, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
@@ -161,6 +162,8 @@ CProp_Portal *CProp_Portal::FindPortal( unsigned char iLinkageGroupID, bool bPor
 
 C_Prop_Portal::C_Prop_Portal( void )
 {	
+	m_PortalSimulator.SetPortalSimulatorCallbacks( this );
+
 	TransformedLighting.m_LightShadowHandle = CLIENTSHADOW_INVALID_HANDLE;
 	CProp_Portal_Shared::AllPortals.AddToTail( this );
 
@@ -985,7 +988,7 @@ void C_Prop_Portal::HandleNetworkChanges( void )
 	{
 		//Warning_SpewCallStack( 10, "C_Portal_Base2D::HandleNetworkChanges( %.2f )\n", gpGlobals->curtime );
 		PortalMoved(); //updates link matrix and internals
-		UpdateOriginPlane();
+		UpdateTeleportMatrix();
 
 		if ( bPortalMoved )
 		{
@@ -1104,16 +1107,16 @@ void C_Prop_Portal::GetToolRecordingState( KeyValues *msg )
 	}
 }
 
-void C_Prop_Portal::UpdateOriginPlane( void )
+void C_Prop_Portal::UpdateTeleportMatrix( void )
 {
 	//setup our origin plane
-	GetVectors( &m_plane_Origin.AsVector3D(), NULL, NULL );
-	m_plane_Origin.w = m_plane_Origin.AsVector3D().Dot( GetAbsOrigin() );
+	m_plane_Origin.x = m_vForward.x;
+	m_plane_Origin.y = m_vForward.y;
+	m_plane_Origin.z = m_vForward.z;
+	//GetVectors( &m_plane_Origin.AsVector3D(), NULL, NULL );
+	m_plane_Origin.w = m_plane_Origin.AsVector3D().Dot( m_ptOrigin );
 
-	Vector vAbsNormal;
-	vAbsNormal.x = fabs(m_plane_Origin.x);
-	vAbsNormal.y = fabs(m_plane_Origin.y);
-	vAbsNormal.z = fabs(m_plane_Origin.z);
+	UTIL_Portal_ComputeMatrix( this, m_pLinkedPortal );
 }
 
 void C_Prop_Portal::SetIsPortal2( bool bValue )
@@ -1133,16 +1136,10 @@ bool C_Prop_Portal::IsActivedAndLinked( void ) const
 
 void C_Prop_Portal::Touch(C_BaseEntity *pOther)
 {
-	if ( 
-		//sv_portal_with_gamemovement.GetBool() && // Don't predict, it's a terrible idea
-		pOther->IsPlayer() )
+	if ( pOther->IsPlayer() )
 	{
-		( (CPortal_Player*)pOther )->m_hPortalLastEnvironment = this;
 		return;
 	}
-
-	if ( dynamic_cast< C_BaseCombatWeapon* >( pOther ) != NULL )
-		return;
 
 	BaseClass::Touch( pOther );
 	pOther->Touch( this );
@@ -1200,16 +1197,10 @@ void C_Prop_Portal::Touch(C_BaseEntity *pOther)
 
 void C_Prop_Portal::StartTouch(C_BaseEntity *pOther)
 {
-	if ( 
-		//sv_portal_with_gamemovement.GetBool() && // Don't predict, it's a terrible idea
-		pOther->IsPlayer()
-		)
+	if ( pOther->IsPlayer() )
 	{
 		return;
 	}
-	
-	if ( dynamic_cast< C_BaseCombatWeapon* >( pOther ) != NULL )
-		return;
 
 	BaseClass::StartTouch( pOther );
 
@@ -1251,16 +1242,10 @@ void C_Prop_Portal::StartTouch(C_BaseEntity *pOther)
 
 void C_Prop_Portal::EndTouch(C_BaseEntity *pOther)
 {
-	if ( 
-		//sv_portal_with_gamemovement.GetBool() && // Don't predict, it's a terrible idea
-		pOther->IsPlayer()
-		)
+	if ( pOther->IsPlayer() )
 	{
 		return;
 	}
-	
-	if ( dynamic_cast< C_BaseCombatWeapon* >( pOther ) != NULL )
-		return;
 
 	BaseClass::EndTouch( pOther );
 
@@ -1423,7 +1408,6 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 		MatrixGetColumn( finalMatrix, 2, m_vUp );
 		m_vRight = -m_vRight;
 
-		//Predicting these is a terrible idea
 		m_ptOrigin = vOrigin;
 		m_qAbsAngle = qAngles;
 	}
@@ -1452,7 +1436,6 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 		OnActiveStateChanged();
 	}
 
-	//Predicting this is a terrible idea
 	m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
 
 	m_pLinkedPortal = m_hLinkedPortal;
@@ -1460,6 +1443,7 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	
 	PortalMoved(); //updates link matrix and internals
 	OnPortalMoved();
+	UpdateTeleportMatrix();
 
 	UpdateGhostRenderables();
 
@@ -1737,97 +1721,39 @@ void C_Prop_Portal::Fizzle( void )
 
 bool C_Prop_Portal::ShouldPredict( void )
 {
-#if 1
-
 	if ( GetPredictionOwner()->IsLocalPlayer() )
 		return true;
 
 	return BaseClass::ShouldPredict();
-#else
-	return true;
-#endif
 }
 
 C_BasePlayer *C_Prop_Portal::GetPredictionOwner( void )
 {
-#if 0 // Old, Portal 2's Method.
-	if ( m_hFiredByPlayer != NULL )
-		return (C_BasePlayer *)m_hFiredByPlayer.Get();
-
-	{
-		C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer( );
-
-		if ( pLocalPlayer )
-		{
-			CWeaponPortalgun *pPortalgun = dynamic_cast<CWeaponPortalgun*>( pLocalPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
-			if ( pPortalGun && ((pPortalgun->GetAssociatedPortal( false ) == this) || (pPortalgun->GetAssociatedPortal( true ) == this)) )
-			{
-				m_hFiredByPlayer = pLocalPlayer;	// probably portal_place made this portal don't keep doing this
-				return pLocalPlayer;
-			}
-		}
-	}
-
-	return NULL;
-#else 
-
-#if 1
-	
-	// This is just in case the owner's linkage ID changes.
-	if (m_pPredictionOwner)
-	{
-		C_WeaponPortalgun *pPortalgun = dynamic_cast<C_WeaponPortalgun*>( m_pPredictionOwner->Weapon_OwnsThisType( "weapon_portalgun" ) );
-		if (pPortalgun)
-		{
-			if ( pPortalgun->m_iPortalLinkageGroupID != m_iLinkageGroupID )
-			{
-				m_pPredictionOwner = NULL;
-				return NULL;
-			}
-		}
-	}
-	
-	// Portal Coop's method.
-	C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer( );
-	if (pLocalPlayer)
-	{
-		C_WeaponPortalgun *pPortalgun = dynamic_cast<C_WeaponPortalgun*>( pLocalPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
-		if (pPortalgun)
-		{
-			if ( pPortalgun->m_iPortalLinkageGroupID == m_iLinkageGroupID )
-			{
-				m_pPredictionOwner = pLocalPlayer;
-				return pLocalPlayer;
-			}
-		}
-	}
-
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
 		C_BasePlayer *pPlayer = UTIL_PlayerByIndex(i);
 		if (!pPlayer)
 			continue;
 		
-		C_WeaponPortalgun *pPortalgun = dynamic_cast<C_WeaponPortalgun*>( pPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
+		C_WeaponPortalgun *pPortalgun = assert_cast<C_WeaponPortalgun*>( pPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
 		if (!pPortalgun)
 			continue;
 		
-		if ( pPortalgun->m_iPortalLinkageGroupID == m_iLinkageGroupID )
+		if ( pPortalgun->m_iPortalLinkageGroupID != m_iLinkageGroupID )
 		{
-			m_pPredictionOwner = pPlayer;
-			return pPlayer;
+			continue;
 		}
+
+		if ( !pPortalgun->CanFirePortal1() && !m_bIsPortal2 )
+			continue;
+		
+		if ( !pPortalgun->CanFirePortal2() && m_bIsPortal2 )
+			continue;
+
+		return pPlayer;
 	}
 
-	m_pPredictionOwner = NULL;
 	return NULL;
-#else // The I give up method.
-
-	return C_BasePlayer::GetLocalPlayer();
-
-#endif
-
-#endif
 }
 
 void C_Prop_Portal::OnPortalMoved( void )

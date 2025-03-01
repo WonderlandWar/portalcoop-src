@@ -554,7 +554,7 @@ void CProp_Portal::DoFizzleEffect( int iEffect, int iLinkageGroupID, bool bDelay
 	ep.m_pOrigin = &m_vAudioOrigin;
 
 	// Rumble effects on the firing player (if one exists)
-	CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>( m_hPlacedBy.Get() );
+	CWeaponPortalgun *pPortalGun = ( m_hPlacedBy.Get() );
 
 	if ( pPortalGun && (iEffect != PORTAL_FIZZLE_CLOSE ) 
 				    && (iEffect != PORTAL_FIZZLE_SUCCESS )
@@ -1807,16 +1807,35 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 		}
 	}
 
-	CRecipientFilter filter;
-	filter.UsePredictionRules();
 
-	if ( m_bIsPortal2 )
+	bool bOldPlaySound = false;
+	CWeaponPortalgun *pPortalgun = m_hPlacedBy;
+	if ( !pPortalgun || !pPortalgun->GetOwnerEntity() ) // a portalgun without an owner
+		bOldPlaySound = true;
+
+	if ( bOldPlaySound )
 	{
-		EmitSound( filter, entindex(), "Portal.open_red" );
+		if ( m_bIsPortal2 )
+		{
+			EmitSound( "Portal.open_red" );
+		}
+		else
+		{
+			EmitSound( "Portal.open_blue" );
+		}
 	}
 	else
 	{
-		EmitSound( filter, entindex(), "Portal.open_blue" );
+		CRecipientFilter filter;
+		filter.UsePredictionRules();
+		if ( m_bIsPortal2 )
+		{
+			EmitSound( filter, entindex(), "Portal.open_red" );
+		}
+		else
+		{
+			EmitSound( filter, entindex(), "Portal.open_blue" );
+		}
 	}
 }
 

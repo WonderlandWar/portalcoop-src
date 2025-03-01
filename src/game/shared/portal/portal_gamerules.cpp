@@ -322,12 +322,17 @@ void CPortalGameRules::ClientSettingsChanged( CBasePlayer *pPlayer )
 {
 #ifndef CLIENT_DLL
 	CPortal_Player *pPortalPlayer = static_cast<CPortal_Player*>( pPlayer );
+	int iPlayerIndex = pPlayer->entindex();
 
-	if (pPortalPlayer == NULL)
-		return;
+	// Handle portal funnel option
+	//
+	const char *pszName = engine->GetClientConVarValue( iPlayerIndex, "cl_player_funnel_into_portals" );
+	pPortalPlayer->m_bPortalFunnel = atoi( pszName ) != 0;
 
+	// Handle playermodel selection
+	//
 	const char *pCurrentModel = modelinfo->GetModelName(pPlayer->GetModel());
-	const char *szModelName = engine->GetClientConVarValue(engine->IndexOfEdict(pPlayer->edict()), "cl_playermodel");
+	const char *szModelName = engine->GetClientConVarValue( iPlayerIndex, "cl_playermodel");
 
 	//If we're different.
 	if (stricmp(szModelName, pCurrentModel))
@@ -344,8 +349,10 @@ void CPortalGameRules::ClientSettingsChanged( CBasePlayer *pPlayer )
 			ClientPrint(pPortalPlayer, HUD_PRINTTALK, szReturnString);
 		}
 	}
-	
-	const char *szColorSet = engine->GetClientConVarValue(engine->IndexOfEdict(pPlayer->edict()), "cl_portal_color_set");
+
+	// Handle portal color set
+	//
+	const char *szColorSet = engine->GetClientConVarValue( iPlayerIndex, "cl_portal_color_set");
 	
 	if (!strcmp(szColorSet, "0"))
 		pPortalPlayer->m_iCustomPortalColorSet = 0;

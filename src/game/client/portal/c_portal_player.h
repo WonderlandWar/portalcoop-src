@@ -231,9 +231,6 @@ public:
 
 	CSoundPatch		*m_pWooshSound;
 	bool	m_bIntersectingPortalPlane;
-	
-	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
-	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
 
 	C_Prop_Portal *m_pPortalEnvironments;
 	C_Prop_Portal *m_pTransformPortal;
@@ -330,8 +327,6 @@ private:
 
 	bool m_bToolMode_EyeHasPortalled_LastRecord; //when recording, keep track of whether we teleported the camera position last capture or not. Need to avoid interpolating when switching
 
-	Vector m_vEyeOffset;
-
 public:
 
 	unsigned char m_iPortalLinkageGroupID; //which portal linkage group this gun is tied to, usually set by mapper, or inherited from owning player's index
@@ -341,8 +336,6 @@ public:
 	bool	m_bEyePositionIsTransformedByPortal; //when the eye and body positions are not on the same side of a portal
 
 	CHandle<C_Prop_Portal>	m_hPortalEnvironment; //a portal whose environment the player is currently in, should be invalid most of the time
-
-	CHandle<C_Prop_Portal>	m_hPortalLastEnvironment;
 
 	float m_fLatestServerTeleport;
 	VMatrix m_matLatestServerTeleportationInverseMatrix;

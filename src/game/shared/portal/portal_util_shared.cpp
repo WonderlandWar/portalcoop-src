@@ -1053,7 +1053,6 @@ void UTIL_PortalLinked_TraceRay( const CProp_Portal *pPortal, const Ray_t &ray, 
 void UTIL_Portal_TraceEntity( CBaseEntity *pEntity, const Vector &vecAbsStart, const Vector &vecAbsEnd, 
 							 unsigned int mask, ITraceFilter *pFilter, trace_t *pTrace )
 {
-	/*
 #ifdef CLIENT_DLL
 	Assert( (GameRules() == NULL) || GameRules()->IsMultiplayer() );
 	Assert( pEntity->IsPlayer() );
@@ -1065,12 +1064,13 @@ void UTIL_Portal_TraceEntity( CBaseEntity *pEntity, const Vector &vecAbsStart, c
 		if( pPortal )
 			pPortalSimulator = &pPortal->m_PortalSimulator;
 	}
+	else
+	{
+		pPortalSimulator = CPortalSimulator::GetSimulatorThatOwnsEntity(pEntity);
+	}
 #else
 	CPortalSimulator *pPortalSimulator = CPortalSimulator::GetSimulatorThatOwnsEntity( pEntity );
 #endif
-	*/
-
-	CPortalSimulator *pPortalSimulator = CPortalSimulator::GetSimulatorThatOwnsEntity( pEntity );
 
 	memset( pTrace, 0, sizeof(trace_t));
 	pTrace->fraction = 1.0f;
@@ -2349,6 +2349,60 @@ bool UTIL_IsCollideableIntersectingPhysCollide( ICollideable *pCollideable, cons
 	}
 
 	return false;
+}
+
+//it turns out that using MatrixInverseTR() is theoretically correct. But we need to ensure that these matrices match exactly on the client/server. 
+//And computing inverses screws that up just enough (differences of ~0.00005 in the translation some times) to matter. So we compute each from scratch every time
+#if defined( CLIENT_DLL )
+void UTIL_Portal_ComputeMatrix_ForReal( CPortalRenderable_FlatBasic *pLocalPortal, CPortalRenderable_FlatBasic *pRemotePortal )
+#else
+void UTIL_Portal_ComputeMatrix_ForReal( CProp_Portal *pLocalPortal, CProp_Portal *pRemotePortal )
+#endif
+{
+	VMatrix worldToLocal_Rotated;
+	worldToLocal_Rotated.m[0][0] = -pLocalPortal->m_vForward.x;
+	worldToLocal_Rotated.m[0][1] = -pLocalPortal->m_vForward.y;
+	worldToLocal_Rotated.m[0][2] = -pLocalPortal->m_vForward.z;
+	worldToLocal_Rotated.m[0][3] = ((Vector)pLocalPortal->m_ptOrigin).Dot( pLocalPortal->m_vForward );
+
+	worldToLocal_Rotated.m[1][0] = pLocalPortal->m_vRight.x;
+	worldToLocal_Rotated.m[1][1] = pLocalPortal->m_vRight.y;
+	worldToLocal_Rotated.m[1][2] = pLocalPortal->m_vRight.z;
+	worldToLocal_Rotated.m[1][3] = -((Vector)pLocalPortal->m_ptOrigin).Dot( pLocalPortal->m_vRight );
+
+	worldToLocal_Rotated.m[2][0] = pLocalPortal->m_vUp.x;
+	worldToLocal_Rotated.m[2][1] = pLocalPortal->m_vUp.y;
+	worldToLocal_Rotated.m[2][2] = pLocalPortal->m_vUp.z;
+	worldToLocal_Rotated.m[2][3] = -((Vector)pLocalPortal->m_ptOrigin).Dot( pLocalPortal->m_vUp );		
+
+	worldToLocal_Rotated.m[3][0] = 0.0f;
+	worldToLocal_Rotated.m[3][1] = 0.0f;
+	worldToLocal_Rotated.m[3][2] = 0.0f;
+	worldToLocal_Rotated.m[3][3] = 1.0f;
+
+	VMatrix remoteToWorld( pRemotePortal->m_vForward, -pRemotePortal->m_vRight, pRemotePortal->m_vUp );
+	remoteToWorld.SetTranslation( pRemotePortal->m_ptOrigin );
+
+	//final
+	pLocalPortal->m_matrixThisToLinked = remoteToWorld * worldToLocal_Rotated;
+}
+
+//MUST be a shared function to prevent floating point precision weirdness in the 100,000th decimal place between client/server that we're attributing to differing register usage.
+#if defined( CLIENT_DLL )
+void UTIL_Portal_ComputeMatrix( CPortalRenderable_FlatBasic *pLocalPortal, CPortalRenderable_FlatBasic *pRemotePortal )
+#else
+void UTIL_Portal_ComputeMatrix( CProp_Portal *pLocalPortal, CProp_Portal *pRemotePortal )
+#endif
+{
+	if ( pRemotePortal != NULL )
+	{
+		UTIL_Portal_ComputeMatrix_ForReal( pLocalPortal, pRemotePortal );
+		UTIL_Portal_ComputeMatrix_ForReal( pRemotePortal, pLocalPortal );
+	}
+	else
+	{
+		pLocalPortal->m_matrixThisToLinked.Identity(); //don't accidentally teleport objects to zero space
+	}
 }
 
 float GetReliableCurrentTime()

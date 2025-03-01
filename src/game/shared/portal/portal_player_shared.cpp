@@ -1001,12 +1001,6 @@ void CPortal_Player::ForceDuckThisFrame( Vector origin, Vector velocity )
 	}
 }
 
-void CPortal_Player::SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin )
-{
-	const Vector vOriginOffset = vOldOrigin - vNewOrigin;
-	m_vEyeOffset = vOriginOffset;
-}
-
 void CPortal_Player::UnDuck(void)
 {
 	if (m_Local.m_bDucked != false)

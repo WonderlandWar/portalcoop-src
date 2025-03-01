@@ -24,6 +24,8 @@ using namespace vgui;
 
 ConVar cl_portal_color_set("cl_portal_color_set", "0", FCVAR_ARCHIVE | FCVAR_USERINFO, "Sets the color portal set for the client", true, 0, true, 4);
 
+ConVar cl_player_funnel_into_portals( "cl_player_funnel_into_portals", "1", FCVAR_ARCHIVE | FCVAR_ARCHIVE_XBOX | FCVAR_USERINFO, "Causes the player to auto correct toward the center of floor portals." ); 
+
 COptionsSubPortal::COptionsSubPortal(vgui::Panel *parent) : PropertyPage(parent, NULL)
 {
 	m_pPortalFunnelCheckBox = new CCvarToggleCheckButton( 

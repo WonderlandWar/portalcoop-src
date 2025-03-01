@@ -132,7 +132,6 @@ void CProp_Portal::PortalSimulator_ReleasedOwnershipOfEntity( CBaseEntity *pEnti
 {
 	if( pEntity->IsPlayer() && (((CPortal_Player *)pEntity)->m_hPortalEnvironment.Get() == this) )
 	{
-
 		((CPortal_Player *)pEntity)->m_hPortalEnvironment = NULL;
 	}
 }
@@ -319,7 +318,7 @@ void CProp_Portal::PlacePortal( const Vector &vOrigin, const QAngle &qAngles, fl
 			m_iDelayedFailure = PORTAL_FIZZLE_NONE;
 
 #ifdef GAME_DLL
-		CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>( m_hPlacedBy.Get() );
+		CWeaponPortalgun *pPortalGun = ( m_hPlacedBy.Get() );
 
 		if( pPortalGun )
 		{
@@ -349,7 +348,7 @@ void CProp_Portal::PlacePortal( const Vector &vOrigin, const QAngle &qAngles, fl
 #endif
 
 #ifdef GAME_DLL
-	CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>( m_hPlacedBy.Get() );
+	CWeaponPortalgun *pPortalGun = ( m_hPlacedBy.Get() );
 
 	if( pPortalGun )
 	{
@@ -368,7 +367,7 @@ void CProp_Portal::StealPortal( CProp_Portal *pHitPortal )
 	if (!pHitPortal)
 		return;
 
-	CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>(m_hPlacedBy.Get());
+	CWeaponPortalgun *pPortalGun = (m_hPlacedBy.Get());
 	
 	CBaseEntity *pActivator = this;
 
@@ -465,7 +464,7 @@ void CProp_Portal::DelayedPlacementThink( void )
 
 
 #if defined( GAME_DLL )
-	CWeaponPortalgun *pPortalGun = dynamic_cast<CWeaponPortalgun*>(m_hPlacedBy.Get());
+	CWeaponPortalgun *pPortalGun = (m_hPlacedBy.Get());
 
 	if( pPortalGun )
 	{

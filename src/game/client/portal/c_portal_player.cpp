@@ -52,7 +52,7 @@ extern ConVar cl_sidespeed;
 #define REORIENTATION_RATE 120.0f
 #define REORIENTATION_ACCELERATION_RATE 400.0f
 
-#define ENABLE_PORTAL_EYE_INTERPOLATION_CODE 1
+//#define ENABLE_PORTAL_EYE_INTERPOLATION_CODE 1
 
 
 #define DEATH_CC_LOOKUP_FILENAME "materials/correction/cc_death.raw"
@@ -336,6 +336,8 @@ BEGIN_PREDICTION_DATA( C_Portal_Player )
 	DEFINE_PRED_FIELD( m_nResetEventsParity, FIELD_INTEGER, FTYPEDESC_OVERRIDE | FTYPEDESC_PRIVATE | FTYPEDESC_NOERRORCHECK ),
 		
 	DEFINE_PRED_FIELD( m_hPortalEnvironment, FIELD_EHANDLE, FTYPEDESC_NOERRORCHECK ),
+	
+	DEFINE_PRED_FIELD( m_bPitchReorientation, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	
 	//DEFINE_FIELD( m_matLastPortalled, FIELD_VMATRIX_WORLDSPACE ), //Garbage data :(
 
@@ -1610,10 +1612,6 @@ void C_Portal_Player::UnrollPredictedTeleportations( int iCommandNumber )
 
 				UndoPredictedPortalTeleportation( m_PredictedPortalTeleportations[i].pEnteredPortal, m_PredictedPortalTeleportations[i].flTime, matTransform, m_PredictedPortalTeleportations[i].bDuckForced );
 
-				// Hack? Squash camera values back to neutral.
-//				m_PortalLocal.m_Up = Vector(0,0,1);
-//				m_PortalLocal.m_qQuaternionPunch.Init(0,0,0);
-				m_vEyeOffset = vec3_origin;
 
 #if ( PLAYERPORTALDEBUGSPEW == 1 )
 				Warning( "<--Rolling back predicted teleportation %d, %f %i %i\n", m_PredictedPortalTeleportations.Count(), m_PredictedPortalTeleportations[i].flTime, m_PredictedPortalTeleportations[i].iCommandNumber, iCommandNumber );

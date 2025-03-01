@@ -38,6 +38,7 @@
 #include "point_ping_linker.h"
 #include "hierarchy.h"
 #include "dt_utlvector_send.h"
+#include "physicsshadowclone.h"
 
 extern CBaseEntity* g_pLastSpawn;
 
@@ -429,7 +430,9 @@ CPortal_Player::CPortal_Player()
 	m_flImplicitVerticalStepSpeed = 0.0f;
 	
 	m_EntityPortalledNetworkMessages.SetCount( MAX_ENTITY_PORTALLED_NETWORK_MESSAGES );
-	
+
+	m_bPortalFunnel = false;
+
 	m_iszExpressionScene = NULL_STRING;
 	m_hExpressionSceneEnt = NULL;
 	m_flExpressionLoopTime = 0.0f;
@@ -632,6 +635,9 @@ void CPortal_Player::Activate(void)
 	BaseClass::Activate();
 	//SetContextThink(&CPortal_Player::HudHintThink, gpGlobals->curtime + 10, s_pHudHintContext);
 	//SetNextThink(gpGlobals->curtime + 10.0f);
+	
+	const char *pszName = engine->GetClientConVarValue( entindex(), "cl_player_funnel_into_portals" );
+	m_bPortalFunnel = atoi( pszName ) != 0;
 }
 
 void CPortal_Player::NotifySystemEvent(CBaseEntity* pNotify, notify_system_event_t eventType, const notify_system_event_params_t& params)
@@ -684,12 +690,18 @@ bool CPortal_Player::ValidatePlayerModel(const char* pModel)
 	return false;
 }
 
+const char* DefaultPlayerModel()
+{
+	// Some mods don't use Chell, so this function is being setup just in case another mod is added in the future that uses a different model
+	return "models/player/chell.mdl";
+}
+
 void CPortal_Player::SetPlayerModel(void)
 {
 	const char* szModelName = NULL;
 	const char *pszCurrentModelName = modelinfo->GetModelName(GetModel());
 
-	szModelName = engine->GetClientConVarValue(engine->IndexOfEdict(edict()), "cl_playermodel");
+	szModelName = engine->GetClientConVarValue( entindex(), "cl_playermodel");
 		
 	if (ValidatePlayerModel(szModelName) == false)
 	{
@@ -697,7 +709,7 @@ void CPortal_Player::SetPlayerModel(void)
 		
 		if ( ValidatePlayerModel( pszCurrentModelName ) == false )
 		{
-			pszCurrentModelName = "models/player/chell.mdl";
+			pszCurrentModelName = DefaultPlayerModel();
 		}
 
 		Q_snprintf(szReturnString, sizeof(szReturnString), "cl_playermodel %s\n", pszCurrentModelName);
@@ -710,7 +722,7 @@ void CPortal_Player::SetPlayerModel(void)
 
 	if (modelIndex == -1)
 	{
-		szModelName = "models/player/chell.mdl";
+		szModelName = DefaultPlayerModel();
 
 		char szReturnString[512];
 
@@ -741,22 +753,6 @@ void CPortal_Player::SetupSkin( void )
 	else
 		m_nSkin = 0;
 
-}
-
-bool CPortal_Player::PortalColorSetWasDifferent( void )
-{
-	CWeaponPortalgun *pPortalgun = static_cast<CWeaponPortalgun*>(Weapon_OwnsThisType("weapon_portalgun"));
-	if ( pPortalgun )
-	{
-		if (pPortalgun->m_iCustomPortalColorSet != m_iCustomPortalColorSet)
-		{
-			return true;
-		}
-	}
-
-
-
-	return false;
 }
 
 void CPortal_Player::ResetAnimation(void)
@@ -790,11 +786,11 @@ bool CPortal_Player::Weapon_Switch(CBaseCombatWeapon* pWeapon, int viewmodelinde
 
 int CPortal_Player::GetPlayerConcept( void )
 {
-	string_t iszPlayerModel = GetModelName();
-	
-	if (!strcmp(iszPlayerModel.ToCStr(), g_ppszPortalMPModels[MODEL_CHELL])) // Chell
+	const char *pszPlayerModel = GetModelName().ToCStr();
+
+	if (!strcmp(pszPlayerModel, g_ppszPortalMPModels[MODEL_CHELL])) // Chell
 		return CONCEPT_CHELL_IDLE;
-	else if (!strcmp(iszPlayerModel.ToCStr(), g_ppszPortalMPModels[MODEL_MEL])) // Mel
+	else if (!strcmp(pszPlayerModel, g_ppszPortalMPModels[MODEL_MEL])) // Mel
 	{
 		if ( GlobalEntity_GetState("pcoop_escape_expressions") == GLOBAL_ON )
 		{
@@ -805,9 +801,9 @@ int CPortal_Player::GetPlayerConcept( void )
 			return CONCEPT_MEL_IDLE;
 		}
 	}
-	else if (!strcmp(iszPlayerModel.ToCStr(), g_ppszPortalMPModels[MODEL_ABBY])) // Abby
+	else if (!strcmp(pszPlayerModel, g_ppszPortalMPModels[MODEL_ABBY])) // Abby
 		return CONCEPT_ABBY_IDLE;
-	else if (!strcmp(iszPlayerModel.ToCStr(), g_ppszPortalMPModels[MODEL_MALE_PORTAL_PLAYER])) // male_portal_player
+	else if (!strcmp(pszPlayerModel, g_ppszPortalMPModels[MODEL_MALE_PORTAL_PLAYER])) // male_portal_player
 		return CONCEPT_MALE_PORTAL_PLAYER_IDLE;
 
 	return CONCEPT_CHELL_IDLE;

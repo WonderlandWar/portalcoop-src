@@ -47,8 +47,6 @@ public:
 	
 	virtual bool ShouldPredict( void );
 	virtual C_BasePlayer *GetPredictionOwner( void );
-	
-	C_BasePlayer *m_pPredictionOwner;
 
 	CHandle<C_Prop_Portal>	m_hLinkedPortal; //the portal this portal is linked to
 	CHandle<C_Prop_Portal>	GetLinkedPortal() { return m_hLinkedPortal; } //the portal this portal is linked to
@@ -137,13 +135,13 @@ public:
 	Vector		m_vDelayedPosition;
 	QAngle		m_qDelayedAngles;
 	int			m_iDelayedFailure;
-	EHANDLE		m_hPlacedBy;
+	CHandle<C_WeaponPortalgun> m_hPlacedBy;
 
 	virtual void			OnPreDataChanged( DataUpdateType_t updateType );
 	void					HandleNetworkChanges( void );
 	virtual void			OnDataChanged( DataUpdateType_t updateType );
 	virtual int				DrawModel( int flags );
-	void					UpdateOriginPlane( void );
+	void					UpdateTeleportMatrix( void );
 	void					UpdateGhostRenderables( void );
 	
 	void					SetIsPortal2( bool bValue );

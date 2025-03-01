@@ -72,7 +72,7 @@ public:
 	Vector		m_vDelayedPosition;
 	QAngle		m_qDelayedAngles;
 	int			m_iDelayedFailure;
-	CNetworkHandle(CBaseEntity, m_hPlacedBy);
+	CNetworkHandle(CWeaponPortalgun, m_hPlacedBy);
 
 	COutputEvent m_OnPlacedSuccessfully;		// Output in hammer for when this portal was successfully placed (not attempted and fizzed).
 

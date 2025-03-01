@@ -188,8 +188,6 @@ public:
 	void SetPlayerModel( void );
 
 	void SetupSkin( void );
-
-	bool PortalColorSetWasDifferent( void );
 	
 	int	GetPlayerConcept( void );
 	void UpdateExpression ( void );
@@ -250,9 +248,6 @@ public:
 	CProp_Portal *m_pSecondaryPortal;
 
 	CNetworkVar(int, m_iCustomPortalColorSet);
-	
-	void SetEyeUpOffset( const Vector& vOldUp, const Vector& vNewUp );
-	void SetEyeOffset( const Vector& vOldOrigin, const Vector& vNewOrigin );
 
 	PortalGunSpawnInfo_t m_PortalGunSpawnInfo;
 
@@ -260,6 +255,8 @@ public:
 	void SetLookForUseEntity( bool bLookForUseEntity ) { m_bLookForUseEntity = bLookForUseEntity; }
 
 	CNetworkHandle( CProp_Portal, m_hHeldObjectPortal );	// networked entity handle
+
+	bool m_bPortalFunnel;
 
 private:
 	
@@ -300,8 +297,6 @@ private:
 	string_t					m_iszExpressionScene;
 	EHANDLE						m_hExpressionSceneEnt;
 	float						m_flExpressionLoopTime;
-
-	Vector m_vEyeOffset;
 
 	
 	struct RecentPortalTransform_t
