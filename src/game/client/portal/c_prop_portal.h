@@ -46,7 +46,10 @@ public:
 	virtual void GetToolRecordingState( KeyValues *msg );
 	
 	virtual bool ShouldPredict( void );
-	virtual C_BasePlayer *GetPredictionOwner( void );
+	virtual C_BasePlayer *GetPredictionOwner( void );	
+
+	// A workaround for prediction
+	bool					LocalPlayerCanPlace( void );
 
 	CHandle<C_Prop_Portal>	m_hLinkedPortal; //the portal this portal is linked to
 	CHandle<C_Prop_Portal>	GetLinkedPortal() { return m_hLinkedPortal; } //the portal this portal is linked to
@@ -108,7 +111,6 @@ public:
 	virtual void			PortalSimulator_ReleasedOwnershipOfEntity(C_BaseEntity *pEntity);
 
 	void					SetupPortalColorSet(void);
-
 
 
 	struct Portal_PreDataChanged

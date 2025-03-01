@@ -1739,7 +1739,10 @@ C_BasePlayer *C_Prop_Portal::GetPredictionOwner( void )
 			continue;
 		}
 
-		if ( m_bIsPortal2 )
+		// FIXME:
+		// This is needed to prevent unowned portals from just "popping" without an opening animation
+		// but enabling this code breaks predicted portal views with unpredicted portals!
+		/*if ( m_bIsPortal2 )
 		{
 			if ( !pPortalgun->CanFirePortal2() )
 				continue;
@@ -1748,19 +1751,46 @@ C_BasePlayer *C_Prop_Portal::GetPredictionOwner( void )
 		{
 			if ( !pPortalgun->CanFirePortal1() )
 				continue;
-		}
-		
+		}*/
+
 		return pPlayer;
 	}
 
 	return NULL;
 }
 
+bool C_Prop_Portal::LocalPlayerCanPlace( void )
+{
+	C_BasePlayer *pPlayer = C_BasePlayer::GetLocalPlayer();
+	if ( !pPlayer )
+		return false;
+	
+	C_WeaponPortalgun *pPortalgun = assert_cast<C_WeaponPortalgun*>( pPlayer->Weapon_OwnsThisType( "weapon_portalgun" ) );
+	if ( !pPortalgun )
+		return false;
+
+	if ( m_iLinkageGroupID != pPortalgun->m_iPortalLinkageGroupID )
+		return false;
+
+	if ( m_bIsPortal2 )
+	{
+		if ( pPortalgun->CanFirePortal2() )
+			return true;
+	}
+	else
+	{
+		if ( pPortalgun->CanFirePortal1() )
+			return true;
+	}
+
+	return false;
+}
+
 void C_Prop_Portal::OnPortalMoved( void )
 {
 	if( IsActive() )
 	{
-		if( !GetPredictable() || (prediction->InPrediction() && prediction->IsFirstTimePredicted()) )
+		if( (!GetPredictable() || !LocalPlayerCanPlace()) || (prediction->InPrediction() && prediction->IsFirstTimePredicted()) )
 		{
 			m_fOpenAmount = 0.0f;
 			//SetNextClientThink( CLIENT_THINK_ALWAYS ); //we need this to help open up
@@ -1790,7 +1820,7 @@ void C_Prop_Portal::OnActiveStateChanged( void )
 		*/
 
 		// UpdateTransformedLighting();
-		if( !GetPredictable() || (prediction->InPrediction() && prediction->IsFirstTimePredicted()) )
+		if( (!GetPredictable() || !LocalPlayerCanPlace()) || (prediction->InPrediction() && prediction->IsFirstTimePredicted()) )
 		{
 			m_fOpenAmount = 0.0f;
 			m_fStaticAmount = 1.0f;
