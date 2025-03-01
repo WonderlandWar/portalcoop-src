@@ -107,7 +107,7 @@ BEGIN_PREDICTION_DATA(C_Prop_Portal)
 	DEFINE_FIELD( m_vRight, FIELD_VECTOR ),
 	DEFINE_FIELD( m_vUp, FIELD_VECTOR ),
 	DEFINE_FIELD( m_matrixThisToLinked, FIELD_VMATRIX ),
-	//DEFINE_FIELD( m_plane_Origin, FIELD_QUATERNION ),
+	DEFINE_FIELD( m_plane_Origin, FIELD_QUATERNION ), // Vector4D is the same size as a Quaternion, it's fine
 	//DEFINE_FIELD( m_iPortalColorSet, FIELD_INTEGER ),
 
 	DEFINE_PRED_FIELD( m_nPlacementAttemptParity, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),

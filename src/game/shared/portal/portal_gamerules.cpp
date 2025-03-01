@@ -395,10 +395,18 @@ void CPortalGameRules::ClientSettingsChanged( CBasePlayer *pPlayer )
 #ifdef GAME_DLL
 const char *CPortalGameRules::GetGameDescription( void )
 { 
+	if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA )
+	{
+		if (gpGlobals->maxClients == 2)
+			return "Rexaura - 2 Player";
+		else if (gpGlobals->maxClients == 3)
+			return "Rexaura - 3 Player";
+	}
+	
 	if (gpGlobals->maxClients == 2)
-		return "2 Player";
-	if (gpGlobals->maxClients == 3)
-		return "3 Player";
+		return "Portal - 2 Player";
+	else if (gpGlobals->maxClients == 3)
+		return "Portal - 3 Player";
 
 	return "Custom Player Count"; 
 } 

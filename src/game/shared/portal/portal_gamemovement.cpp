@@ -323,13 +323,12 @@ void CPortalGameMovement::ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMov
 
 	g_bAllowForcePortalTrace = false;
 	g_bForcePortalTrace = false;
-#ifdef GAME_DLL
 	//if ( !pPlayer->m_bForceDuckedByTriggerPlayerMove )
 	//{
 		pPlayer->UnforceButtons( IN_DUCK );
 	//}
 	pPlayer->UnforceButtons( IN_JUMP );
-#endif
+
 	//This is probably not needed, but just in case.
 	gpGlobals->frametime = flStoreFrametime;
 }
@@ -570,8 +569,9 @@ void CPortalGameMovement::PlayerRoughLandingEffects( float fvol )
 		filter.RemoveRecipient( player );
 #else
 		C_RecipientFilter filter;
+		filter.AddRecipient( player );
 #endif
-		filter.UsePredictionRules();
+		//filter.UsePredictionRules();
 		CSoundParameters params;
 		if ( CBaseEntity::GetParametersForSound( "PortalPlayer.FallRecover", params, NULL ) )
 		{

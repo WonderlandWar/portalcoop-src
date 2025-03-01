@@ -455,7 +455,7 @@ void C_Portal_Player::StopLoopingSounds( void )
 }
 void C_Portal_Player::UpdatePortalPlaneSounds(void)
 {
-#if 0
+#if 1
 	CProp_Portal* pPortal = m_hPortalEnvironment;
 	if (pPortal && pPortal->IsActive())
 	{
