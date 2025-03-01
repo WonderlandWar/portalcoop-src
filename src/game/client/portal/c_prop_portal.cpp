@@ -959,8 +959,8 @@ void C_Prop_Portal::HandleNetworkChanges( void )
 
 	if( bNewLinkage )
 		m_PortalSimulator.DetachFromLinked(); //detach now so moves are theoretically faster
-
-	if( m_bActivated )
+	
+	if( IsActive() )
 	{
 		//generic stuff we'll need
 		g_pPortalRender->AddPortal( this ); //will know if we're already added and avoid adding twice
@@ -1029,7 +1029,6 @@ void C_Prop_Portal::OnDataChanged( DataUpdateType_t updateType )
 
 	if (m_iPortalColorSet != m_iOldPortalColorSet)
 	{
-
 		DestroyAttachedParticles();
 
 		if (ShouldCreateAttachedParticles())
@@ -1059,10 +1058,6 @@ int C_Prop_Portal::DrawModel( int flags )
 		return 0;
 
 	int iRetVal = 0;
-
-	// This should fix all prediction errors, might be costly though.
-	if (IsActivedAndLinked())
-		PortalMoved();
 
 	C_Prop_Portal *pLinkedPortal = m_hLinkedPortal.Get();
 
@@ -1381,7 +1376,6 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 
 		m_hLinkedPortal = pLink;
 
-
 		if( pLink != NULL )
 		{
 			CHandle<CProp_Portal> hThis = this;
@@ -1396,6 +1390,7 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	{
 		m_hLinkedPortal = NULL;
 	}
+
 	//Warning( "C_Portal_Base2D::NewLocation(client) %f     %.2f %.2f %.2f\n", gpGlobals->curtime, XYZ( vOrigin ) );
 
 	//get absolute origin and angles, but cut out interpolation, use the network position and angles as transformed by any move parent
@@ -1439,7 +1434,6 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
 
 	m_pLinkedPortal = m_hLinkedPortal;
-
 	
 	PortalMoved(); //updates link matrix and internals
 	OnPortalMoved();
@@ -1721,7 +1715,8 @@ void C_Prop_Portal::Fizzle( void )
 
 bool C_Prop_Portal::ShouldPredict( void )
 {
-	if ( GetPredictionOwner()->IsLocalPlayer() )
+	CBasePlayer *pOwner = GetPredictionOwner();
+	if ( pOwner && pOwner->IsLocalPlayer() )
 		return true;
 
 	return BaseClass::ShouldPredict();
@@ -1744,12 +1739,17 @@ C_BasePlayer *C_Prop_Portal::GetPredictionOwner( void )
 			continue;
 		}
 
-		if ( !pPortalgun->CanFirePortal1() && !m_bIsPortal2 )
-			continue;
+		if ( m_bIsPortal2 )
+		{
+			if ( !pPortalgun->CanFirePortal2() )
+				continue;
+		}
+		else
+		{
+			if ( !pPortalgun->CanFirePortal1() )
+				continue;
+		}
 		
-		if ( !pPortalgun->CanFirePortal2() && m_bIsPortal2 )
-			continue;
-
 		return pPlayer;
 	}
 
