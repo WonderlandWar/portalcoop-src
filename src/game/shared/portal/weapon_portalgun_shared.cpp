@@ -19,7 +19,10 @@
 	#include "physicsshadowclone.h"
 	#include "te_effect_dispatch.h"
 	#include "trigger_portal_cleanser.h"
+	#include "info_placement_helper.h"
 #else
+#define CInfoPlacementHelper C_InfoPlacementHelper
+	#include "c_info_placement_helper.h"
 	#include "c_te_effect_dispatch.h"
 	#include "c_triggers.h"
 	#include "c_trigger_portal_cleanser.h"
@@ -709,8 +712,10 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 
 	PortalPlacedByType ePlacedBy = ( pPlayer ) ? ( PORTAL_PLACED_BY_PLAYER ) : ( PORTAL_PLACED_BY_PEDESTAL );
 
+	CInfoPlacementHelper *pPlacementHelper = NULL;
+
 	trace_t tr;
-	float fPlacementSuccess = TraceFirePortal( bPortal2, vTraceStart, vDirection, tr, vFinalPosition, qFinalAngles, ePlacedBy, bTest );
+	float fPlacementSuccess = TraceFirePortal( bPortal2, vTraceStart, vDirection, tr, vFinalPosition, qFinalAngles, ePlacedBy, &pPlacementHelper, bTest );
 		
 	if ( sv_portal_placement_never_fail.GetBool() )
 	{
@@ -806,7 +811,7 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 
 extern int AllEdictsAlongRay( CBaseEntity **pList, int listMax, const Ray_t &ray, int flagMask );
 
-float CWeaponPortalgun::TraceFirePortal( bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy, bool bTest /*= false*/ )
+float CWeaponPortalgun::TraceFirePortal( bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy, CInfoPlacementHelper **pPlacementHelper, bool bTest /*= false*/ )
 {
 	
 #ifdef GAME_DLL
@@ -901,11 +906,116 @@ float CWeaponPortalgun::TraceFirePortal( bool bPortal2, const Vector &vTraceStar
 
 	// Check that the placement succeed
 	VectorAngles( tr.plane.normal, vUp, qFinalAngles );
+	
+	// Hit any placement helpers at this point
+	*pPlacementHelper = AttemptSnapToPlacementHelper( bPortal2, vTraceStart, vDirection, tr, vFinalPosition, qFinalAngles, iPlacedBy, bTest );
+	if ( *pPlacementHelper )
+		return PORTAL_ANALOG_SUCCESS_NO_BUMP;
 
 	vFinalPosition = tr.endpos;
 
 	return VerifyPortalPlacementAndFizzleBlockingPortals(bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get() , vFinalPosition, qFinalAngles, iPlacedBy, bTest);
+}
 
+//-----------------------------------------------------------------------------
+// Purpose: Try to fit a portal using placement helpers
+//-----------------------------------------------------------------------------
+CInfoPlacementHelper *CWeaponPortalgun::AttemptSnapToPlacementHelper( bool bPortal2, const Vector &vTraceStart, const Vector &vDirection, trace_t &tr, Vector &vFinalPosition, QAngle &qFinalAngles, int iPlacedBy, bool bTest )
+{
+	CBaseEntity *pOwner = GetOwner();
+	// First, find a helper in the general area we hit
+	CInfoPlacementHelper *pHelper = UTIL_FindPlacementHelper( vFinalPosition, (pOwner && pOwner->IsPlayer()) ? (CBasePlayer *)pOwner : NULL );
+	if ( pHelper == NULL )
+		return NULL;
+
+#if defined( GAME_DLL )
+	if ( sv_portal_placement_debug.GetBool() )
+	{
+		Msg("PortalPlacement: Found placement helper centered at %f, %f, %f. Radius %f\n", XYZ(pHelper->GetAbsOrigin()), pHelper->GetTargetRadius() );
+	}
+#endif
+
+	Assert( !tr.plane.normal.IsZero() );
+
+	// Setup a trace filter that ignore / hits everything we care about
+#if defined( GAME_DLL )
+	CTraceFilterSimpleClassnameList baseFilter( this, COLLISION_GROUP_NONE );
+	UTIL_Portal_Trace_Filter( &baseFilter );
+	CTraceFilterTranslateClones traceFilterPortalShot( &baseFilter );
+#else
+	CTraceFilterSimpleClassnameList traceFilterPortalShot( this, COLLISION_GROUP_NONE );
+	UTIL_Portal_Trace_Filter( &traceFilterPortalShot );
+#endif
+
+	// re-hit the area near the center of the placement helper. Very small trace is fine
+	Vector vecStartPos = tr.plane.normal + pHelper->GetAbsOrigin();
+	Vector vecDir = -tr.plane.normal;
+	VectorNormalize( vecDir );
+	trace_t trHelper;
+	UTIL_TraceLine( vecStartPos, vecStartPos + vecDir*m_fMaxRange1, MASK_SHOT_PORTAL, &traceFilterPortalShot, &trHelper );
+	Assert ( trHelper.DidHit() );
+
+	// Use the helper angles, if specified
+	QAngle qHelperAngles = ( pHelper->ShouldUseHelperAngles() ) ? ( pHelper->GetTargetAngles() ) : qFinalAngles;
+
+	if ( sv_portal_placement_debug.GetBool() )
+	{
+		Msg("PortalPlacement: Using placement helper angles %f %f %f\n", XYZ(pHelper->GetTargetAngles()));
+	}
+
+	Vector vHelperFinalPos = trHelper.endpos;
+
+	bool bPlacementOnHelperValid = true;
+
+	// make sure the normals match
+	if ( VectorsAreEqual( trHelper.plane.normal, tr.plane.normal, FLT_EPSILON ) == false )
+	{
+		if ( sv_portal_placement_debug.GetBool() )
+		{
+			Msg("PortalPlacement: Not using placement helper because the surface normal of the portal's resting surface and the placement helper's intended surface do not match\n" );
+		}
+		bPlacementOnHelperValid = false;
+	}
+
+	//make sure distance is a sane amount
+	Vector vecHelperToHitPoint = tr.endpos - trHelper.endpos;
+	float flLenSq = vecHelperToHitPoint.LengthSqr();
+	if ( flLenSq > (pHelper->GetTargetRadius()*pHelper->GetTargetRadius()) )
+	{
+		if ( sv_portal_placement_debug.GetBool() )
+		{
+			Msg("PortalPlacement:Not using placement helper because the Portal's final position was outside the helper's radius!\n" );
+		}
+		bPlacementOnHelperValid = false;
+	}
+
+	if( bPlacementOnHelperValid )
+	{
+		// Find the portal we're moving
+		CProp_Portal *pPortal = bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get(); //CProp_Portal::FindPortal( m_iPortalLinkageGroupID, bPortal2 );
+		float fPlacementSuccess = VerifyPortalPlacement( pPortal, vHelperFinalPos, qHelperAngles, iPlacedBy, bTest );
+		
+		// run normal placement validity checks
+		if ( fPlacementSuccess < 0.5f )
+		{
+			if ( sv_portal_placement_debug.GetBool() )
+			{
+				Msg("PortalPlacement: Not using placement helper because portal could not fit in a valid spot at it's origin and angles\n" );
+			}
+
+			bPlacementOnHelperValid = false;
+		}
+	}
+
+	if ( bPlacementOnHelperValid )
+	{
+		vFinalPosition = vHelperFinalPos;
+		qFinalAngles = qHelperAngles;
+
+		return pHelper;
+	}
+
+	return NULL;
 }
 
 //-----------------------------------------------------------------------------

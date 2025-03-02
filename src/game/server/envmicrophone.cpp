@@ -265,6 +265,9 @@ bool CEnvMicrophone::CanHearSound(CSound *pSound, float &flVolume)
 	//if ( FClassnameIs( pSoundOwner, "trigger_ball_destroyer" ) )
 	//	return false;
 
+	// Don't hear portals, it will play the sound twice since the portal sounds are predicted
+	if ( pSoundOwner && FClassnameIs( pSoundOwner, "prop_portal" ) )
+		return false;
 #endif
 
 	if (pSoundOwner && ( pSoundOwner->IsPlayer() ) )
@@ -328,14 +331,16 @@ bool CEnvMicrophone::CanHearSound( int entindex, soundlevel_t soundlevel, float 
 	}
 
 #ifdef PORTAL
-	Assert( ( m_spawnflags & SF_MICROPHONE_IGNORE_NONATTENUATED ) != 0 );
-
 	CBaseCombatWeapon *pWeapon = dynamic_cast<CBaseCombatWeapon*>(pEntity);
 
 	if (pWeapon && pWeapon->GetOwner() && pWeapon->GetOwner()->IsPlayer())
 	{
 		return false;
 	}
+	
+	// Don't hear portals, it will play the sound twice since the portal sounds are predicted
+	if ( pEntity && FClassnameIs( pEntity, "prop_portal" ) )
+		return false;
 #endif
 
 	if (pEntity && pEntity->IsPlayer() )

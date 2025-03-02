@@ -166,7 +166,6 @@ protected:
 	void	EyeOff( void );
 
 	bool	UpdateFacing( void );
-	bool	m_bPlayDestroyedScenes;
 
 private:
 
@@ -177,7 +176,7 @@ private:
 	bool	m_bActive;		//Denotes the turret is deployed and looking for targets
 	bool	m_bBlinkState;
 	bool	m_bEnabled;		//Denotes whether the turret is able to deploy or not
-	bool	m_bIsPCoopCamera;
+	bool	m_bSuppressDestroyedScenes;
 	
 	float	m_flLastSight;
 	float	m_flPingTime;
@@ -201,8 +200,7 @@ BEGIN_DATADESC( CNPC_SecurityCamera )
 	DEFINE_ARRAY( m_hRopes, FIELD_EHANDLE, SECURITY_CAMERA_NUM_ROPES ),
 	DEFINE_FIELD( m_hEyeGlow,		FIELD_EHANDLE ),
 
-	DEFINE_KEYFIELD(m_bPlayDestroyedScenes, FIELD_BOOLEAN, "PlayDestroyedScenes"),
-	DEFINE_KEYFIELD(m_bIsPCoopCamera, FIELD_BOOLEAN, "IsPCoopCamera"),
+	DEFINE_KEYFIELD( m_bSuppressDestroyedScenes, FIELD_BOOLEAN, "SuppressDestroyedScenes" ),
 
 	DEFINE_FIELD( m_bAutoStart,			FIELD_BOOLEAN ),
 	DEFINE_FIELD( m_bActive,			FIELD_BOOLEAN ),
@@ -251,10 +249,7 @@ CNPC_SecurityCamera::CNPC_SecurityCamera( void )
 	m_bBlinkState		= false;
 	m_bEnabled			= false;
 	m_vecCurrentAngles	= QAngle( 0.0f, 0.0f, 0.0f );
-
-	// HACK: Play scenes for non portalcoop maps
-	if (!m_bIsPCoopCamera)
-		m_bPlayDestroyedScenes = true;
+	m_bSuppressDestroyedScenes = false;
 
 	m_vecGoalAngles.Init();
 	m_vNoisePos = Vector( 0.0f, 0.0f, 0.0f );
@@ -1068,7 +1063,7 @@ void CNPC_SecurityCamera::InputRagdoll( inputdata_t &inputdata )
 	pPhysics->EnableMotion( true );
 	pPhysics->Wake();
 
-	if (m_bPlayDestroyedScenes)
+	if ( !m_bSuppressDestroyedScenes )
 		PlayDismountSounds();
 }
 

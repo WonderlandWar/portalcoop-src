@@ -1765,15 +1765,12 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 void CProp_Portal::OnEntityTeleportedToPortal( CBaseEntity *pEntity )
 {
 	m_OnEntityTeleportToMe.FireOutput( this, this );
-#if PORTALBROADCAST
 	BroadcastPortalEvent( PORTALEVENT_ENTITY_TELEPORTED_TO );
-#endif
+
 	if ( pEntity->IsPlayer() )
 	{
 		m_OnPlayerTeleportToMe.FireOutput( this, this );
-#if PORTALBROADCAST
 		BroadcastPortalEvent( PORTALEVENT_PLAYER_TELEPORTED_TO );
-#endif
 	}
 }
 
@@ -1783,16 +1780,12 @@ void CProp_Portal::OnEntityTeleportedToPortal( CBaseEntity *pEntity )
 void CProp_Portal::OnEntityTeleportedFromPortal( CBaseEntity *pEntity )
 {
 	m_OnEntityTeleportFromMe.FireOutput( this, this );
-#if PORTALBROADCAST
 	BroadcastPortalEvent( PORTALEVENT_ENTITY_TELEPORTED_FROM );
-#endif
 
 	if ( pEntity->IsPlayer() )
 	{
 		m_OnPlayerTeleportFromMe.FireOutput( this, this );
-#if PORTALBROADCAST
 		BroadcastPortalEvent( PORTALEVENT_PLAYER_TELEPORTED_FROM );
-#endif
 	}
 }
 
@@ -1944,6 +1937,58 @@ void CProp_Portal::InputNewLocation( inputdata_t &inputdata )
 
 	// Call main placement function (skipping placement rules)
 	NewLocation( vNewOrigin, vNewAngles );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Tell all listeners about an event that just occurred 
+//-----------------------------------------------------------------------------
+void CProp_Portal::BroadcastPortalEvent( PortalEvent_t nEventType )
+{
+	/*
+	switch( nEventType )
+	{
+	case PORTALEVENT_MOVED:
+		Msg("[ Portal moved ]\n");
+		break;
+	
+	case PORTALEVENT_FIZZLE:
+		Msg("[ Portal fizzled ]\n");
+		break;
+	
+	case PORTALEVENT_LINKED:
+		Msg("[ Portal linked ]\n");
+		break;
+	}
+	*/
+
+	// We need to walk the list backwards because callers can remove themselves from our list as they're notified
+	for ( int i = m_PortalEventListeners.Count()-1; i >= 0; i-- )
+	{
+		if ( m_PortalEventListeners[i] == NULL )
+			continue;
+
+		m_PortalEventListeners[i]->NotifyPortalEvent( nEventType, this );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Add a listener to our collection
+//-----------------------------------------------------------------------------
+void CProp_Portal::AddPortalEventListener( EHANDLE hListener )
+{
+	// Don't multiply add
+	if ( m_PortalEventListeners.Find( hListener ) != m_PortalEventListeners.InvalidIndex() )
+		return;
+
+	m_PortalEventListeners.AddToTail( hListener );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Remove a listener to our collection
+//-----------------------------------------------------------------------------
+void CProp_Portal::RemovePortalEventListener( EHANDLE hListener )
+{
+	m_PortalEventListeners.FindAndFastRemove( hListener );
 }
 
 void CProp_Portal::UpdateCorners()

@@ -76,6 +76,17 @@ enum PortalChallengeType
 	PORTAL_CHALLENGE_TOTAL
 };
 
+enum PortalEvent_t
+{
+	PORTALEVENT_LINKED,					// This portal has linked to another portal and opened
+	PORTALEVENT_FIZZLE,					// Portal has fizzled 
+	PORTALEVENT_MOVED,					// Portal has moved its position
+	PORTALEVENT_ENTITY_TELEPORTED_TO,	// Entity (player or not) has teleported to this portal
+	PORTALEVENT_ENTITY_TELEPORTED_FROM,	// Entity (player or not) has teleported away from this portal
+	PORTALEVENT_PLAYER_TELEPORTED_TO,	// Player has teleported to this portal
+	PORTALEVENT_PLAYER_TELEPORTED_FROM,	// Player has teleported away from this portal
+};
+
 // It's better to have a list of Portal mods instead of having a 
 // single cvar for Rexaura in case we want to add more mods (Portal: Prelude, Portal: Pro, Blue Portals, etc...)
 enum PortalGameType_t
@@ -87,5 +98,8 @@ enum PortalGameType_t
 extern ConVar sv_portal_game;
 
 extern char *g_ppszPortalPassThroughMaterials[];
+
+#define RADIO_DATA_FILE "scripts/radios.txt"
+extern KeyValues *LoadRadioData();
 
 #endif // PORTAL_SHAREDDEFS_H

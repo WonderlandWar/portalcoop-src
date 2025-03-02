@@ -55,12 +55,20 @@ void CPropBox::EnergyBallHit( CBaseEntity *pBall )
 	{
 		pAttached->EnergyBallHit( pBall );
 	}
-	CTriggerPortalCleanser::FizzleBaseAnimating( this, NULL );
+
+	// Only fizzle energy balls in Rexaura
+	if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA )
+	{
+		CTriggerPortalCleanser::FizzleBaseAnimating( this, NULL );
+	}
 }
 
 void CPropBox::PreDissolve( CBaseEntity *pActivator, CBaseEntity *pCaller )
 {
-	EmitSound( "Rexaura.BoxDissolve" );
+	if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA )
+	{
+		EmitSound( "Rexaura.BoxDissolve" );
+	}
 	m_OnDissolved.FireOutput( pActivator, pCaller );
 }
 
@@ -72,7 +80,7 @@ void CPropBox::InputDissolve( inputdata_t &inputdata )
 #define PORTAL_WEIGHT_BOX_MODEL_NAME "models/props/metal_box.mdl"
 
 // Create the box used for portal puzzles, named 'box'. Used for easy debugging of portal puzzles.
-void CC_Create_RexauraWeightBox( void )
+void CC_Create_PortalWeightBoxNew( void )
 {
 	MDLCACHE_CRITICAL_SECTION();
 
@@ -109,4 +117,4 @@ void CC_Create_RexauraWeightBox( void )
 	CBaseEntity::SetAllowPrecache( allowPrecache );
 }
 
-static ConCommand ent_create_rexaura_weight_box("ent_create_rexaura_weight_box", CC_Create_RexauraWeightBox, "Creates a weight box used in portal puzzles at the location the player is looking.", FCVAR_GAMEDLL | FCVAR_CHEAT);
+static ConCommand ent_create_portal_weight_box_new("ent_create_portal_weight_box_new", CC_Create_PortalWeightBoxNew, "Creates a weight box used in portal puzzles at the location the player is looking.", FCVAR_GAMEDLL | FCVAR_CHEAT);

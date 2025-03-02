@@ -86,6 +86,10 @@ class INextBot;
 class IHasAttributes;
 class CGrabController;
 class CWeaponPhysCannon;
+#ifdef PORTAL
+class CProp_Portal;
+enum PortalEvent_t;
+#endif
 
 typedef CUtlVector< CBaseEntity* > EntityList_t;
 
@@ -1820,6 +1824,11 @@ public:
 	}
 
 	virtual bool ShouldBlockNav() const { return true; }
+	
+public:
+#ifdef PORTAL
+	virtual void NotifyPortalEvent( PortalEvent_t nEventType, CProp_Portal *pNotifier ) { /*Do nothing*/ }
+#endif // PORTAL
 };
 
 // Send tables exposed in this module.
