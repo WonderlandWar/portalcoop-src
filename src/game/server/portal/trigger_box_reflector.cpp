@@ -171,7 +171,7 @@ void CTriggerBoxReflector::Touch( CBaseEntity *pOther )
 
 	pBox->m_hAttached = this;
 	
-	IPhysicsObject *pBoxPhysics = pAttachEntity->VPhysicsGetObject();
+	IPhysicsObject *pBoxPhysics = pBox->VPhysicsGetObject();
 	if ( pBoxPhysics != NULL )
 	{
 		pBoxPhysics->EnableMotion( false );
