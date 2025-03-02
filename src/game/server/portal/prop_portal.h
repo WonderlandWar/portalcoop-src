@@ -177,6 +177,14 @@ public:
 
 	virtual void			PortalSimulator_TookOwnershipOfEntity( CBaseEntity *pEntity );
 	virtual void			PortalSimulator_ReleasedOwnershipOfEntity( CBaseEntity *pEntity );
+	
+	// Add or remove listeners
+	void					AddPortalEventListener( EHANDLE hListener );
+	void					RemovePortalEventListener( EHANDLE hListener );
+	
+	void					BroadcastPortalEvent( PortalEvent_t nEventType );
+	
+	CUtlVector<EHANDLE>		m_PortalEventListeners;			// Collection of entities (by handle) who wish to receive notification of portal events (fizzle, moved, etc)
 
 	CNetworkVar( unsigned char, m_iLinkageGroupID )
 			
