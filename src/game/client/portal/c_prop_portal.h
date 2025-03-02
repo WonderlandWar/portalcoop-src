@@ -143,6 +143,7 @@ public:
 	void					HandleNetworkChanges( void );
 	virtual void			OnDataChanged( DataUpdateType_t updateType );
 	virtual int				DrawModel( int flags );
+	void					UpdatePortalLinkage( void );
 	void					UpdateTeleportMatrix( void );
 	void					UpdateGhostRenderables( void );
 	

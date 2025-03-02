@@ -27,7 +27,11 @@
 #include "portal_player.h"
 #include "portal_gamestats.h"
 #include "env_debughistory.h"
+
+extern CUtlVector<CProp_Portal *> s_PortalLinkageGroups[256];
 #endif
+
+#include "PhysicsCloneArea.h"
 
 extern CMoveData *g_pMoveData;
 extern IGameMovement *g_pGameMovement;
@@ -1091,4 +1095,114 @@ void CProp_Portal::GetExitSpeedRange( CProp_Portal *pEntrancePortal, bool bPlaye
 
 	fExitMinimum = pExitPortal->GetMinimumExitSpeed( bPlayer, bEntranceOnFloor, bExitOnFloor, vEntityCenterAtExit, pEntity );
 	fExitMaximum = pExitPortal->GetMaximumExitSpeed( bPlayer, bEntranceOnFloor, bExitOnFloor, vEntityCenterAtExit, pEntity );
+}
+
+
+void CProp_Portal::UpdatePortalLinkage( void )
+{
+	if( IsActive() )
+	{
+		CProp_Portal *pLink = m_hLinkedPortal.Get();
+
+		if( !(pLink && pLink->IsActive()) )
+		{
+			//no old link, or inactive old link
+
+			if( pLink )
+			{
+				//we had an old link, must be inactive
+				if( pLink->m_hLinkedPortal.Get() != NULL )
+					pLink->UpdatePortalLinkage();
+
+				pLink = NULL;
+			}
+#ifdef GAME_DLL
+			int iPortalCount = s_PortalLinkageGroups[m_iLinkageGroupID].Count();
+#else
+			int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
+#endif
+			if( iPortalCount != 0 )
+			{
+#ifdef GAME_DLL
+				CProp_Portal **pPortals = s_PortalLinkageGroups[m_iLinkageGroupID].Base();
+#else
+				CProp_Portal **pPortals = CProp_Portal_Shared::AllPortals.Base();
+#endif
+				for( int i = 0; i != iPortalCount; ++i )
+				{
+					CProp_Portal *pCurrentPortal = pPortals[i];
+					if( pCurrentPortal == this )
+						continue;
+#ifdef CLIENT_DLL
+					if ( m_iLinkageGroupID != pCurrentPortal->m_iLinkageGroupID )
+						continue;
+#endif
+					if( pCurrentPortal->IsActive() && pCurrentPortal->m_hLinkedPortal.Get() == NULL )
+					{
+						pLink = pCurrentPortal;
+						pCurrentPortal->m_hLinkedPortal = this;
+#ifdef CLIENT_DLL
+						pCurrentPortal->m_pLinkedPortal = this;
+#endif
+						pCurrentPortal->UpdatePortalLinkage();
+						break;
+					}
+				}
+			}
+		}
+
+		m_hLinkedPortal = pLink;
+#ifdef CLIENT_DLL
+		m_pLinkedPortal = pLink;
+#endif
+
+		if( pLink != NULL )
+		{
+			CHandle<CProp_Portal> hThis = this;
+			CHandle<CProp_Portal> hRemote = pLink;
+
+			this->m_hLinkedPortal = hRemote;
+			pLink->m_hLinkedPortal = hThis;
+#ifdef CLIENT_DLL
+			pLink->m_pLinkedPortal = hThis;
+#endif
+			m_bIsPortal2 = !m_hLinkedPortal->m_bIsPortal2;
+#ifdef GAME_DLL
+			CreatePortalMicAndSpeakers();
+			UpdatePortalTeleportMatrix();
+#else
+			UpdateTeleportMatrix();
+#endif
+		}
+		else
+		{
+			m_PortalSimulator.DetachFromLinked();
+			m_PortalSimulator.ReleaseAllEntityOwnership();
+		}
+		
+		m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
+
+		if( pLink )
+			m_PortalSimulator.AttachTo( &pLink->m_PortalSimulator );
+#ifndef DISABLE_CLONE_AREA
+		if( m_pAttachedCloningArea )
+			m_pAttachedCloningArea->UpdatePosition();
+#endif
+	}
+	else
+	{
+		CProp_Portal *pRemote = m_hLinkedPortal;
+		//apparently we've been deactivated
+		m_PortalSimulator.DetachFromLinked();
+		m_PortalSimulator.ReleaseAllEntityOwnership();
+#ifdef GAME_DLL
+		PunchAllPenetratingPlayers();
+#endif
+		m_hLinkedPortal = NULL;
+#ifdef CLIENT_DLL
+		m_pLinkedPortal = NULL;
+#endif
+		if( pRemote )
+			pRemote->UpdatePortalLinkage();
+	}
 }

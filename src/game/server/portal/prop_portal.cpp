@@ -45,7 +45,7 @@ ConVar sv_portal_placement_never_fail("sv_portal_placement_never_fail", "0", FCV
 ConVar sv_portal_new_velocity_check("sv_portal_new_velocity_check", "1", FCVAR_REPLICATED | FCVAR_CHEAT);
 extern ConVar use_server_portal_particles;
 
-static CUtlVector<CProp_Portal *> s_PortalLinkageGroups[256];
+CUtlVector<CProp_Portal *> s_PortalLinkageGroups[256];
 
 extern ConVar sv_allow_customized_portal_colors;
 
@@ -1526,191 +1526,108 @@ void CProp_Portal::UpdatePortalTeleportMatrix( void )
 	}
 }
 
-//bool bShouldSpawnFilter = true;
-
-void CProp_Portal::UpdatePortalLinkage( void )
+void CProp_Portal::CreatePortalMicAndSpeakers( void )
 {
-	if( IsActive() )
+	// Don't use microphones in Rexaura! Many of the button sounds, timers, etc... are louder so both players can hear them, but they're way too loud for Rexaura
+	bool bUseMicrophones = sv_portal_game.GetInt() != PORTAL_GAME_REXAURA;
+
+	if ( bUseMicrophones )
 	{
-		CProp_Portal *pLink = m_hLinkedPortal.Get();
+		// Initialize mics/speakers
 
-		if( !(pLink && pLink->IsActive()) )
+		int iLinkageGroupID = m_iLinkageGroupID;
+			
+		char tspeakername1[64];
+		char tspeakername2[64];
+		char tmicname1[64];
+		char tmicname2[64];
+
+		Q_snprintf( tspeakername1, sizeof(tspeakername1), "PortalSpeaker%i_1", iLinkageGroupID );
+		Q_snprintf( tspeakername2, sizeof(tspeakername2), "PortalSpeaker%i_2", iLinkageGroupID );
+		Q_snprintf( tmicname1, sizeof(tmicname1), "PortalMic%i_1", iLinkageGroupID );
+		Q_snprintf( tmicname2, sizeof(tmicname2), "PortalMic%i_2", iLinkageGroupID );
+			
+		string_t iszSpeakerName1 = AllocPooledString( tspeakername1 );
+		string_t iszSpeakerName2 = AllocPooledString( tspeakername2 );
+		string_t iszMicName1 = AllocPooledString( tmicname1 );
+		string_t iszMicName2 = AllocPooledString( tmicname2 );			
+
+		if( m_hMicrophone == NULL )
 		{
-			//no old link, or inactive old link
+			inputdata_t inputdata;
 
-			if( pLink )
+			m_hMicrophone = CreateEntityByName( "env_microphone" );
+			CEnvMicrophone *pMicrophone = static_cast<CEnvMicrophone*>( m_hMicrophone.Get() );
+			pMicrophone->SetOwnerEntity( this );
+			pMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
+			pMicrophone->AddSpawnFlags( SF_MICROPHONE_SOUND_COMBAT | SF_MICROPHONE_SOUND_WORLD | SF_MICROPHONE_SOUND_PLAYER | SF_MICROPHONE_SOUND_BULLET_IMPACT | SF_MICROPHONE_SOUND_EXPLOSION );
+		//	pMicrophone->KeyValue("ListenFilter", "weapon_portalgun_filter_disallow_in_code");
+			DispatchSpawn( pMicrophone );
+
+			m_hSpeaker = CreateEntityByName( "env_speaker" );
+			CSpeaker *pSpeaker = static_cast<CSpeaker*>( m_hSpeaker.Get() );
+
+			if( !m_bIsPortal2 )
 			{
-				//we had an old link, must be inactive
-				if( pLink->m_hLinkedPortal.Get() != NULL )
-					pLink->UpdatePortalLinkage();
-
-				pLink = NULL;
+				pSpeaker->SetName( iszSpeakerName1 );
+				pMicrophone->SetName( iszMicName1 );
+				pMicrophone->Activate();
+				pMicrophone->SetSpeakerName( iszSpeakerName2 );
+				pMicrophone->SetSensitivity( 10.0f );
 			}
-
-			int iPortalCount = s_PortalLinkageGroups[m_iLinkageGroupID].Count();
-
-			if( iPortalCount != 0 )
+			else
 			{
-				CProp_Portal **pPortals = s_PortalLinkageGroups[m_iLinkageGroupID].Base();
-				for( int i = 0; i != iPortalCount; ++i )
-				{
-					CProp_Portal *pCurrentPortal = pPortals[i];
-					if( pCurrentPortal == this )
-						continue;
-					if( pCurrentPortal->IsActive() && pCurrentPortal->m_hLinkedPortal.Get() == NULL )
-					{
-						pLink = pCurrentPortal;
-						pCurrentPortal->m_hLinkedPortal = this;
-						pCurrentPortal->UpdatePortalLinkage();
-						break;
-					}
-				}
+				pSpeaker->SetName( iszSpeakerName2 );
+				pMicrophone->SetName( iszMicName2 );
+				pMicrophone->Activate();
+				pMicrophone->SetSpeakerName( iszSpeakerName1 );
+				pMicrophone->SetSensitivity( 10.0f );
 			}
 		}
 
-		m_hLinkedPortal = pLink;
-
-
-		if( pLink != NULL )
+		if ( m_hLinkedPortal->m_hMicrophone == 0 )
 		{
-			CHandle<CProp_Portal> hThis = this;
-			CHandle<CProp_Portal> hRemote = pLink;
+			inputdata_t inputdata;
 
-			this->m_hLinkedPortal = hRemote;
-			pLink->m_hLinkedPortal = hThis;
-			m_bIsPortal2 = !m_hLinkedPortal->m_bIsPortal2;
-#ifndef DONT_USE_MICROPHONESORSPEAKERS
-			
-			// Don't use microphones in Rexaura! Many of the button sounds, timers, etc... are louder so both players can hear them, but they're way too loud for Rexaura
-			bool bUseMicrophones = sv_portal_game.GetInt() != PORTAL_GAME_REXAURA;
+			m_hLinkedPortal->m_hMicrophone = CreateEntityByName( "env_microphone" );
+			CEnvMicrophone *pLinkedMicrophone = static_cast<CEnvMicrophone*>( m_hLinkedPortal->m_hMicrophone.Get() );
+			pLinkedMicrophone->SetOwnerEntity( m_hLinkedPortal );
+			pLinkedMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
+			pLinkedMicrophone->AddSpawnFlags( SF_MICROPHONE_SOUND_COMBAT | SF_MICROPHONE_SOUND_WORLD | SF_MICROPHONE_SOUND_PLAYER | SF_MICROPHONE_SOUND_BULLET_IMPACT | SF_MICROPHONE_SOUND_EXPLOSION );
+		//	pLinkedMicrophone->KeyValue("ListenFilter", "weapon_portalgun_filter_disallow_in_code");
+			DispatchSpawn( pLinkedMicrophone );
 
-			if ( bUseMicrophones )
+			m_hLinkedPortal->m_hSpeaker = CreateEntityByName( "env_speaker" );
+			CSpeaker *pLinkedSpeaker = static_cast<CSpeaker*>( m_hLinkedPortal->m_hSpeaker.Get() );
+
+			if ( !m_bIsPortal2 )
 			{
-				// Initialize mics/speakers
-
-				int iLinkageGroupID = m_iLinkageGroupID;
-			
-				char tspeakername1[64];
-				char tspeakername2[64];
-				char tmicname1[64];
-				char tmicname2[64];
-
-				Q_snprintf( tspeakername1, sizeof(tspeakername1), "PortalSpeaker%i_1", iLinkageGroupID );
-				Q_snprintf( tspeakername2, sizeof(tspeakername2), "PortalSpeaker%i_2", iLinkageGroupID );
-				Q_snprintf( tmicname1, sizeof(tmicname1), "PortalMic%i_1", iLinkageGroupID );
-				Q_snprintf( tmicname2, sizeof(tmicname2), "PortalMic%i_2", iLinkageGroupID );
-			
-				string_t iszSpeakerName1 = AllocPooledString( tspeakername1 );
-				string_t iszSpeakerName2 = AllocPooledString( tspeakername2 );
-				string_t iszMicName1 = AllocPooledString( tmicname1 );
-				string_t iszMicName2 = AllocPooledString( tmicname2 );			
-
-				if( m_hMicrophone == NULL )
-				{
-					inputdata_t inputdata;
-
-					m_hMicrophone = CreateEntityByName( "env_microphone" );
-					CEnvMicrophone *pMicrophone = static_cast<CEnvMicrophone*>( m_hMicrophone.Get() );
-					pMicrophone->SetOwnerEntity( this );
-					pMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
-					pMicrophone->AddSpawnFlags( SF_MICROPHONE_SOUND_COMBAT | SF_MICROPHONE_SOUND_WORLD | SF_MICROPHONE_SOUND_PLAYER | SF_MICROPHONE_SOUND_BULLET_IMPACT | SF_MICROPHONE_SOUND_EXPLOSION );
-				//	pMicrophone->KeyValue("ListenFilter", "weapon_portalgun_filter_disallow_in_code");
-					DispatchSpawn( pMicrophone );
-
-					m_hSpeaker = CreateEntityByName( "env_speaker" );
-					CSpeaker *pSpeaker = static_cast<CSpeaker*>( m_hSpeaker.Get() );
-
-					if( !m_bIsPortal2 )
-					{
-						pSpeaker->SetName( iszSpeakerName1 );
-						pMicrophone->SetName( iszMicName1 );
-						pMicrophone->Activate();
-						pMicrophone->SetSpeakerName( iszSpeakerName2 );
-						pMicrophone->SetSensitivity( 10.0f );
-					}
-					else
-					{
-						pSpeaker->SetName( iszSpeakerName2 );
-						pMicrophone->SetName( iszMicName2 );
-						pMicrophone->Activate();
-						pMicrophone->SetSpeakerName( iszSpeakerName1 );
-						pMicrophone->SetSensitivity( 10.0f );
-					}
-				}
-
-				if ( m_hLinkedPortal->m_hMicrophone == 0 )
-				{
-					inputdata_t inputdata;
-
-					m_hLinkedPortal->m_hMicrophone = CreateEntityByName( "env_microphone" );
-					CEnvMicrophone *pLinkedMicrophone = static_cast<CEnvMicrophone*>( m_hLinkedPortal->m_hMicrophone.Get() );
-					pLinkedMicrophone->SetOwnerEntity( m_hLinkedPortal );
-					pLinkedMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
-					pLinkedMicrophone->AddSpawnFlags( SF_MICROPHONE_SOUND_COMBAT | SF_MICROPHONE_SOUND_WORLD | SF_MICROPHONE_SOUND_PLAYER | SF_MICROPHONE_SOUND_BULLET_IMPACT | SF_MICROPHONE_SOUND_EXPLOSION );
-				//	pLinkedMicrophone->KeyValue("ListenFilter", "weapon_portalgun_filter_disallow_in_code");
-					DispatchSpawn( pLinkedMicrophone );
-
-					m_hLinkedPortal->m_hSpeaker = CreateEntityByName( "env_speaker" );
-					CSpeaker *pLinkedSpeaker = static_cast<CSpeaker*>( m_hLinkedPortal->m_hSpeaker.Get() );
-
-					if ( !m_bIsPortal2 )
-					{
-						pLinkedSpeaker->SetName( iszSpeakerName2 );
-						pLinkedMicrophone->SetName( iszMicName2 );
-						pLinkedMicrophone->Activate();
-						pLinkedMicrophone->SetSpeakerName( iszSpeakerName1 );
-					}
-					else
-					{
-						pLinkedSpeaker->SetName( iszSpeakerName1 );
-						pLinkedMicrophone->SetName( iszMicName1 );
-						pLinkedMicrophone->Activate();
-						pLinkedMicrophone->SetSpeakerName( iszSpeakerName2 );
-					}
-
-					pLinkedMicrophone->SetSensitivity( 10.0f );
-				}
-				// Set microphone/speaker positions
-				Vector vZero( 0.0f, 0.0f, 0.0f );
-				CEnvMicrophone *pMicrophone = static_cast<CEnvMicrophone*>( m_hMicrophone.Get() );
-				pMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
-				pMicrophone->Teleport( &GetAbsOrigin(), &GetAbsAngles(), &vZero );
-				inputdata_t in;
-				pMicrophone->InputEnable( in );
-
-				CSpeaker *pSpeaker = static_cast<CSpeaker*>( m_hSpeaker.Get() );
-				pSpeaker->Teleport( &GetAbsOrigin(), &GetAbsAngles(), &vZero );
-				pSpeaker->InputTurnOn( in );
+				pLinkedSpeaker->SetName( iszSpeakerName2 );
+				pLinkedMicrophone->SetName( iszMicName2 );
+				pLinkedMicrophone->Activate();
+				pLinkedMicrophone->SetSpeakerName( iszSpeakerName1 );
 			}
-#endif
-			UpdatePortalTeleportMatrix();
+			else
+			{
+				pLinkedSpeaker->SetName( iszSpeakerName1 );
+				pLinkedMicrophone->SetName( iszMicName1 );
+				pLinkedMicrophone->Activate();
+				pLinkedMicrophone->SetSpeakerName( iszSpeakerName2 );
+			}
+
+			pLinkedMicrophone->SetSensitivity( 10.0f );
 		}
-		else
-		{
-			m_PortalSimulator.DetachFromLinked();
-			m_PortalSimulator.ReleaseAllEntityOwnership();
-		}
-		
-		m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
+		// Set microphone/speaker positions
+		Vector vZero( 0.0f, 0.0f, 0.0f );
+		CEnvMicrophone *pMicrophone = static_cast<CEnvMicrophone*>( m_hMicrophone.Get() );
+		pMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
+		pMicrophone->Teleport( &GetAbsOrigin(), &GetAbsAngles(), &vZero );
+		inputdata_t in;
+		pMicrophone->InputEnable( in );
 
-		if( pLink )
-			m_PortalSimulator.AttachTo( &pLink->m_PortalSimulator );
-
-		if( m_pAttachedCloningArea )
-			m_pAttachedCloningArea->UpdatePosition();
-	}
-	else
-	{
-		CProp_Portal *pRemote = m_hLinkedPortal;
-		//apparently we've been deactivated
-		m_PortalSimulator.DetachFromLinked();
-		m_PortalSimulator.ReleaseAllEntityOwnership();
-
-		PunchAllPenetratingPlayers();
-
-		m_hLinkedPortal = NULL;
-		if( pRemote )
-			pRemote->UpdatePortalLinkage();
+		CSpeaker *pSpeaker = static_cast<CSpeaker*>( m_hSpeaker.Get() );
+		pSpeaker->Teleport( &GetAbsOrigin(), &GetAbsAngles(), &vZero );
+		pSpeaker->InputTurnOn( in );
 	}
 }
 
@@ -1808,7 +1725,7 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	}
 
 
-	bool bOldPlaySound = false;
+	/*bool bOldPlaySound = false;
 	CWeaponPortalgun *pPortalgun = m_hPlacedBy;
 	if ( !pPortalgun || !pPortalgun->GetOwnerEntity() ) // a portalgun without an owner
 		bOldPlaySound = true;
@@ -1824,10 +1741,11 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 			EmitSound( "Portal.open_blue" );
 		}
 	}
-	else
+	else*/
 	{
 		CRecipientFilter filter;
 		filter.UsePredictionRules();
+		filter.AddRecipientsByPAS( GetAbsOrigin() );
 		if ( m_bIsPortal2 )
 		{
 			EmitSound( filter, entindex(), "Portal.open_red" );

@@ -348,6 +348,9 @@ void C_Prop_Portal::Activate( void )
 	if( m_pAttachedCloningArea == NULL )
 		m_pAttachedCloningArea = CPhysicsCloneArea::CreatePhysicsCloneArea( this );
 #endif
+
+	//UpdatePortalLinkage();
+
 	if( IsActive() && (m_hLinkedPortal.Get() != NULL) )
 	{
 		Vector ptCenter = m_ptOrigin;
@@ -1436,6 +1439,7 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	m_pLinkedPortal = m_hLinkedPortal;
 	
 	PortalMoved(); //updates link matrix and internals
+	UpdatePortalLinkage();
 	OnPortalMoved();
 	UpdateTeleportMatrix();
 
@@ -1939,7 +1943,9 @@ void C_Prop_Portal::DestroyAttachedParticles( void )
 
 void C_Prop_Portal::HandlePredictionError( bool bErrorInThisEntity )
 {		
-	if( bErrorInThisEntity )
+	if( bErrorInThisEntity 
+		|| !LocalPlayerCanPlace() // Pretty bad but it'll have to do
+		) 
 	{
 		HandleNetworkChanges();
 	}

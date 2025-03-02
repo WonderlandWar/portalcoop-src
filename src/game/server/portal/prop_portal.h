@@ -149,6 +149,7 @@ public:
 	void					InputFizzle( inputdata_t &inputdata );
 	void					InputNewLocation( inputdata_t &inputdata );
 
+	void					CreatePortalMicAndSpeakers( void );
 	void					UpdatePortalLinkage( void );
 	void					UpdatePortalTeleportMatrix( void ); //computes the transformation from this portal to the linked portal, and will update the remote matrix as well
 
