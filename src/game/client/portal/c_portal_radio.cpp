@@ -49,6 +49,8 @@ public:
 	virtual QAngle PreferredCarryAngles( void ) { return QAngle( 0, 180, 0 ); }
 	virtual bool HasPreferredCarryAnglesForPlayer( C_BasePlayer *pPlayer ) { return true; }
 
+	const char *GetRadioSongScript( void );
+
 	void ScanForSounds();
 	void SetupSounds();
 
@@ -160,13 +162,24 @@ void C_Portal_Dinosaur::Precache( void )
 	PrecacheScriptSound( "UpdateItem.Dinosaur26" );
 }
 
+const char *C_Portal_Dinosaur::GetRadioSongScript( void )
+{
+	// TODO: Add a new radio song for Rexaura
+	//if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA )
+	//{
+	//	return = "Rexaura.Radio";
+	//}
+	
+	return "Portal.room1_radio";
+}
+
 void C_Portal_Dinosaur::SetupSounds()
 {
 	CPASAttenuationFilter filter( this );
 
 	if ( m_pNormalSound == NULL )
 	{
-		m_pNormalSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), "Portal.room1_radio" );
+		m_pNormalSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), GetRadioSongScript() );
 		CSoundEnvelopeController::GetController().Play( m_pNormalSound, 0.0, PITCH_NORM );
 	}
 

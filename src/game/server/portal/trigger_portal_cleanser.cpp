@@ -220,7 +220,7 @@ void CTriggerPortalCleanser::FizzleBaseAnimating( CBaseEntity *pOther, CTriggerP
 			}
 		}
 
-		if ( FClassnameIs( pBaseAnimating, "updateitem2" ) )
+		if ( FClassnameIs( pBaseAnimating, "prop_radio" ) )
 		{
 			pBaseAnimating->EmitSound( "UpdateItem.Fizzle" );
 		}

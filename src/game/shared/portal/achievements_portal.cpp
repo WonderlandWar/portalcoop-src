@@ -506,6 +506,7 @@ class CAchievementPortalFindAllDinosaurs : public CBaseAchievement
 		BaseClass::Init();
 		m_iProgressMsgMinimum = 1;
 	}
+#if 0
 	virtual void ListenForEvents()
 	{
 		ListenForGameEvent( "dinosaur_signal_found" );
@@ -529,6 +530,7 @@ class CAchievementPortalFindAllDinosaurs : public CBaseAchievement
 			}
 		}
 	}
+#endif
 	virtual void CalcProgressMsgIncrement()
 	{
 		// Show progress every tick
