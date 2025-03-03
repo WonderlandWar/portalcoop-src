@@ -1788,7 +1788,7 @@ void CFuncTrackTrain::SoundUpdate( void )
 	{
 		return;
 	}
-
+#ifndef PORTAL
 	// In multiplayer, only update the sound once a second
 	if ( g_pGameRules->IsMultiplayer() && m_bSoundPlaying )
 	{
@@ -1797,7 +1797,7 @@ void CFuncTrackTrain::SoundUpdate( void )
 
 		m_flNextMPSoundTime = gpGlobals->curtime + 1.0;
 	}
-
+#endif
 	float flSpeedRatio = 0;
 	if ( HasSpawnFlags( SF_TRACKTRAIN_USE_MAXSPEED_FOR_PITCH ) )
 	{
@@ -2465,7 +2465,11 @@ void CFuncTrackTrain::DeadEnd( void )
 	{
 		DevMsg( 2, "at %s\n", pTrack->GetDebugName() );
 		variant_t emptyVariant;
-		pTrack->AcceptInput( "InPass", this, this, emptyVariant, 0 );
+		pTrack->AcceptInput( "IngPass", this, this, emptyVariant, 0 );
+#ifdef PORTAL
+		// hacky but it'll do
+		Teleport( &pTrack->GetLocalOrigin(), NULL, NULL );
+#endif
 	}
 	else
 	{

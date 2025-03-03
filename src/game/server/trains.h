@@ -204,9 +204,9 @@ private:
 	float		m_flAccelSpeed;
 	float		m_flDecelSpeed;
 	bool		m_bAccelToSpeed;
-
+#ifndef PORTAL
 	float		m_flNextMPSoundTime;
-	
+#endif
 	float		m_flSpeedForwardModifier;
 	float		m_flUnmodifiedDesiredSpeed;
 
