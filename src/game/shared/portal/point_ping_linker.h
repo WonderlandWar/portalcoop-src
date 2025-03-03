@@ -31,10 +31,10 @@ public:
 	DECLARE_DATADESC();
 	
 
-	void PingLinkedEntity( CBaseAnimating *pAnimating, float flTime, Vector vColor );
+	void PingLinkedEntity( const char *pszName, float flTime, Vector vColor );
 	void PingLinkedEntities( float flTime, Vector vColor, CBaseEntity *pOwner, const char* pszSoundName );
 
-	bool HasThisEntity( CBaseAnimating *pAnimating);
+	bool HasThisEntity( CBaseAnimating *pAnimating );
 
 private:
 

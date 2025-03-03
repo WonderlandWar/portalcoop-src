@@ -868,6 +868,29 @@ void CPortal_Player::ClearExpression(void)
 
 #define PINGTIME 3.0
 
+void ShowAnnotation( Vector location, int follow_entindex, int entindex, int forcedpingicon = -1 )
+{
+	IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
+	if ( pEvent )
+	{
+		pEvent->SetString( "text", "Ping!" );
+					
+		pEvent->SetFloat( "worldPosX", location.x );
+		pEvent->SetFloat( "worldPosY", location.y );
+		pEvent->SetFloat( "worldPosZ", location.z );
+		pEvent->SetFloat( "lifetime", PINGTIME );
+		pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
+		if ( follow_entindex != -1 )
+			pEvent->SetInt( "follow_entindex", follow_entindex );
+		pEvent->SetInt( "owner_entindex", entindex );
+		pEvent->SetInt( "id", entindex ); // 1 annotation per player
+		if ( forcedpingicon != -1 )
+			pEvent->SetInt( "forcedpingicon", forcedpingicon );
+
+		gameeventmanager->FireEvent( pEvent );
+	}
+}
+
 extern ConVar sv_allow_customized_portal_colors;
 
 void CPortal_Player::PlayCoopPingEffect( void )
@@ -939,18 +962,21 @@ void CPortal_Player::PlayCoopPingEffect( void )
 		CPointPingLinker *pPingLinker = NULL;
 
 		//Find a ping linker to use
-		for (int i = 1; i <= 1024; i++)
+		CBaseEntity *pEntityTemp = NULL;
+		while ( ( pEntityTemp = gEntList.FindEntityByClassname( pEntityTemp, "point_ping_linker" ) ) != NULL )
 		{
-			//CBaseEntity *pTempEnt = UTIL_EntityByIndex(i);
-			
-			pPingLinker = dynamic_cast<CPointPingLinker*>(UTIL_EntityByIndex(i));
-
-			if (!pPingLinker)
+			pPingLinker = dynamic_cast<CPointPingLinker*>( pEntityTemp );
+			if ( !pPingLinker )
 				continue;
-			
-			if (pPingLinker->HasThisEntity(pAnimating))
-				break;
 
+			if ( pPingLinker->HasThisEntity( pAnimating ) )
+			{
+				break;
+			}
+			else
+			{
+				pPingLinker = NULL;
+			}
 		}
 		
 		bool bShouldCreateCrosshair = true;
@@ -981,24 +1007,7 @@ void CPortal_Player::PlayCoopPingEffect( void )
 				
 				//if (bResult)
 				{
-					IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
-					if ( pEvent )
-					{
-						Vector location = pAnimating->GetAbsOrigin();
-
-						pEvent->SetString( "text", "Ping!" );
-					
-						pEvent->SetFloat( "worldPosX", location.x );
-						pEvent->SetFloat( "worldPosY", location.y );
-						pEvent->SetFloat( "worldPosZ", location.z );
-						pEvent->SetFloat( "lifetime", PINGTIME );
-						pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
-						pEvent->SetInt( "follow_entindex", pAnimating->entindex() );
-						pEvent->SetInt( "owner_entindex", entindex() );
-						pEvent->SetInt( "id", entindex() ); // 1 annotation per player
-
-						gameeventmanager->FireEvent( pEvent );
-					}
+					ShowAnnotation( pAnimating->GetAbsOrigin(), pAnimating->entindex(), entindex() );
 				}
 			}
 
@@ -1006,26 +1015,7 @@ void CPortal_Player::PlayCoopPingEffect( void )
 		}
 		else if ( !pAnimating && pPortal )
 		{
-			
-			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
-			if ( pEvent )
-			{
-				Vector location = pPortal->GetAbsOrigin();
-
-				pEvent->SetString( "text", "Ping!" );
-					
-				pEvent->SetFloat( "worldPosX", location.x );
-				pEvent->SetFloat( "worldPosY", location.y );
-				pEvent->SetFloat( "worldPosZ", location.z );
-				pEvent->SetFloat( "lifetime", PINGTIME );
-				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
-				pEvent->SetInt( "follow_entindex", pPortal->entindex() );
-				pEvent->SetInt( "owner_entindex", entindex() );
-				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
-					
-				gameeventmanager->FireEvent( pEvent );
-			}
-			
+			ShowAnnotation( pPortal->GetAbsOrigin(), pPortal->entindex(), entindex() );			
 			bShouldCreateCrosshair = false;
 		}
 		else if ( !pAnimating && !pPortal )
@@ -1044,25 +1034,7 @@ void CPortal_Player::PlayCoopPingEffect( void )
 			else
 				DispatchParticleEffect( COOP_PING_PARTICLE_NAME_ORANGE, tr.endpos, angNormal, this );
 
-			
-			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
-			if ( pEvent )
-			{
-				Vector location = tr.endpos;
-
-				pEvent->SetString( "text", "Ping!" );
-			
-				pEvent->SetFloat( "worldPosX", location.x );
-				pEvent->SetFloat( "worldPosY", location.y );
-				pEvent->SetFloat( "worldPosZ", location.z );
-				pEvent->SetFloat( "lifetime", PINGTIME );
-				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
-				pEvent->SetInt( "owner_entindex", entindex() );
-				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
-				
-
-				gameeventmanager->FireEvent( pEvent );
-			}
+			ShowAnnotation( tr.endpos, -1, entindex() );
 		}
 
 		EmitSound( COOP_PING_SOUNDSCRIPT_NAME );
@@ -1087,110 +1059,42 @@ bool CPortal_Player::PingChildrenOfChildParent( CBaseAnimating *pAnimating, Vect
 	
 	bool bResult = false;
 
+	CBaseEntity *pParent = pAnimating->GetParent();
+
 	CBaseDoor *pDoor = dynamic_cast<CBaseDoor *>(pAnimating->GetParent());
 	CFuncTrackTrain *pTrain = dynamic_cast<CFuncTrackTrain*>(pAnimating->GetParent());
+	if ( !pDoor && !pTrain )
+		return false;
 	
-	if (pDoor)
+	CUtlVector<CBaseEntity *> children;
+	GetAllChildren( pParent, children );
+	for (int i = 0; i < children.Count(); i++ )
 	{
-		CUtlVector<CBaseEntity *> children;
-		GetAllChildren( pDoor, children );
-		for (int i = 0; i < children.Count(); i++ )
-		{
-			CBaseEntity *pEnt = children.Element( i );
+		CBaseEntity *pEnt = children.Element( i );
 
-			if (!pEnt)
-				continue;
+		if (!pEnt)
+			continue;
 
-			CBaseAnimating *pChild = pEnt->GetBaseAnimating();
+		CBaseAnimating *pChild = pEnt->GetBaseAnimating();
 			
-			if ( pChild )
-			{
-				if (pChild->m_bGlowEnabled)
-				{
-					pChild->RemoveGlowEffect();
-					m_bGlowEnabled.Set(false);
-				}
-
-				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-				pChild->AddGlowTime(gpGlobals->curtime);
-				pChild->RemoveGlowTime(PINGTIME);
-				bResult = true;
-			}
-		}
-
-		if (bResult)
+		if ( pChild )
 		{
-			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
-			if ( pEvent )
+			if (pChild->m_bGlowEnabled)
 			{
-				Vector location = pDoor->GetAbsOrigin();
-
-				pEvent->SetString( "text", "Ping!" );
-			
-				pEvent->SetFloat( "worldPosX", location.x );
-				pEvent->SetFloat( "worldPosY", location.y );
-				pEvent->SetFloat( "worldPosZ", location.z );
-				pEvent->SetFloat( "lifetime", PINGTIME );
-				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
-				pEvent->SetInt( "owner_entindex", entindex() );
-				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
-				
-				pEvent->SetInt( "follow_entindex", pDoor->entindex() );
-
-				gameeventmanager->FireEvent( pEvent );
+				pChild->RemoveGlowEffect();
+				m_bGlowEnabled.Set(false);
 			}
+
+			pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
+			pChild->AddGlowTime(gpGlobals->curtime);
+			pChild->RemoveGlowTime(PINGTIME);
+			bResult = true;
 		}
 	}
-	else if (pTrain)
+
+	if (bResult)
 	{
-		CUtlVector<CBaseEntity *> children;
-		GetAllChildren( pTrain, children );
-		for (int i = 0; i < children.Count(); i++ )
-		{
-			CBaseEntity *pEnt = children.Element( i );
-
-			if (!pEnt)
-				continue;
-
-			CBaseAnimating *pChild = pEnt->GetBaseAnimating();
-			
-			if ( pChild )
-			{
-				if (pChild->m_bGlowEnabled)
-				{
-					pChild->RemoveGlowEffect();
-					m_bGlowEnabled.Set(false);
-				}
-
-				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-				pChild->AddGlowTime(gpGlobals->curtime);
-				pChild->RemoveGlowTime(PINGTIME);
-				bResult = true;
-			}
-		}
-		
-		if (bResult)
-		{
-			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
-			if ( pEvent )
-			{
-				Vector location = pTrain->GetAbsOrigin();
-
-				pEvent->SetString( "text", "Ping!" );
-			
-				pEvent->SetFloat( "worldPosX", location.x );
-				pEvent->SetFloat( "worldPosY", location.y );
-				pEvent->SetFloat( "worldPosZ", location.z );
-				pEvent->SetFloat( "lifetime", PINGTIME );
-				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
-				pEvent->SetInt( "owner_entindex", entindex() );
-				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
-				pEvent->SetInt( "follow_entindex", pTrain->entindex() );
-				
-
-				gameeventmanager->FireEvent( pEvent );
-			}
-		}
+		ShowAnnotation( pParent->GetAbsOrigin(), -1, entindex() );
 	}
 
 	return bResult;
@@ -1198,12 +1102,13 @@ bool CPortal_Player::PingChildrenOfChildParent( CBaseAnimating *pAnimating, Vect
 
 bool CPortal_Player::PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bShouldCreateCrosshair )
 {
-
 	bool bTempShouldCreateCrosshair = bShouldCreateCrosshair;
 
-	CBaseDoor *pDoor = dynamic_cast<CBaseDoor*>(tr.m_pEnt);
-	CFuncTrackTrain *pTrain = dynamic_cast<CFuncTrackTrain*>(tr.m_pEnt);
-
+	CBaseEntity *pEntity = tr.m_pEnt;
+	CBaseDoor *pDoor = dynamic_cast<CBaseDoor*>( pEntity );
+	CFuncTrackTrain *pTrain = dynamic_cast<CFuncTrackTrain*>( pEntity );
+	if ( !pDoor && !pTrain )
+		return bShouldCreateCrosshair;
 		
 	if (pDoor)
 	{
@@ -1214,7 +1119,7 @@ bool CPortal_Player::PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bSho
 		bool bShouldGetChild = true;
 		
 		CUtlVector<CBaseEntity *> children;
-		GetAllChildren( pDoor, children );
+		GetAllChildren( pEntity, children );
 		for (int i = 0; i < children.Count(); i++ )
 		{
 			CBaseEntity *pEnt = children.Element( i );
@@ -1244,49 +1149,22 @@ bool CPortal_Player::PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bSho
 			}
 		}
 
-		/*
-		for (int i = 1; i <= 1024; ++i)
-		{
-			CBaseEntity *pEnt = UTIL_EntityByIndex(i);
-			if (!pEnt)
-				continue;
-
-			pChild = pEnt->GetBaseAnimating();
-			
-			if (pChild && pChild->GetParent() == pDoor)
-			{						
-				if (pChild->m_bGlowEnabled)
-				{
-					pChild->RemoveGlowEffect();
-				}
-
-				if (bShouldGetChild)
-				{
-					pChildForLinker = pChild;
-					bShouldGetChild = false;
-				}
-
-				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-				pChild->AddGlowTime(gpGlobals->curtime);
-				pChild->RemoveGlowTime(PINGTIME);
-				bTempShouldCreateCrosshair = false;
-			}
-		}
-		*/
-
 		//Find a ping linker to use
-		for (int i = 1; i <= 1024; i++)
+		CBaseEntity *pEntityTemp = NULL;
+		while ( ( pEntityTemp = gEntList.FindEntityByClassname( pEntityTemp, "point_ping_linker" ) ) != NULL )
 		{
-			//CBaseEntity *pTempEnt = UTIL_EntityByIndex(i);
-
-			pPingLinker = dynamic_cast<CPointPingLinker*>(UTIL_EntityByIndex(i));
-
-			if (!pPingLinker)
+			pPingLinker = dynamic_cast<CPointPingLinker*>( pEntityTemp );
+			if ( !pPingLinker )
 				continue;
-
-			if (pPingLinker->HasThisEntity(pChildForLinker))
+			
+			if ( pPingLinker->HasThisEntity( pChildForLinker ) )
+			{
 				break;
-
+			}
+			else
+			{
+				pPingLinker = NULL;
+			}
 		}
 
 		if (pPingLinker)
@@ -1296,138 +1174,7 @@ bool CPortal_Player::PingChildrenOfEntity( trace_t &tr, Vector vColor, bool bSho
 
 		if (!pPingLinker) // Ping Linkers fire their own events
 		{
-			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
-			if ( pEvent )
-			{
-				Vector location;
-
-				location = pDoor->GetAbsOrigin();
-
-				pEvent->SetString( "text", "Ping!" );
-		
-				pEvent->SetFloat( "worldPosX", location.x );
-				pEvent->SetFloat( "worldPosY", location.y );
-				pEvent->SetFloat( "worldPosZ", location.z );
-				pEvent->SetFloat( "lifetime", PINGTIME );
-				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
-				pEvent->SetInt( "owner_entindex", entindex() );
-				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
-				pEvent->SetInt( "follow_entindex", pDoor->entindex() );
-
-				gameeventmanager->FireEvent( pEvent );
-			}
-		}
-	}
-	else if (pTrain)
-	{
-		CBaseAnimating *pChild = NULL;
-		CBaseAnimating *pChildForLinker = NULL;
-		CPointPingLinker *pPingLinker = NULL;
-
-		bool bShouldGetChild = true;
-		
-		CUtlVector<CBaseEntity *> children;
-		GetAllChildren( pTrain, children );
-		for (int i = 0; i < children.Count(); i++ )
-		{
-			CBaseEntity *pEnt = children.Element( i );
-
-			if (!pEnt)
-				continue;
-
-			pChild = pEnt->GetBaseAnimating();
-			
-			if ( pChild )
-			{						
-				if (pChild->m_bGlowEnabled)
-				{
-					pChild->RemoveGlowEffect();
-				}
-
-				if (bShouldGetChild)
-				{
-					pChildForLinker = pChild;
-					bShouldGetChild = false;
-				}
-
-				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-				pChild->AddGlowTime(gpGlobals->curtime);
-				pChild->RemoveGlowTime(PINGTIME);
-				bTempShouldCreateCrosshair = false;
-			}
-		}
-		/*
-		for (int i = 1; i <= 1024; ++i)
-		{
-			CBaseEntity *pEnt = UTIL_EntityByIndex(i);
-			if (!pEnt)
-				continue;
-
-			pChild = pEnt->GetBaseAnimating();
-			
-			if (pChild && pChild->GetParent() == pTrain)
-			{						
-				if (pChild->m_bGlowEnabled)
-				{
-					pChild->RemoveGlowEffect();
-				}
-
-				if (bShouldGetChild)
-				{
-					pChildForLinker = pChild;
-					bShouldGetChild = false;
-				}
-
-				pChild->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-				pChild->AddGlowTime(gpGlobals->curtime);
-				pChild->RemoveGlowTime(PINGTIME);
-				bTempShouldCreateCrosshair = false;
-			}
-		}
-		*/
-
-		//Find a ping linker to use
-		for (int i = 1; i <= 1024; i++)
-		{
-			//CBaseEntity *pTempEnt = UTIL_EntityByIndex(i);
-
-			pPingLinker = dynamic_cast<CPointPingLinker*>(UTIL_EntityByIndex(i));
-
-			if (!pPingLinker)
-				continue;
-
-			if (pPingLinker->HasThisEntity(pChildForLinker))
-				break;
-
-		}
-
-		if (pPingLinker)
-		{
-			pPingLinker->PingLinkedEntities( PINGTIME, vColor, this, COOP_PING_HUD_SOUNDSCRIPT_NAME );
-		}
-
-		if (!pPingLinker) // Ping Linkers fire their own events
-		{
-			IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
-			if ( pEvent )
-			{
-				Vector location;
-
-				location = pTrain->GetAbsOrigin();
-
-				pEvent->SetString( "text", "Ping!" );
-		
-				pEvent->SetFloat( "worldPosX", location.x );
-				pEvent->SetFloat( "worldPosY", location.y );
-				pEvent->SetFloat( "worldPosZ", location.z );
-				pEvent->SetFloat( "lifetime", PINGTIME );
-				pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
-				pEvent->SetInt( "owner_entindex", entindex() );
-				pEvent->SetInt( "id", entindex() ); // 1 annotation per player
-				pEvent->SetInt( "follow_entindex", pTrain->entindex() );
-
-				gameeventmanager->FireEvent( pEvent );
-			}
+			ShowAnnotation( pEntity->GetAbsOrigin(), pEntity->entindex(), entindex() );
 		}
 	}
 

@@ -35,65 +35,43 @@ CPointPingLinker::CPointPingLinker()
 }
 
 #ifdef GAME_DLL
-void CPointPingLinker::PingLinkedEntity( CBaseAnimating *pAnimating, float flTime, Vector vColor )
+void CPointPingLinker::PingLinkedEntity( const char *pszName, float flTime, Vector vColor )
 {
-	if (!pAnimating)
-		return;
-
-	if (pAnimating->m_bGlowEnabled)
+	CBaseEntity *pEntity = NULL;
+	while ( ( pEntity = gEntList.FindEntityByName( pEntity, pszName ) ) != NULL )
 	{
-		pAnimating->RemoveGlowEffect();
-		pAnimating->m_bGlowEnabled.Set(false);
+		CBaseAnimating *pAnimating = pEntity ? pEntity->GetBaseAnimating() : NULL;
+		if ( !pAnimating )
+			continue;
+		
+		if (pAnimating->m_bGlowEnabled)
+		{
+			pAnimating->RemoveGlowEffect();
+			pAnimating->m_bGlowEnabled.Set(false);
+		}
+
+		pAnimating->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
+		pAnimating->AddGlowTime(gpGlobals->curtime);
+		pAnimating->RemoveGlowTime(flTime);
 	}
-
-	pAnimating->SetGlowEffectColor(vColor.x, vColor.y, vColor.z);
-	pAnimating->AddGlowTime(gpGlobals->curtime);
-	pAnimating->RemoveGlowTime(flTime);
-
 }
 
 
 void CPointPingLinker::PingLinkedEntities( float flTime, Vector vColor, CBaseEntity *pOwner, const char* pszSoundName )
 {
-	bool bSuccess = false;
-
-	for (int i = 1; i <= 1024; ++i)
-	{
-		CBaseAnimating *pAnimating = dynamic_cast<CBaseAnimating*>(UTIL_EntityByIndex(i));
-
-		if (!pAnimating)
-			continue;
-		
-		if (HasThisEntity(pAnimating))
-		{
-			PingLinkedEntity( pAnimating, flTime, vColor );
-			bSuccess = true;
-		}
-	}
-
-	if (bSuccess)
-	{		
-		IGameEvent *pEvent = gameeventmanager->CreateEvent( "show_annotation" );
-		if ( pEvent )
-		{
-			Vector location = GetAbsOrigin();
-
-			pEvent->SetString( "text", "Ping!" );
-		//	pEvent->SetInt( "id", (long)this );
-			pEvent->SetFloat( "worldPosX", location.x );
-			pEvent->SetFloat( "worldPosY", location.y );
-			pEvent->SetFloat( "worldPosZ", location.z );
-			pEvent->SetFloat( "lifetime", flTime );
-			pEvent->SetString( "play_sound", pszSoundName );
-			pEvent->SetInt( "follow_entindex", entindex() );
-			pEvent->SetInt( "owner_entindex", pOwner->entindex() );
-			pEvent->SetInt( "id", pOwner->entindex() ); // 1 annotation per player
-			pEvent->SetInt( "forcedpingicon", m_iPingIcon );
-			
-			gameeventmanager->FireEvent( pEvent );
-		}
-	}
-
+	PingLinkedEntity( m_iszEntityName1.ToCStr(), flTime, vColor );
+	PingLinkedEntity( m_iszEntityName2.ToCStr(), flTime, vColor );
+	PingLinkedEntity( m_iszEntityName3.ToCStr(), flTime, vColor );
+	PingLinkedEntity( m_iszEntityName4.ToCStr(), flTime, vColor );
+	PingLinkedEntity( m_iszEntityName5.ToCStr(), flTime, vColor );
+	PingLinkedEntity( m_iszEntityName6.ToCStr(), flTime, vColor );
+	PingLinkedEntity( m_iszEntityName7.ToCStr(), flTime, vColor );
+	PingLinkedEntity( m_iszEntityName8.ToCStr(), flTime, vColor );
+	PingLinkedEntity( m_iszEntityName9.ToCStr(), flTime, vColor );
+	PingLinkedEntity( m_iszEntityName10.ToCStr(), flTime, vColor );
+	
+	extern void ShowAnnotation( Vector location, int follow_entindex, int entindex, int forcedpingicon = -1 );
+	ShowAnnotation( GetAbsOrigin(), entindex(), pOwner->entindex(), m_iPingIcon );
 }
 
 bool CPointPingLinker::HasThisEntity( CBaseAnimating *pAnimating )
