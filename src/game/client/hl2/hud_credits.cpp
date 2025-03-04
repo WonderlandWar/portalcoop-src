@@ -17,6 +17,9 @@
 #include <vgui/ILocalize.h>
 #include "KeyValues.h"
 #include "filesystem.h"
+#ifdef PORTAL
+#include "portal_shareddefs.h"
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -141,7 +144,14 @@ void CHudCredits::PrepareCredits( const char *pKeyName )
 	Clear();
 
 	KeyValues *pKV= new KeyValues( "CreditsFile" );
-	if ( !pKV->LoadFromFile( filesystem, CREDITS_FILE, "MOD" ) )
+	const char *pszCreditsFile = CREDITS_FILE;
+#ifdef PORTAL
+	if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA )
+	{
+		pszCreditsFile = "scripts/credits_rexaura.txt";
+	}
+#endif
+	if ( !pKV->LoadFromFile( filesystem, pszCreditsFile, "MOD" ) )
 	{
 		pKV->deleteThis();
 

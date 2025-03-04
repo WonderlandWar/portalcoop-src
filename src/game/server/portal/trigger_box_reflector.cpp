@@ -7,8 +7,9 @@
 #include "beam_shared.h"
 
 ConVar sv_box_reflector_temporary_time( "sv_box_reflector_temporary_time", "2.5", FCVAR_CHEAT );
-ConVar sv_box_reflector_temporary_beam_decay_to( "sv_box_reflector_temporary_beam_decay_to", "0.02", FCVAR_GAMEDLL );
-ConVar sv_box_reflector_temporary_beam_old( "sv_box_reflector_temporary_beam_old", "1", FCVAR_GAMEDLL );
+ConVar sv_box_reflector_temporary_beam_decay_to( "sv_box_reflector_temporary_beam_decay_to", "0.02", FCVAR_CHEAT );
+ConVar sv_box_reflector_temporary_beam_old( "sv_box_reflector_temporary_beam_old", "1", FCVAR_CHEAT );
+ConVar sv_box_reflector_beamupdate_thinkrate( "sv_box_reflector_beamupdate_thinkrate", "0.5", FCVAR_CHEAT );
 
 static const char *g_pszTemporaryDetachThink = "TemporaryDetachThinkContext";
 static const char *g_pszBeamUpdateThink = "BeamUpdateThinkContext";
@@ -311,7 +312,7 @@ void CTriggerBoxReflector::BeamUpdateThink( void )
 	SetBeamBrightness( flBrightness );
 	
 	// Using old + a 0.5 second delay is more useful for players
-	SetNextThink( gpGlobals->curtime + 0.5, g_pszBeamUpdateThink );
+	SetNextThink( gpGlobals->curtime + sv_box_reflector_beamupdate_thinkrate.GetFloat(), g_pszBeamUpdateThink );
 }
 
 // Global Savedata for base trigger
