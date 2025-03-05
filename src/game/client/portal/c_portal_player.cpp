@@ -376,8 +376,7 @@ C_Portal_Player::C_Portal_Player()
 	m_PlayerAnimState = CreatePortalPlayerAnimState( this );
 	SetPredictionEligible(true);
 
-	m_iIDEntIndex = 0;
-	m_pLookAtPortal = NULL;
+	m_hIDEnt = NULL;
 	m_iSpawnInterpCounterCache = 0;
 
 	m_hRagdoll.Set( NULL );
@@ -571,16 +570,10 @@ void C_Portal_Player::UpdateWooshSounds(void)
 	}
 }
 
-int C_Portal_Player::GetIDTarget() const
+CBaseEntity *C_Portal_Player::GetTargetIDEnt() const
 {
-	return m_iIDEntIndex;
+	return m_hIDEnt;
 }
-
-C_Prop_Portal *C_Portal_Player::GetPortalTarget()
-{
-	return m_pLookAtPortal;
-}
-
 
 //-----------------------------------------------------------------------------
 // Purpose: Update this client's target entity
@@ -591,7 +584,7 @@ void C_Portal_Player::UpdateIDTarget()
 		return;
 
 	// Clear old target and find a new one
-	m_iIDEntIndex = -1;
+	m_hIDEnt = NULL;
 
 	// don't show IDs in chase spec mode
 	if ( GetObserverMode() == OBS_MODE_CHASE || 
@@ -610,62 +603,26 @@ void C_Portal_Player::UpdateIDTarget()
 #else
 	UTIL_TraceLine( vecStart, vecEnd, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
 #endif
-	// Sigh, can't see my own name :(
-#if 0
-	CProp_Portal *pShootThroughPortal = NULL;
-	float fPortalFraction = 2.0f;
-
-	CTraceFilterSimpleList traceFilter(COLLISION_GROUP_NONE);
-	traceFilter.SetPassEntity( this ); // Standard pass entity for THIS so that it can be easily removed from the list after passing through a portal
 	
-	pShootThroughPortal = UTIL_Portal_FirstAlongRay( ray, fPortalFraction );
-	if ( !UTIL_Portal_TraceRay_Bullets( pShootThroughPortal, ray, MASK_SHOT, &traceFilter, &tr ) )
-	{
-		pShootThroughPortal = NULL;
-	}
-#endif
-
-	if ( !tr.startsolid && tr.DidHitNonWorldEntity() )
-	{
-		
+	if ( !tr.startsolid )
+	{		
 		C_BaseEntity *pEntity = tr.m_pEnt;
 						
-		if ( pEntity && (pEntity != this) )
+		if ( pEntity && (pEntity != this) && tr.DidHitNonWorldEntity() )
 		{
-			if ( dynamic_cast<C_Prop_Portal*>( pEntity ) == NULL ) // Don't do portals.
-				m_iIDEntIndex = pEntity->entindex();
+			if ( pEntity != this )
+			m_hIDEnt = pEntity;
+		}
+		else
+		{
+			Ray_t ray;
+			ray.Init( tr.startpos, tr.endpos );
+
+			float flMustBeCloserThan = 2.0f;
+			CProp_Portal *pPortal = UTIL_Portal_FirstAlongRayAll(ray, flMustBeCloserThan);
+			m_hIDEnt = pPortal;
 		}
 	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Update this client's target portal entity
-//-----------------------------------------------------------------------------
-void C_Portal_Player::UpdatePortalTarget()
-{
-	if ( !IsLocalPlayer() )
-		return;
-
-	// don't show IDs in chase spec mode
-	if ( GetObserverMode() == OBS_MODE_CHASE || 
-		GetObserverMode() == OBS_MODE_DEATHCAM )
-		return;
-
-	trace_t tr;
-	Vector vecStart, vecEnd;
-	VectorMA( MainViewOrigin(), 1500, MainViewForward(), vecEnd );
-	VectorMA( MainViewOrigin(), 10,   MainViewForward(), vecStart );
-
-	UTIL_TraceLine( vecStart, vecEnd, MASK_SOLID, this, COLLISION_GROUP_NONE, &tr );
-	
-	Ray_t ray;
-	ray.Init( tr.startpos, tr.endpos );
-
-	float flMustBeCloserThan = 2.0f;
-	CProp_Portal *pPortal = UTIL_Portal_FirstAlongRayAll(ray, flMustBeCloserThan);
-
-	m_pLookAtPortal = pPortal;
-
 }
 
 void C_Portal_Player::TraceAttack( const CTakeDamageInfo &info, const Vector &vecDir, trace_t *ptr )
@@ -1112,7 +1069,6 @@ void C_Portal_Player::ClientThink( void )
 #endif
 
 	UpdateIDTarget();
-	UpdatePortalTarget();
 }
 
 void C_Portal_Player::FixTeleportationRoll( void )

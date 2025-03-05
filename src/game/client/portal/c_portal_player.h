@@ -146,10 +146,8 @@ public:
 	void	HandleSpeedChanges( void );
 	void	UpdateLookAt( void );
 	void	Initialize( void );
-	int		GetIDTarget() const;
-	C_Prop_Portal *GetPortalTarget();
+	CBaseEntity *GetTargetIDEnt() const;
 	void	UpdateIDTarget( void );
-	void	UpdatePortalTarget( void );
 	bool	ShouldCollide( int collisionGroup, int contentsMask ) const;
 	void	AvoidPlayers( CUserCmd *pCmd );
 	
@@ -278,9 +276,8 @@ private:
 	float m_flCurrentHeadYaw;
 	float m_flCurrentHeadPitch;
 
-	int	  m_iIDEntIndex;
-	C_Prop_Portal *m_pLookAtPortal;
-
+	EHANDLE	m_hIDEnt;
+	
 	CountdownTimer m_blinkTimer;
 
 	int	  m_iSpawnInterpCounter;

@@ -48,8 +48,7 @@ private:
 	Color			GetColorForPortal( int iIndex );
 
 	vgui::HFont		m_hFont;
-	int				m_iLastEntIndex;
-	int				m_iPortalLastEntIndex;
+	EHANDLE			m_hLastEnt;
 	float			m_flLastChangeTime;
 	float			m_flLastPortalChangeTime;
 };
@@ -70,8 +69,7 @@ CTargetID::CTargetID( const char *pElementName ) :
 	m_hFont = g_hFontTrebuchet24;
 	m_flLastChangeTime = 0;
 	m_flLastPortalChangeTime = 0;
-	m_iLastEntIndex = 0;
-	m_iPortalLastEntIndex = 0;
+	m_hLastEnt = NULL;
 
 	SetHiddenBits( HIDEHUD_MISCSTATUS );
 }
@@ -101,8 +99,7 @@ void CTargetID::VidInit()
 
 	m_flLastChangeTime = 0;
 	m_flLastPortalChangeTime = 0;
-	m_iLastEntIndex = 0;
-	m_iPortalLastEntIndex = 0;
+	m_hLastEnt = NULL;
 }
 
 Color CTargetID::GetColorForPortalgun( int iIndex )
@@ -138,7 +135,7 @@ void CTargetID::Paint()
 	Color cPortalgun = Color(255, 255, 255, 255);
 
 	// Get our target's ent index
-	int iEntIndex = pLocalPlayer->GetIDTarget();
+	CBaseEntity *pEnt = pLocalPlayer->GetTargetIDEnt();
 
 	//Nonsensical debugging
 #if 0
@@ -150,19 +147,19 @@ void CTargetID::Paint()
 	}
 #endif
 	// Didn't find one?
-	if ( !iEntIndex )
+	if ( !pEnt )
 	{
 		// Check to see if we should clear our ID
 		if ( m_flLastChangeTime && (gpGlobals->curtime > (m_flLastChangeTime + 0.5)) )
 		{
 			m_flLastChangeTime = 0;
 			sIDString[0] = 0;
-			m_iLastEntIndex = 0;
+			m_hLastEnt = NULL;
 		}
 		else
 		{
 			// Keep re-using the old one
-			iEntIndex = m_iLastEntIndex;
+			pEnt = m_hLastEnt;
 		}
 	}
 	else
@@ -171,29 +168,7 @@ void CTargetID::Paint()
 	}
 
 
-	C_Prop_Portal *pPortal = pLocalPlayer->GetPortalTarget();
-
-#if 0
-	if ( !iPortalEntIndex )
-	{
-		// Check to see if we should clear our ID
-		if ( m_flLastPortalChangeTime && (gpGlobals->curtime > (m_flLastPortalChangeTime + 0.5)) )
-		{
-			m_flLastPortalChangeTime = 0;
-			sPortalIDString[0] = 0;
-			m_iPortalLastEntIndex = 0;
-		}
-		else
-		{
-			// Keep re-using the old one
-			iPortalEntIndex = m_iPortalLastEntIndex;
-		}
-	}
-	else
-	{
-		m_flLastPortalChangeTime = gpGlobals->curtime;
-	}
-#endif
+	C_Prop_Portal *pPortal = ( pEnt && FClassnameIs( pEnt, "prop_portal" ) )? static_cast<C_Prop_Portal*>( pEnt ) : NULL;
 
 	if ( pPortal )
 	{
@@ -269,10 +244,10 @@ void CTargetID::Paint()
 	}
 
 	// Is this an entindex sent by the server?
-	if ( iEntIndex )
+	if ( pEnt )
 	{
-		C_BasePlayer *pPlayer = ToBasePlayer( ClientEntityList().GetEnt( iEntIndex ) );
-		C_WeaponPortalgun *pPortalGunTarget = dynamic_cast<C_WeaponPortalgun*>( ClientEntityList().GetEnt( iEntIndex ) );
+		C_BasePlayer *pPlayer = ToBasePlayer( pEnt );
+		C_WeaponPortalgun *pPortalGunTarget = dynamic_cast<C_WeaponPortalgun*>( pEnt );
 		
 	//	C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
 
@@ -313,7 +288,7 @@ void CTargetID::Paint()
 		{
 			bShowPlayerName = true;
 
-			if ( IsPlayerIndex( iEntIndex ) && pPlayer && !pPlayer->IsLocalPlayer() )
+			if ( pPlayer && !pPlayer->IsLocalPlayer() )
 			{
 				g_pVGuiLocalize->ConvertANSIToUnicode( pPlayer->GetPlayerName(),  wszPlayerName, sizeof(wszPlayerName) );
 
@@ -387,7 +362,7 @@ void CTargetID::Paint()
 			}
 		}
 
-		if ( sIDString[0] && IsPlayerIndex( iEntIndex ) && pPlayer )
+		if ( sIDString[0] && pPlayer )
 		{
 			int wide, tall;
 			int ypos = YRES(260);
