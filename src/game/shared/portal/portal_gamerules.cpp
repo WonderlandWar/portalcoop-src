@@ -1582,6 +1582,14 @@ bool CPortalGameRules::Init()
 // ------------------------------------------------------------------------------------ //
 bool CPortalGameRules::ShouldCollide( int collisionGroup0, int collisionGroup1 )
 {
+	// The smaller number is always first
+	if ( collisionGroup0 > collisionGroup1 )
+	{
+		// swap so that lowest is always first
+		int tmp = collisionGroup0;
+		collisionGroup0 = collisionGroup1;
+		collisionGroup1 = tmp;
+	}
 	// If it's a portal, we want to collide with it!
 	/*if ( collisionGroup0 == PORTALCOLLISION_GROUP_PORTAL && collisionGroup1 != PORTALCOLLISION_GROUP_PORTAL || 
 		 collisionGroup1 == PORTALCOLLISION_GROUP_PORTAL && collisionGroup0 != PORTALCOLLISION_GROUP_PORTAL )
@@ -1589,6 +1597,22 @@ bool CPortalGameRules::ShouldCollide( int collisionGroup0, int collisionGroup1 )
 		return true;
 	}*/
 
+	extern ConVar pcoop_avoidplayers;
+	if ( pcoop_avoidplayers.GetBool() )
+	{
+		if ( collisionGroup0 == COLLISION_GROUP_PLAYER && collisionGroup1 == COLLISION_GROUP_PLAYER )
+		{
+			return false;
+		}
+		if ( collisionGroup0 == COLLISION_GROUP_PLAYER_MOVEMENT && collisionGroup1 == COLLISION_GROUP_PLAYER_MOVEMENT )
+		{
+			return false;
+		}
+		if ( collisionGroup0 == COLLISION_GROUP_PLAYER && collisionGroup1 == COLLISION_GROUP_PLAYER_MOVEMENT )
+		{
+			return false;
+		}
+	}
 	return BaseClass::ShouldCollide( collisionGroup0, collisionGroup1 ); 
 }
 
