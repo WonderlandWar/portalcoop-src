@@ -26,8 +26,6 @@
 #define BLAST_SPEED_NON_PLAYER 1000.0f
 #define BLAST_SPEED 3000.0f
 
-extern ConVar sv_playtesting;
-
 IMPLEMENT_NETWORKCLASS_ALIASED( WeaponPortalgun, DT_WeaponPortalgun )
 
 BEGIN_NETWORK_TABLE( CWeaponPortalgun, DT_WeaponPortalgun )
@@ -107,9 +105,6 @@ void CWeaponPortalgun::Spawn( void )
 			if( pOwner )
 			{
 				m_iPortalLinkageGroupID = pOwner->entindex();
-
-				if (sv_playtesting.GetBool())
-					m_iPortalLinkageGroupID = m_iPortalLinkageGroupID - 1;
 			}
 
 			Assert( (m_iPortalLinkageGroupID >= 0) && (m_iPortalLinkageGroupID < 256) );
@@ -145,9 +140,6 @@ void CWeaponPortalgun::Activate()
 			if( GameRules()->IsMultiplayer() || !GetOwner()->IsPlayer() )
 			{
 				m_iPortalLinkageGroupID = GetOwner()->entindex();
-
-				if (sv_playtesting.GetBool())
-					m_iPortalLinkageGroupID = m_iPortalLinkageGroupID - 1;
 			}
 		}
 
@@ -212,9 +204,6 @@ void CWeaponPortalgun::OnPickedUp( CBaseCombatCharacter *pNewOwner )
 		//	if( pNewOwner && pNewOwner->IsPlayer() )
 			{
 				m_iPortalLinkageGroupID = pNewOwner->entindex();
-
-				if (sv_playtesting.GetBool())
-					m_iPortalLinkageGroupID = m_iPortalLinkageGroupID - 1;
 			}
 			Assert( (m_iPortalLinkageGroupID >= 0) && (m_iPortalLinkageGroupID < 256) );
 		}

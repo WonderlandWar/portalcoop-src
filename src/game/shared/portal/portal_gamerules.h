@@ -67,9 +67,7 @@ public:
 class CPortalGameRules : public CHalfLife2
 {
 public:
-	DECLARE_CLASS( CPortalGameRules, CSingleplayRules );
-
-	virtual bool IsMultiplayer( void );
+	DECLARE_CLASS( CPortalGameRules, CHalfLife2 );
 
 	virtual bool	Init();
 	
@@ -78,6 +76,7 @@ public:
 	virtual void	ClientSettingsChanged( CBasePlayer *pPlayer );
 	virtual void	GoToIntermission( void );
 #ifndef CLIENT_DLL
+	virtual bool	ClientConnected( edict_t *pEntity, const char *pszName, const char *pszAddress, char *reject, int maxrejectlen );
 	virtual bool	ShouldAutoAim( CBasePlayer *pPlayer, edict_t *target );
 	virtual float	GetAutoAimScale( CBasePlayer *pPlayer );
 

@@ -281,6 +281,13 @@ const char *g_ppszPortalMPModels[] =
 	"models/player/male_portal_player.mdl"
 };
 
+void BotSetupModelConVarValue( CPortal_Player *pBot )
+{	
+	int nHeads = ARRAYSIZE(g_ppszPortalMPModels);
+	const char *pszModel = g_ppszPortalMPModels[ RandomInt(0, nHeads ) ];
+	engine->SetFakeClientConVarValue( pBot->edict(), "cl_playermodel", pszModel );
+}
+
 LINK_ENTITY_TO_CLASS(player, CPortal_Player);
 
 IMPLEMENT_SERVERCLASS_ST(CPortal_Player, DT_Portal_Player)
@@ -630,6 +637,9 @@ void CPortal_Player::Spawn(void)
 #ifdef PORTAL_MP
 	PickTeam();
 #endif
+
+	if ( IsBot() )
+		BotSetupModelConVarValue( this );
 }
 
 void CPortal_Player::Activate(void)

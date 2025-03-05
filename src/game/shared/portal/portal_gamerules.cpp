@@ -39,11 +39,11 @@
 #include "tier0/memdbgon.h"
 	
 extern ConVar physcannon_mega_enabled;
-ConVar sv_spawn_with_suit( "sv_spawn_with_suit", "0", FCVAR_REPLICATED, "Sets whether or not players should spawn with the suit" );
+ConVar sv_spawn_with_suit( "sv_spawn_with_suit", "0", FCVAR_REPLICATED, "Sets whether or not players should spawn with the HEV suit" );
 ConVar sv_portalgun_spawn( "sv_portalgun_spawn", "0", FCVAR_REPLICATED, "Sets if the player should spawn with the portalgun" );
-ConVar sv_portalgun_color( "sv_portalgun_color", "2", FCVAR_REPLICATED, "Sets what portalgun colors players spawn with. 0 = Blue, 1 = Orange, 2 = Both" );
+ConVar sv_portalgun_color( "sv_portalgun_color", "2", FCVAR_REPLICATED, "Sets what portalgun colors players spawn with. 0 = Primary, 1 = Secondary, 2 = Both" );
 
-ConVar sv_restart_server( "sv_restart_server", "0", FCVAR_REPLICATED, "When all players disconnect, it will change the map back to the first map in the map set" );
+ConVar sv_restart_server( "sv_restart_server", "0", FCVAR_REPLICATED, "When all players disconnect, the game will change the map back to the first map in the map set" );
 ConVar sv_restart_server_map( "sv_restart_server_map", "", FCVAR_REPLICATED, "Map to change when all players disconnect (requires sv_restart_server to be 1)" );
 ConVar sv_restart_server_include_bots( "sv_restart_server_include_bots", "0", FCVAR_REPLICATED, "Sets if bots should be considered when checking for the amount of clients in the server" );
 
@@ -337,13 +337,6 @@ void CC_Create_PortalMetalSphere( void )
 static ConCommand cl_ent_create_portal_metal_sphere("cl_ent_create_portal_metal_sphere", CC_Create_PortalMetalSphere, "Creates a reflective metal sphere where the player is looking.", FCVAR_GAMEDLL | FCVAR_CHEAT);
 
 #endif // CLIENT_DLL
-
-//=========================================================
-//=========================================================
-bool CPortalGameRules::IsMultiplayer(void)
-{
-	return true;
-}
 
 void CPortalGameRules::ClientSettingsChanged( CBasePlayer *pPlayer )
 {
@@ -1629,6 +1622,49 @@ bool CPortalGameRules::ShouldUseRobustRadiusDamage(CBaseEntity *pEntity)
 }
 
 #ifndef CLIENT_DLL
+ConVar sv_require_game_install_necessary_for_map( "sv_require_game_install_necessary_for_map", "1", FCVAR_GAMEDLL, "Forces clients to have the maps' game to be mounted to play the server" );
+//=========================================================
+//=========================================================
+bool CPortalGameRules::ClientConnected( edict_t *pEntity, const char *pszName, const char *pszAddress, char *reject, int maxrejectlen )
+{
+	bool bIsHost = false;
+	int index = ENTINDEX( pEntity );
+	if ( !engine->IsDedicatedServer() )
+	{
+		bIsHost = index == 1;
+	}
+	if ( sv_require_game_install_necessary_for_map.GetBool() &&
+		!bIsHost // Don't kick the listen server host!
+		) 
+	{
+		int nInstallBits = atoi( engine->GetClientConVarValue( index, "cl_game_install_bits" ) );
+
+		// Check to see if Portal is mounted, this may be unnecessary since there's already an engine crash if Portal isn't installed
+		if ( ( nInstallBits & INSTALL_BITS_PORTAL ) == 0 )
+		{
+			Q_strncpy( reject, "Portal must be installed to play on this server\n", maxrejectlen );
+			return false;
+		}
+		
+		// Now check for necessary mods
+		PortalGameType_t gametype = (PortalGameType_t)sv_portal_game.GetInt();
+		switch ( gametype )
+		{
+			case PORTAL_GAME_REXAURA:
+			{
+				if ( ( nInstallBits & INSTALL_BITS_REXAURA ) == 0 )
+				{
+					Q_strncpy( reject, "Rexaura must be installed to play on this map, see readme.txt for install instructions\n", maxrejectlen );
+					return false;
+				}
+				break;
+			}
+		}
+	}
+	
+	return BaseClass::ClientConnected( pEntity, pszName, pszAddress, reject, maxrejectlen );
+}
+
 //---------------------------------------------------------
 //---------------------------------------------------------
 bool CPortalGameRules::ShouldAutoAim( CBasePlayer *pPlayer, edict_t *target )

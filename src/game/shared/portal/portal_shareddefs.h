@@ -102,4 +102,7 @@ extern char *g_ppszPortalPassThroughMaterials[];
 #define RADIO_DATA_FILE "scripts/radios.txt"
 extern KeyValues *LoadRadioData();
 
+#define INSTALL_BITS_PORTAL		(1<<0)
+#define INSTALL_BITS_REXAURA	(1<<1)
+
 #endif // PORTAL_SHAREDDEFS_H

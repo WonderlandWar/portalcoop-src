@@ -11,7 +11,11 @@
 #endif
 
 #include "gamerules.h"
+#ifdef PORTAL
+#include "multiplay_gamerules.h"
+#else
 #include "singleplay_gamerules.h"
+#endif
 #include "hl2_shareddefs.h"
 
 #ifdef CLIENT_DLL
@@ -27,12 +31,18 @@ public:
 	DECLARE_NETWORKCLASS();
 };
 
-
+#ifdef PORTAL
+class CHalfLife2 : public CMultiplayRules
+#else
 class CHalfLife2 : public CSingleplayRules
+#endif
 {
 public:
+#ifdef PORTAL
+	DECLARE_CLASS( CHalfLife2, CMultiplayRules );
+#else
 	DECLARE_CLASS( CHalfLife2, CSingleplayRules );
-
+#endif
 	// Damage Query Overrides.
 	virtual bool			Damage_IsTimeBased( int iDmgType );
 	// TEMP:

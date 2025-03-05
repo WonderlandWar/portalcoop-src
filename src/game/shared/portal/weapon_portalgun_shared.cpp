@@ -32,7 +32,6 @@
 
 ConVar use_server_portal_particles( "use_server_portal_particles", "0", FCVAR_REPLICATED );
 ConVar use_server_portal_crosshair_test("use_server_portal_crosshair_test", "0", FCVAR_REPLICATED, "Changes if the crosshair placement indicator should be predicted or use the server");
-ConVar sv_playtesting("sv_playtesting", "0", FCVAR_REPLICATED, "If the owner is hosting a server, is in the server as a player, and running a playtest with 2 other players, then enable this for proper portalgun linkages");
 extern ConVar sv_allow_customized_portal_colors;
 
 #ifdef CLIENT_DLL
@@ -81,7 +80,6 @@ CWeaponPortalgun::CWeaponPortalgun( void )
 #endif
 
 #ifdef CLIENT_DLL
-	//if (sv_playtesting.GetBool())
 	m_iOldPortalLinkageGroupID = 255; // This has to be done so that m_iOldPortalLinkageGroupID != m_iPortalLinkageGroupID for OnDataChanged
 	m_iOldPortalColorSet = 255; // This has to be done so that m_iOldPortalColorSet != m_iPortalColorSet for OnDataChanged
 #endif
@@ -424,9 +422,6 @@ bool CWeaponPortalgun::Deploy( void )
 			if( GameRules()->IsMultiplayer() || !GetOwner()->IsPlayer())
 			{
 				m_iPortalLinkageGroupID = pOwner->entindex();
-
-				if (sv_playtesting.GetBool())
-					m_iPortalLinkageGroupID = m_iPortalLinkageGroupID - 1;
 			
 				Assert( (m_iPortalLinkageGroupID >= 0) && (m_iPortalLinkageGroupID < 256) );
 			}
