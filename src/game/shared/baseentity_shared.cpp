@@ -2181,6 +2181,7 @@ void CBaseEntity::DoImpactEffect( trace_t &tr, int nDamageType )
 //-----------------------------------------------------------------------------
 void CBaseEntity::ComputeTracerStartPosition( const Vector &vecShotSrc, Vector *pVecTracerStart )
 {
+#ifndef PORTAL
 #ifndef HL2MP
 	if ( g_pGameRules->IsMultiplayer() )
 	{
@@ -2190,7 +2191,7 @@ void CBaseEntity::ComputeTracerStartPosition( const Vector &vecShotSrc, Vector *
 		return;
 	}
 #endif
-	
+#endif
 	if ( IsPlayer() )
 	{
 		// adjust tracer position for player
@@ -2260,12 +2261,12 @@ void CBaseEntity::MakeTracer( const Vector &vecTracerSrc, const trace_t &tr, int
 int CBaseEntity::GetTracerAttachment( void )
 {
 	int iAttachment = TRACER_DONT_USE_ATTACHMENT;
-
+#ifndef PORTAL
 	if ( g_pGameRules->IsMultiplayer() )
 	{
 		iAttachment = 1;
 	}
-
+#endif
 	return iAttachment;
 }
 
