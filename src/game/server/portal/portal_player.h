@@ -307,8 +307,10 @@ private:
 	};
 
 	CUtlVector<RecentPortalTransform_t> m_PendingPortalTransforms; //portal transforms we've sent to the client but they have not yet acknowledged, needed for some input fixup
-	
+
 public:
+	
+	CNetworkVector( m_vecAnimStateBaseVelocity );
 	
 	CNetworkVar( bool, m_bPitchReorientation );
 

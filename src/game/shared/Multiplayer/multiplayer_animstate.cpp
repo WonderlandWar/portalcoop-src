@@ -30,7 +30,7 @@ ConVar anim_showmainactivity( "anim_showmainactivity", "0", FCVAR_CHEAT, "Show t
 #define CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( o, r, n )
 #endif
 
-#if defined( PORTAL ) && defined( CLIENT_DLL )
+#if defined( PORTAL )
 #include "portal_player_shared.h"
 #endif
 
@@ -1022,7 +1022,7 @@ float CMultiPlayerAnimState::CalcMovementSpeed( bool *bIsMoving )
 {
 	// Get the player's current velocity and speed.
 	Vector vecVelocity;
-	GetOuterAbsVelocity( vecVelocity );
+	GetRelativeVelocity( vecVelocity );
 	float flSpeed = vecVelocity.Length2D();
 
 	if ( flSpeed > MOVING_MINIMUM_SPEED )
@@ -1610,7 +1610,7 @@ void CMultiPlayerAnimState::EstimateYaw( void )
 
 	// Get the player's velocity and angles.
 	Vector vecEstVelocity;
-	GetOuterAbsVelocity( vecEstVelocity );
+	GetRelativeVelocity( vecEstVelocity );
 	QAngle angles = GetBasePlayer()->GetLocalAngles();
 
 	// If we are not moving, sync up the feet and eyes slowly.
@@ -1658,7 +1658,7 @@ void CMultiPlayerAnimState::ComputePoseParam_AimYaw( CStudioHdr *pStudioHdr )
 {
 	// Get the movement velocity.
 	Vector vecVelocity;
-	GetOuterAbsVelocity( vecVelocity );
+	GetRelativeVelocity( vecVelocity );
 
 	// Check to see if we are moving.
 	bool bMoving = ( vecVelocity.Length() > 1.0f ) ? true : false;
@@ -1813,6 +1813,27 @@ void CMultiPlayerAnimState::GetOuterAbsVelocity( Vector& vel )
 
 //-----------------------------------------------------------------------------
 // Purpose: 
+// Input  : vel - 
+//-----------------------------------------------------------------------------
+void CMultiPlayerAnimState::GetRelativeVelocity( Vector& vel )
+{
+	CBasePlayer *pPlayer = GetBasePlayer();
+#if defined( CLIENT_DLL )
+	pPlayer->EstimateAbsVelocity( vel );
+#else
+	vel = pPlayer->GetAbsVelocity();
+#endif
+
+#ifdef PORTAL
+	if ( vel.Length() != 0 )
+	{
+		vel -= static_cast<CPortal_Player*>( pPlayer )->m_vecAnimStateBaseVelocity;
+	}
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
 //-----------------------------------------------------------------------------
 void CMultiPlayerAnimState::Release( void )
 {
@@ -1827,7 +1848,7 @@ void CMultiPlayerAnimState::Release( void )
 float CMultiPlayerAnimState::GetOuterXYSpeed()
 {
 	Vector vel;
-	GetOuterAbsVelocity( vel );
+	GetRelativeVelocity( vel );
 	return vel.Length2D();
 }
 
@@ -1883,7 +1904,7 @@ void CMultiPlayerAnimState::DebugShowAnimStateForPlayer( bool bIsServer )
 {
 	// Get the player's velocity.
 	Vector vecVelocity;
-	GetOuterAbsVelocity( vecVelocity );
+	GetRelativeVelocity( vecVelocity );
 
 	// Start animation state logging.
 	int iLine = 5;
@@ -2010,7 +2031,7 @@ void CMultiPlayerAnimState::DebugShowActivity( Activity activity )
 void CMultiPlayerAnimState::DebugShowAnimState( int iStartLine )
 {
 	Vector vOuterVel;
-	GetOuterAbsVelocity( vOuterVel );
+	GetRelativeVelocity( vOuterVel );
 
 	Anim_StateLog( "----------------- frame %d -----------------\n", gpGlobals->framecount );
 

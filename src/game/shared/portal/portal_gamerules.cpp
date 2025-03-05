@@ -74,21 +74,48 @@ BEGIN_SIMPLE_DATADESC( CPortalGameRules )
 
 END_DATADESC()
 
+#ifdef GAME_DLL
+BEGIN_DATADESC( CPortalGameRulesProxy )
+DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SuspendRespawning", InputSuspendRespawning ),
+DEFINE_INPUTFUNC( FIELD_VOID, "RespawnAllPlayers", InputRespawnAllPlayers ),
+DEFINE_INPUTFUNC( FIELD_VOID, "ResetDetachedCameras", InputResetDetachedCameras ),
+//DEFINE_INPUTFUNC( FIELD_BOOLEAN, "DisableGamePause", InputDisableGamePause ),
+
+DEFINE_OUTPUT( m_OnPlayerConnected, "OnPlayerConnected" ),
+END_DATADESC()
+#endif
+
 LINK_ENTITY_TO_CLASS_ALIASED( portal_gamerules, PortalGameRulesProxy );
 
-#ifdef GAME_DLL
-
-CON_COMMAND_F(portal_bot, "Creates a fake portal player", FCVAR_REPLICATED)
+CPortalGameRulesProxy::CPortalGameRulesProxy()
 {
-	if (!UTIL_IsCommandIssuedByServerAdmin())
-		return;
-
-	extern void ClientPutInServer(edict_t *pEdict, const char *playername);
-	
-	edict_t *pEdict = engine->CreateFakeClient( "PortalBot" );
-	ClientPutInServer( pEdict, "PortalBot" );
+#ifdef GAME_DLL
+	m_bSuspendRespawn = false;
+#endif
 }
 
+#ifdef GAME_DLL
+void CPortalGameRulesProxy::InputSuspendRespawning( inputdata_t &inputdata )
+{
+	m_bSuspendRespawn = inputdata.value.Bool();
+}
+
+extern void RespawnAllPlayers();
+void CPortalGameRulesProxy::InputRespawnAllPlayers( inputdata_t &inputdata )
+{
+	RespawnAllPlayers();
+}
+
+extern int g_iNumCamerasDetatched;
+void CPortalGameRulesProxy::InputResetDetachedCameras( inputdata_t &inputdata )
+{
+	g_iNumCamerasDetatched = 0;
+}
+
+//void CPortalGameRulesProxy::InputDisableGamePause( inputdata_t &inputdata )
+//{
+//	PortalGameRules()->m_bDisableGamePause = inputdata.value.Bool();
+//}
 #endif
 
 #ifdef CLIENT_DLL
@@ -1430,8 +1457,9 @@ const char *CPortalGameRules::GetGameDescription( void )
 			// FIXME: Is there a better place for this?
 			m_bMegaPhysgun = ( GlobalEntity_GetState("super_phys_gun") == GLOBAL_ON );
 		}
+
 		if (GetBonusChallenge() == PORTAL_CHALLENGE_TIME)
-		UpdateSecondsTaken();
+			UpdateSecondsTaken();
 
 		if ( m_bOldAllowPortalCustomization != sv_allow_customized_portal_colors.GetBool() )
 		{
@@ -1699,7 +1727,6 @@ ConVar sv_bonus_map_challenge_wait_time("sv_bonus_map_challenge_wait_time", "5.0
 
 void CPortalGameRules::UpdateSecondsTaken(void)
 {
-
 	float fSecondsSinceLastUpdate = (gpGlobals->curtime - m_fTimeLastNumSecondsUpdate);
 	m_StatsThisLevel.fNumSecondsTaken += fSecondsSinceLastUpdate;
 	m_fTimeLastNumSecondsUpdate = gpGlobals->curtime;

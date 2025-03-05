@@ -957,7 +957,7 @@ void UpdatePortalGameType( const char *pMapName )
 	{
 		sv_portal_game.SetValue( PORTAL_GAME_PORTAL );
 	}
-	else*/ if ( V_stristr( pMapName, "rex2c_" ) || V_stristr( pMapName, "rex3c_" ) )
+	else*/ if ( V_stristr( pMapName, "rex2c_" ) || V_stristr( pMapName, "rex3c_" ) || V_stristr( pMapName, "rex_" ) )
 	{
 		sv_portal_game.SetValue( PORTAL_GAME_REXAURA );
 	}

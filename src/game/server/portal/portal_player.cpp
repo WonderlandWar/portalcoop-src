@@ -318,6 +318,8 @@ IMPLEMENT_SERVERCLASS_ST(CPortal_Player, DT_Portal_Player)
 	SendPropBool(SENDINFO(m_bIsListenServerHost)),
 	SendPropBool(SENDINFO(m_bHeldObjectOnOppositeSideOfPortal)),
 	SendPropInt(SENDINFO(m_iCustomPortalColorSet)),
+	
+	SendPropVector( SENDINFO( m_vecAnimStateBaseVelocity ), 0, SPROP_COORD_MP | SPROP_CHANGES_OFTEN ),
 
 	// Data that only gets sent to the local player
 	SendPropDataTable( "portallocaldata", 0, &REFERENCE_SEND_TABLE(DT_PortalLocalPlayerExclusive), SendProxy_SendLocalDataTable ),

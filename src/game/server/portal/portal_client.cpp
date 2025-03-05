@@ -148,12 +148,14 @@ void ClientGamePrecache( void )
 	CBaseEntity::PrecacheModel( "models/portals/portal2.mdl" );
 }
 
-ConVar mp_suspend_respawn("mp_suspend_respawn", "0", FCVAR_REPLICATED, "Suspends respawning players");
 // called by ClientKill and DeadThink
 void respawn( CBaseEntity *pEdict, bool fCopyCorpse )
 {
-	if (mp_suspend_respawn.GetBool())
+	CPortalGameRulesProxy *pProxy = static_cast<CPortalGameRulesProxy*>( gEntList.FindEntityByClassname( NULL, "portal_gamerules" ) );
+	if ( pProxy && pProxy->m_bSuspendRespawn )
+	{
 		return;
+	}
 
 	if ( fCopyCorpse )
 	{
@@ -166,10 +168,12 @@ void respawn( CBaseEntity *pEdict, bool fCopyCorpse )
 }
 
 void RespawnAllPlayers()
-{
-	
-	if (mp_suspend_respawn.GetBool())
+{	
+	CPortalGameRulesProxy *pProxy = static_cast<CPortalGameRulesProxy*>( gEntList.FindEntityByClassname( NULL, "portal_gamerules" ) );
+	if ( pProxy && pProxy->m_bSuspendRespawn )
+	{
 		return;
+	}
 
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
@@ -190,11 +194,6 @@ void RespawnAllPlayers()
 
 }
 
-CON_COMMAND(mp_respawnallplayers, "Respawns all players in the server unless mp_suspend_respawn is set to 0")
-{
-	RespawnAllPlayers();
-}
-
 void GameStartFrame( void )
 {
 	VPROF("GameStartFrame()");
@@ -202,6 +201,9 @@ void GameStartFrame( void )
 		return;
 
 	gpGlobals->teamplay = (teamplay.GetInt() != 0);
+
+	extern void Bot_RunAll();
+	Bot_RunAll();
 }
 
 //=========================================================

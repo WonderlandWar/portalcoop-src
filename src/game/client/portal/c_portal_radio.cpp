@@ -11,6 +11,8 @@
 #include "filesystem.h"
 #include "portal_shareddefs.h"
 
+extern const ConVar *sv_cheats;
+
 //#define RADIO_DEBUG_CLIENT
 
 class C_Dinosaur_Signal : public C_BaseEntity
@@ -268,7 +270,9 @@ void C_Portal_Dinosaur::ScanForSounds()
 	if ( flInnerBlend >= 1.0f && m_flOldBlend < 1.0f )
 	{
 		int id = pSignal->m_nSignalID;
-		if ( !engine->IsPlayingDemo() ) // Don't save any data if we're running a demo file
+		if ( !engine->IsPlayingDemo() && // Don't save any data if we're running a demo file
+			sv_cheats->GetBool() // Don't save if cheats were enabled 
+			) 
 		{
 			KeyValues *radios = LoadRadioData();
 			if ( radios )

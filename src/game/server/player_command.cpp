@@ -14,6 +14,9 @@
 #include "movehelper_server.h"
 #include "iservervehicle.h"
 #include "tier0/vprof.h"
+#ifdef PORTAL
+#include "portal_player.h"
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -433,6 +436,14 @@ void CPlayerMove::RunCommand ( CBasePlayer *player, CUserCmd *ucmd, IMoveHelper 
 		VPROF( "g_pGameMovement->ProcessMovement()" );
 		Assert( g_pGameMovement );
 		g_pGameMovement->ProcessMovement( player, g_pMoveData );
+#ifdef PORTAL
+		CPortal_Player *pPortalPlayer = static_cast<CPortal_Player*>( player );		
+		CBaseEntity *ground = pPortalPlayer->GetGroundEntity();
+		if ( ground )
+		{
+			pPortalPlayer->m_vecAnimStateBaseVelocity = ground->GetAbsVelocity();
+		}
+#endif
 	}
 	else
 	{

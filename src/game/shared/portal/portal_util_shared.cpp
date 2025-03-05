@@ -2408,7 +2408,8 @@ void UTIL_Portal_ComputeMatrix( CProp_Portal *pLocalPortal, CProp_Portal *pRemot
 float GetReliableCurrentTime()
 {
 #ifdef CLIENT_DLL
-	return Plat_FloatTime();
+	return gpGlobals->curtime;
+	//return Plat_FloatTime();
 #else
 	return gpGlobals->curtime;
 #endif

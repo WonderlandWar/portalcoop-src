@@ -342,6 +342,8 @@ public:
 
 	void FixPortalEnvironmentOwnership( void ); //if we run prediction, there are multiple cases where m_hPortalEnvironment != CPortalSimulator::GetSimulatorThatOwnsEntity( this ), and that's bad
 	CHandle<C_Func_LiquidPortal>	m_hSurroundingLiquidPortal; //a liquid portal whose volume the player is standing in
+
+	Vector m_vecAnimStateBaseVelocity;
 private:
 	
 	CUtlVector<C_EntityPortalledNetworkMessage> m_EntityPortalledNetworkMessages;

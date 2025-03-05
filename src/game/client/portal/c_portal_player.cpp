@@ -314,6 +314,8 @@ IMPLEMENT_CLIENTCLASS_DT(C_Portal_Player, DT_Portal_Player, CPortal_Player)
 	RecvPropBool( RECVINFO( m_bSilentDropAndPickup ) ),
 	RecvPropBool( RECVINFO( m_bIsListenServerHost ) ),
 	RecvPropBool( RECVINFO( m_bHeldObjectOnOppositeSideOfPortal ) ),
+
+	RecvPropVector( RECVINFO( m_vecAnimStateBaseVelocity ) ),
 	
 	RecvPropInt( RECVINFO( m_iCustomPortalColorSet ) ),	
 	

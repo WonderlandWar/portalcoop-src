@@ -292,7 +292,7 @@ bool CPortalPlayerAnimState::HandleDucking( Activity &idealActivity )
 bool CPortalPlayerAnimState::HandleJumping( Activity &idealActivity )
 {
 	Vector vecVelocity;
-	GetOuterAbsVelocity( vecVelocity );
+	GetRelativeVelocity( vecVelocity );
 	
 	if ( ( vecVelocity.z > 300.0f || m_bInAirWalk ) )
 	{

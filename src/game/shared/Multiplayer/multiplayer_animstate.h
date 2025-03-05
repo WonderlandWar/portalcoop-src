@@ -223,6 +223,7 @@ protected:
 	virtual void RestartMainSequence();
 
 	virtual void GetOuterAbsVelocity( Vector& vel );
+	virtual void GetRelativeVelocity( Vector& vel );
 	float GetOuterXYSpeed();
 
 	virtual bool HandleJumping( Activity &idealActivity );

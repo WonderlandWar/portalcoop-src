@@ -42,11 +42,25 @@ struct PortalPlayerStatistics_t
 	float fNumSecondsTaken;
 };
 
-class CPortalGameRulesProxy : public CGameRulesProxy
+class CPortalGameRulesProxy : public CHalfLife2Proxy
 {
 public:
-	DECLARE_CLASS( CPortalGameRulesProxy, CGameRulesProxy );
+	CPortalGameRulesProxy();
+
+	DECLARE_CLASS( CPortalGameRulesProxy, CHalfLife2Proxy );
 	DECLARE_NETWORKCLASS();
+#ifdef GAME_DLL
+	DECLARE_DATADESC();
+	
+	void InputSuspendRespawning( inputdata_t &inputdata );
+	void InputRespawnAllPlayers( inputdata_t &inputdata );
+	void InputResetDetachedCameras( inputdata_t &inputdata );
+	//void InputDisableGamePause( inputdata_t &inputdata );
+	
+	bool m_bSuspendRespawn;
+
+	COutputEvent m_OnPlayerConnected;
+#endif
 };
 
 
