@@ -238,7 +238,7 @@ bool CPortalLaser::CreateVPhysics( void )
 
 void CPortalLaser::CreateSoundProxies( void )
 {		
-	for ( int i = 0; i < MAX_PLAYERS; ++i )
+	for ( int i = 0; i < gpGlobals->maxClients; ++i )
 	{
 		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
 		if (pPlayer && pPlayer->IsConnected() )
@@ -255,7 +255,7 @@ void CPortalLaser::CreateSoundProxies( void )
 
 			CBaseEntity *pSoundProxy = m_pSoundProxy[i];
 
-			if (!m_pSoundProxy[MAX_PLAYERS])
+			if (!m_pSoundProxy[gpGlobals->maxClients])
 			{
 				CSingleUserRecipientFilter filter( pPlayer );
 
@@ -281,7 +281,7 @@ void CPortalLaser::CreateSoundProxies( void )
 
 void CPortalLaser::UpdateSoundPosition( Vector &vecStart, Vector &vecEnd )
 {
-	for ( int i = 1; i < MAX_PLAYERS; ++i)
+	for ( int i = 1; i < gpGlobals->maxClients; ++i)
 	{
 		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
 		if (!pPlayer || !pPlayer->IsConnected())
@@ -375,7 +375,7 @@ void CPortalLaser::TurnOffGlow( void )
 
 void CPortalLaser::TurnOffLaserSound( void )
 {
-	for ( int i = 0; i < MAX_PLAYERS; ++i )
+	for ( int i = 0; i < gpGlobals->maxClients; ++i )
 	{
 		if ( m_pAmbientSound[i] )
 		{
@@ -526,7 +526,6 @@ void CPortalLaser::FireLaser( Vector &vecStart, Vector &vecDirection, CPropWeigh
 {
 	Vector vecNewTermPoint;
 	Vector vDir;
-	Vector vecStartPos;
 	float flOtherBeamLength = 0.0;
 	trace_t rootTrace;
 	if ( new_portal_laser.GetInt() )
@@ -538,21 +537,22 @@ void CPortalLaser::FireLaser( Vector &vecStart, Vector &vecDirection, CPropWeigh
 
 		bool bAutoAimDisabled = !m_bAutoAimEnabled;
 		vecDirection_0 = vecDirection;
-		
-		CBaseEntity *pTracedTarget = TraceLaser( true, vecStart, vecDirection_0, flTotalBeamLength, rootTrace, infoList, &vecStartPos );
+
+		Vector vecAutoAimOffset;
+		CBaseEntity *pTracedTarget = TraceLaser( true, vecStart, vecDirection_0, flTotalBeamLength, rootTrace, infoList, &vecAutoAimOffset );
 		bool bAutoAimSuccess = false;
 		if ( !bAutoAimDisabled )
 		{
 			if ( ShouldAutoAim(pTracedTarget) )
 			{
-				vDir = ( ((vecDirection * flTotalBeamLength) + vecStart) + vecStartPos ) - vecStart;
+				vDir = ( ((vecDirection * flTotalBeamLength) + vecStart) + vecAutoAimOffset ) - vecStart;
 
 				VectorNormalize( vDir );
 				//memset(&vecNewTermPoint, 0, sizeof(vecNewTermPoint));
 				//vec_t v43 = 0.0;
 				bAutoAimSuccess = false;
 				trace_t autoaimTrace;
-				if ( pTracedTarget == TraceLaser( false, vecStart, vDir, flOtherBeamLength, autoaimTrace, infoList, false ) )
+				if ( pTracedTarget == TraceLaser( false, vecStart, vDir, flOtherBeamLength, autoaimTrace, infoList, NULL ) )
 				{
 					rootTrace = autoaimTrace;
 
