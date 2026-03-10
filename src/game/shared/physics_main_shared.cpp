@@ -21,6 +21,9 @@
 
 #ifdef PORTAL
 	#include "portal_util_shared.h"
+#ifdef GAME_DLL
+	#include "portal_player.h"
+#endif
 #endif
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -2109,17 +2112,23 @@ void CBaseEntity::SetGroundEntity( CBaseEntity *ground )
 #ifdef GAME_DLL
 	// this can happen in-between updates to the held object controller (physcannon, +USE)
 	// so trap it here and release held objects when they become player ground
-	if ( ground && IsPlayer() && ground->GetMoveType()== MOVETYPE_VPHYSICS )
+	if ( ground && IsPlayer() )
 	{
-		CBasePlayer *pPlayer = ToBasePlayer(this);
-		IPhysicsObject *pPhysGround = ground->VPhysicsGetObject();
-		if ( pPhysGround && pPlayer )
+		if ( ground->GetMoveType()== MOVETYPE_VPHYSICS )
 		{
-			if ( pPhysGround->GetGameFlags() & FVPHYSICS_PLAYER_HELD )
+			CBasePlayer *pPlayer = ToBasePlayer(this);
+			IPhysicsObject *pPhysGround = ground->VPhysicsGetObject();
+			if ( pPhysGround && pPlayer )
 			{
-				pPlayer->ForceDropOfCarriedPhysObjects( ground );
+				if ( pPhysGround->GetGameFlags() & FVPHYSICS_PLAYER_HELD )
+				{
+					pPlayer->ForceDropOfCarriedPhysObjects( ground );
+				}
 			}
 		}
+#if defined ( PORTAL ) && defined ( GAME_DLL )
+		((CPortal_Player*)(this))->m_bCatapulted = false;
+#endif
 	}
 #endif
 

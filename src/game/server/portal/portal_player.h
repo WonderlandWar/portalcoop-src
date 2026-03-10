@@ -310,6 +310,8 @@ private:
 
 public:
 	
+	bool m_bCatapulted;
+
 	CNetworkVector( m_vecAnimStateBaseVelocity );
 	
 	CNetworkVar( bool, m_bPitchReorientation );

@@ -367,6 +367,10 @@ $Project "Server (Portal)"
 			$File	"portal\env_portal_laser.cpp"
 			$File	"portal\point_laser_target.cpp"
 			
+			$File "portal\trigger_catapult.cpp"
+			$File "portal\trigger_catapult.h"
+			$File "$SRCDIR\game\shared\portal\trigger_catapult_shared.cpp"
+			
 			$Folder	"Weapons"
 			{
 				$File	"$SRCDIR\game\shared\portal\weapon_physcannon.cpp"

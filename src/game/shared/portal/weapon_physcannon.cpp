@@ -29,7 +29,6 @@
 #include "rumble_shared.h"
 #include "gamestats.h"
 
-
 #ifdef GAME_DLL
 #include "player.h"
 #include "weapon_portalgun.h"
@@ -47,6 +46,7 @@
 #include "physobj.h"
 #include "eventqueue.h"
 #include "ai_interactions.h"
+#include "prop_box.h"
 #else
 #include "c_physicsprop.h"
 #include "c_baseplayer.h"
@@ -318,6 +318,22 @@ void UTIL_PhyscannonTraceHull( const Vector &vecAbsStart, const Vector &vecAbsEn
 			*pTrace = testTrace;
 		}
 	}
+}
+
+bool HeldObjectShouldHitPlayer( CPortal_Player *pPlayer, CBaseEntity *pHeld )
+{
+#ifdef GAME_DLL
+	if ( !pPlayer )
+		return true;
+
+	if ( pPlayer->m_bCatapulted )
+		return false;
+
+	// RETRACT_PORT: Only use the Retract logic for prop_weighted_cube and no other entity (don't want to effect the base game!)
+	if ( UTIL_IsWeightedCube( pHeld ) && (pPlayer->GetAbsVelocity().Length() > 300) )
+		return false;
+#endif
+	return true;
 }
 
 static void MatrixOrthogonalize( matrix3x4_t &matrix, int column )
@@ -669,6 +685,35 @@ float CGrabController::ComputeError()
 		}
 	}
 #endif
+	// If we've given ourselves extra error distance to allow object-player penetration,
+	// multiply that error if some obstruction gets in between the player and the object
+	if ( !HeldObjectShouldHitPlayer( pPortalPlayer, pAttached ) )
+	{
+		trace_t tr;
+		Ray_t ray;
+		CTraceFilterSkipTwoEntities traceFilter( pPortalPlayer, pAttached, COLLISION_GROUP_NONE );
+		Vector vObjectCenter = pAttached->GetAbsOrigin();
+		if ( pPortalPlayer->IsHeldObjectOnOppositeSideOfPortal() )
+		{
+			Assert ( pPortalPlayer->GetHeldObjectPortal() && pPortalPlayer->GetHeldObjectPortal()->m_hLinkedPortal );
+			if ( pPortalPlayer->GetHeldObjectPortal() && pPortalPlayer->GetHeldObjectPortal()->m_hLinkedPortal  )
+			{
+				Vector tmp;
+				UTIL_Portal_PointTransform( pPortalPlayer->GetHeldObjectPortal()->m_hLinkedPortal->MatrixThisToLinked(), vObjectCenter, tmp ); 	
+				vObjectCenter = tmp;
+			}
+		}
+		ray.Init( pPortalPlayer->EyePosition(), vObjectCenter );
+		UTIL_Portal_TraceRay( ray, MASK_SOLID, &traceFilter, &tr, false );
+		if ( tr.DidHit() )
+		{
+			m_error *= 3.0f;
+			//if ( player_held_object_debug_error.GetBool() )
+			//{
+			//	engine->Con_NPrintf( 23, "Multiplying error from obstruction" );
+			//}
+		}
+	}
 	m_errorTime = 0;
 
 	return m_error;
@@ -1469,9 +1514,10 @@ void CPlayerPickupController::Use( CBaseEntity *pActivator, CBaseEntity *pCaller
 
 		// UNDONE: Use vphysics stress to decide to drop objects
 		// UNDONE: Must fix case of forcing objects into the ground you're standing on (causes stress) before that will work
+		float flMaxError = ( HeldObjectShouldHitPlayer( (CPortal_Player*)pActivator, pAttached ) ) ? ( 12 ) : ( 9999 ); // Some magic numbers here... what we want to allow is the object moving from the desired position into the player before we start trying to break the hold 
 		if ( !pAttached || useType == USE_OFF || (m_hPlayer->m_nButtons & IN_ATTACK2) 
 #ifndef CLIENT_DLL // Client physics is too unreliable for this to be consistent with the server
-			|| m_grabController.ComputeError() > 12
+			|| m_grabController.ComputeError() > flMaxError
 #endif
 			)
 		{
@@ -3117,6 +3163,17 @@ bool CGrabController::UpdateObject( CPortal_Player *pPlayer, float flError )
 	Vector offset;
 	AngleMatrix( angles, attachedToWorld );
 	VectorRotate( m_attachedPositionObjectSpace, attachedToWorld, offset );
+	
+	//if the player is moving pretty fast. Start moving the object more towards where they're going to be instead of where they are.
+	if ( !HeldObjectShouldHitPlayer( pPortalPlayer, GetAttached() ))
+	{
+		Vector vCurrentOffsetDirection = end - pPlayer->WorldSpaceCenter();
+		vCurrentOffsetDirection.NormalizeInPlace();
+
+		Vector vSpeedAddon = pPlayer->GetAbsVelocity() * (gpGlobals->interval_per_tick * MIN( pPlayer->GetAbsVelocity().Length() / m_shadow.maxSpeed, 1.0f) );
+		float fDot = vSpeedAddon.Dot( vCurrentOffsetDirection );
+		end += vCurrentOffsetDirection * MAX( 0.0f, fDot );
+	}
 
 	// Translate hold position and angles across portal
 	if ( pPortalPlayer->IsHeldObjectOnOppositeSideOfPortal() )

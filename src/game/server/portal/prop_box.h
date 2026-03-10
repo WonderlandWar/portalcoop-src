@@ -25,6 +25,8 @@ public:
 
 	void Spawn( void );
 	void Precache( void );
+	
+	virtual	bool	ShouldCollide( int collisionGroup, int contentsMask ) const OVERRIDE;
 
 	void EnergyBallHit( CPropCombineBall *pBall );
 	void PreDissolve( CBaseEntity *pActivator, CBaseEntity *pCaller );

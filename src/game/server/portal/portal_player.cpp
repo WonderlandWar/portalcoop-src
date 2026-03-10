@@ -744,6 +744,8 @@ CPortal_Player::CPortal_Player()
 
 	m_bForceBumpWeapon = false;
 
+	m_bCatapulted = false;
+
 	AddToPauseList( this );
 
 	m_bWasPaused = false;

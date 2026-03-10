@@ -3,6 +3,7 @@
 #include "datacache/imdlcache.h"
 #include "trigger_portal_cleanser.h"
 #include "trigger_box_reflector.h"
+#include "portal/weapon_physcannon.h"
 
 #define BOX_MODEL "models/props/metal_box.mdl"
 #define BOX_REFLECT_MODEL	"models/props/reflection_cube.mdl"
@@ -87,6 +88,26 @@ int CPropBox::OnTakeDamage( const CTakeDamageInfo &info )
 void CPropBox::InputDissolve( inputdata_t &inputdata )
 {
 	CTriggerPortalCleanser::FizzleBaseAnimating( this, NULL );
+}
+
+bool CPropBox::ShouldCollide( int collisionGroup, int contentsMask ) const
+{
+	IPhysicsObject *pObj = VPhysicsGetObject();
+	if ( pObj && ( pObj->GetGameFlags() & FVPHYSICS_PLAYER_HELD ) )
+	{
+		if ( collisionGroup == COLLISION_GROUP_PLAYER || collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT )
+		{
+			extern bool HeldObjectShouldHitPlayer( CPortal_Player *pPlayer, CBaseEntity *pHeld );
+			CPortal_Player *pPlayer = (CPortal_Player *)GetPlayerHoldingEntity( (CBaseEntity*)this );
+			if ( pPlayer && !HeldObjectShouldHitPlayer( pPlayer, (CBaseEntity*)this ) )
+			{
+				// Held objects shouldn't collide with players 
+				return false;
+			}
+		}
+	}
+
+	return BaseClass::ShouldCollide( collisionGroup, contentsMask );
 }
 
 // CPropWeightedCube
