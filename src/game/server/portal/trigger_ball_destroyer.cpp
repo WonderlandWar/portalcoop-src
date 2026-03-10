@@ -129,7 +129,7 @@ void CTriggerBallDestroyer::StartTouch( CBaseEntity *pOther )
 	if ( m_bEnergyBallsOnly )
 		return;
 
-	if ( FClassnameIs( pOther, "prop_box" ) )
+	if ( UTIL_IsBoxOrWeightedCube( pOther ) )
 	{
 		m_OnDissolveBox.FireOutput( pOther, pOther );
 	}

@@ -11,6 +11,9 @@
 #include "tier0/memdbgon.h"
 
 LINK_ENTITY_TO_CLASS( env_citadel_energy_core, CCitadelEnergyCore );
+#ifdef PORTAL // RETRACT:
+LINK_ENTITY_TO_CLASS( env_laser_energy_core, CLaserEnergyCore );
+#endif
 
 BEGIN_DATADESC( CCitadelEnergyCore )
 	DEFINE_KEYFIELD( m_flScale, FIELD_FLOAT, "scale" ),
@@ -30,7 +33,10 @@ IMPLEMENT_SERVERCLASS_ST( CCitadelEnergyCore, DT_CitadelEnergyCore )
 	SendPropFloat( SENDINFO(m_flStartTime), 0, SPROP_NOSCALE),
 	SendPropInt( SENDINFO(m_spawnflags), 0, SPROP_UNSIGNED),
 END_SEND_TABLE()
-
+#ifdef PORTAL // RETRACT:
+IMPLEMENT_SERVERCLASS_ST( CLaserEnergyCore, DT_LaserEnergyCore )
+END_SEND_TABLE()
+#endif
 
 //-----------------------------------------------------------------------------
 // Precache: 
@@ -38,7 +44,6 @@ END_SEND_TABLE()
 void CCitadelEnergyCore::Precache()
 {
 	BaseClass::Precache();
-	PrecacheMaterial( "effects/combinemuzzle2_dark" ); 
 }
 
 

@@ -1189,7 +1189,7 @@ static bool EntityAlwaysBlocks( CBaseEntity *pOther )
 {
 #ifdef PORTAL
 	// Boxes dissolve when crushed
-	if ( FClassnameIs( pOther, "prop_box" ) )
+	if ( UTIL_IsBoxOrWeightedCube( pOther ) )
 	{
 		return true;
 	}

@@ -137,7 +137,8 @@ void UTIL_Portal_ComputeMatrix( CPortalRenderable_FlatBasic *pLocalPortal, CPort
 void UTIL_Portal_ComputeMatrix( CProp_Portal *pLocalPortal, CProp_Portal *pRemotePortal );
 #endif
 
-float GetReliableCurrentTime();
+void UTIL_Portal_Laser_Prevent_Tilting( Vector& vDirection );
+bool UTIL_IsBoxOrWeightedCube( CBaseEntity *pEntity );
 
 #endif //#ifndef PORTAL_UTIL_SHARED_H
 

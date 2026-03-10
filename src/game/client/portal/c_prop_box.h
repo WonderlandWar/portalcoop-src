@@ -10,5 +10,12 @@ public:
 	DECLARE_CLIENTCLASS();
 };
 
+class C_PropWeightedCube : public C_PropBox
+{
+public:
+	DECLARE_CLASS( C_PropWeightedCube, C_PropBox );
+	DECLARE_CLIENTCLASS();
+};
+
 
 #endif // C_PROP_BOX_H

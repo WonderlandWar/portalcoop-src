@@ -240,6 +240,10 @@ $Project "Client (Portal)"
 			
 			$File	"portal\c_prop_box.cpp"
 			$File	"portal\c_prop_box.h"
+			
+			// Portal 2
+			$File	"portal\c_env_portal_laser.cpp"
+			$File	"portal\c_portal_beam_helper.cpp"
 
 			$Folder	"Weapons"
 			{

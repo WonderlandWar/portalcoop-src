@@ -50,12 +50,22 @@ public:
 	virtual void Precache();
 	void	Spawn( void );
 
+	void DisableSmallParticles() { m_spawnflags |= SF_ENERGYCORE_NO_PARTICLES; }
+
 private:
 	CNetworkVar( float, m_flScale );
 	CNetworkVar( int, m_nState );
 	CNetworkVar( float, m_flDuration );
 	CNetworkVar( float, m_flStartTime );
 };
+
+#ifdef PORTAL // RETRACT:
+class CLaserEnergyCore : public CCitadelEnergyCore
+{
+	DECLARE_CLASS( CLaserEnergyCore, CCitadelEnergyCore );
+	DECLARE_SERVERCLASS();
+};
+#endif
 
 #endif
 

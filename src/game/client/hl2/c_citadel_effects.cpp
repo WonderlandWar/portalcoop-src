@@ -26,6 +26,8 @@ public:
 	void			UpdateCharging( float percentage );
 	void			UpdateDischarging( void );
 
+	virtual const char *GetCoreTexture( void ) { return "effects/strider_muzzle"; }
+
 private:	
 
 	bool			SetupEmitters( void );
@@ -40,6 +42,16 @@ private:
 	CSmartPtr<CSimpleEmitter>		m_pSimpleEmitter;
 	CSmartPtr<CParticleAttractor>	m_pAttractorEmitter;
 };
+#ifdef PORTAL // RETRACT:
+class C_LaserEnergyCore : public C_CitadelEnergyCore
+{
+	DECLARE_CLASS( C_LaserEnergyCore, C_CitadelEnergyCore );
+	DECLARE_CLIENTCLASS();
+
+public:
+	virtual const char *GetCoreTexture( void ) { return "effects/strider_muzzle_red"; }
+};
+#endif
 
 IMPLEMENT_CLIENTCLASS_DT( C_CitadelEnergyCore, DT_CitadelEnergyCore, CCitadelEnergyCore )
 	RecvPropFloat( RECVINFO(m_flScale) ),
@@ -48,6 +60,10 @@ IMPLEMENT_CLIENTCLASS_DT( C_CitadelEnergyCore, DT_CitadelEnergyCore, CCitadelEne
 	RecvPropFloat( RECVINFO(m_flStartTime) ),
 	RecvPropInt( RECVINFO(m_spawnflags) ),
 END_RECV_TABLE()
+#ifdef PORTAL // RETRACT:
+IMPLEMENT_CLIENTCLASS_DT( C_LaserEnergyCore, DT_LaserEnergyCore, CLaserEnergyCore )
+END_RECV_TABLE()
+#endif
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -145,7 +161,7 @@ void C_CitadelEnergyCore::UpdateIdle( float percentage )
 
 		offset += GetAbsOrigin();
 
-		sParticle = (SimpleParticle *) m_pAttractorEmitter->AddParticle( sizeof(SimpleParticle), m_pAttractorEmitter->GetPMaterial( "effects/strider_muzzle" ), offset );
+		sParticle = (SimpleParticle *) m_pAttractorEmitter->AddParticle( sizeof(SimpleParticle), m_pAttractorEmitter->GetPMaterial( GetCoreTexture() ), offset );
 
 		if ( sParticle == NULL )
 			return;
@@ -193,7 +209,7 @@ void C_CitadelEnergyCore::UpdateCharging( float percentage )
 	// Do the core effects
 	for ( int i = 0; i < 2; i++ )
 	{
-		sParticle = (SimpleParticle *) m_pSimpleEmitter->AddParticle( sizeof(SimpleParticle), m_pSimpleEmitter->GetPMaterial( "effects/strider_muzzle" ), GetAbsOrigin() );
+		sParticle = (SimpleParticle *) m_pSimpleEmitter->AddParticle( sizeof(SimpleParticle), m_pSimpleEmitter->GetPMaterial( GetCoreTexture() ), GetAbsOrigin() );
 
 		if ( sParticle == NULL )
 			return;
@@ -261,7 +277,7 @@ void C_CitadelEnergyCore::UpdateCharging( float percentage )
 
 		offset += GetAbsOrigin();
 
-		sParticle = (SimpleParticle *) m_pAttractorEmitter->AddParticle( sizeof(SimpleParticle), m_pAttractorEmitter->GetPMaterial( "effects/strider_muzzle" ), offset );
+		sParticle = (SimpleParticle *) m_pAttractorEmitter->AddParticle( sizeof(SimpleParticle), m_pAttractorEmitter->GetPMaterial( GetCoreTexture() ), offset );
 
 		if ( sParticle == NULL )
 			return;
@@ -307,7 +323,7 @@ void C_CitadelEnergyCore::UpdateDischarging( void )
 	SimpleParticle *sParticle;
 
 	// Base of the core effect
-	sParticle = (SimpleParticle *) m_pSimpleEmitter->AddParticle( sizeof(SimpleParticle), m_pSimpleEmitter->GetPMaterial( "effects/strider_muzzle" ), GetAbsOrigin() );
+	sParticle = (SimpleParticle *) m_pSimpleEmitter->AddParticle( sizeof(SimpleParticle), m_pSimpleEmitter->GetPMaterial( GetCoreTexture() ), GetAbsOrigin() );
 
 	if ( sParticle == NULL )
 		return;

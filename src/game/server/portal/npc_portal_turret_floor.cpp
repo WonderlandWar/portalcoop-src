@@ -16,6 +16,8 @@
 #include "rope_shared.h"
 #include "prop_portal_shared.h"
 #include "Sprite.h"
+#include "explode.h"
+#include "props.h"
 
 #define SF_FLOOR_TURRET_AUTOACTIVATE		0x00000020
 #define SF_FLOOR_TURRET_STARTINACTIVE		0x00000040
@@ -46,6 +48,8 @@ enum portalTurretState_e
 	PORTAL_TURRET_PICKUP,
 	PORTAL_TURRET_SHOTAT,
 	PORTAL_TURRET_DISSOLVED,
+	PORTAL_TURRET_STARTBURNING,
+	PORTAL_TURRET_BURNED,
 
 	PORTAL_TURRET_STATE_TOTAL
 };
@@ -61,13 +65,15 @@ extern int ACT_FLOOR_TURRET_CLOSED_IDLE;
 extern int ACT_FLOOR_TURRET_FIRE;
 int ACT_FLOOR_TURRET_FIRE2;
 
+ConVar sv_portal_turret_burn_time_min("sv_portal_turret_burn_time_min", "1.0f", FCVAR_CHEAT, "The min time that the turret will burn for.");
+ConVar sv_portal_turret_burn_time_max("sv_portal_turret_burn_time_max", "1.5f", FCVAR_CHEAT, "The max time that the turret will burn for.");
 
 const char *g_TalkNames[] = 
 {
 	"NPC_FloorTurret.TalkSearch",
 	"NPC_FloorTurret.TalkAutosearch",
 	"NPC_FloorTurret.TalkActive",
-	"NPC_FloorTurret.TalkSupress", //Not a real sound
+	"NPC_FloorTurret.TalkSupress",
 	"NPC_FloorTurret.TalkDeploy",
 	"NPC_FloorTurret.TalkRetire",
 	"NPC_FloorTurret.TalkTipped",
@@ -80,7 +86,9 @@ const char *g_PortalTalkNames[ PORTAL_TURRET_STATE_TOTAL - TURRET_STATE_TOTAL ] 
 	"NPC_FloorTurret.TalkCollide",
 	"NPC_FloorTurret.TalkPickup",
 	"NPC_FloorTurret.TalkShotAt",
-	"NPC_FloorTurret.TalkDissolved"
+	"NPC_FloorTurret.TalkDissolved",
+	"NPC_FloorTurret.TalkStartBurning",
+	"NPC_FloorTurret.TalkBurned"
 };
 
 
@@ -138,6 +146,8 @@ public:
 	virtual void	SuppressThink( void );
 	virtual void	DisabledThink( void );
 	virtual void	HackFindEnemy( void );
+	virtual void	BurnThink( void );
+	//virtual void	BreakThink( void );
 
 	virtual void	StartTouch( CBaseEntity *pOther );
 
@@ -155,6 +165,8 @@ public:
 private:
 
 	CHandle<CRopeKeyframe>	m_hRopes[ PORTAL_FLOOR_TURRET_NUM_ROPES ];
+	
+	bool AllowedToIgnite() { return true; }
 
 	CNetworkVar( bool, m_bOutOfAmmo );
 	CNetworkVar( bool, m_bLaserOn );
@@ -167,13 +179,13 @@ private:
 	float	m_fSearchSpeed;
 	float	m_fMovingTargetThreashold;
 	float	m_flDistToEnemy;
+	float	m_flBurnExplodeTime;
 
 	turretState_e	m_iLastState;
 	float			m_fNextTalk;
 	bool			m_bDelayTippedTalk;
 
 };
-
 
 LINK_ENTITY_TO_CLASS( npc_portal_turret_floor, CNPC_Portal_FloorTurret );
 
@@ -207,6 +219,8 @@ BEGIN_DATADESC( CNPC_Portal_FloorTurret )
 	DEFINE_THINKFUNC( InactiveThink ),
 	DEFINE_THINKFUNC( SuppressThink ),
 	DEFINE_THINKFUNC( DisabledThink ),
+	DEFINE_THINKFUNC( BurnThink ),
+	DEFINE_THINKFUNC( BreakThink ),
 
 	// Inputs
 	DEFINE_INPUTFUNC( FIELD_STRING, "FireBullet", InputFireBullet ),
@@ -228,6 +242,7 @@ CNPC_Portal_FloorTurret::CNPC_Portal_FloorTurret( void )
 	CNPC_FloorTurret::fMaxTipControllerAngularVelocity = 30.0f * 30.0f;
 
 	m_bDamageForce = true;
+	m_flBurnExplodeTime = 0.0;
 }
 
 void CNPC_Portal_FloorTurret::Precache( void )
@@ -263,8 +278,6 @@ void CNPC_Portal_FloorTurret::Precache( void )
 void CNPC_Portal_FloorTurret::Spawn( void )
 { 
 	BaseClass::Spawn();
-
-	AddEFlags( EFL_NO_MEGAPHYSCANNON_RAGDOLL );
 
 	m_iBarrelAttachments[ 0 ] = LookupAttachment( "LFT_Gun1_Muzzle" );
 	m_iBarrelAttachments[ 1 ] = LookupAttachment( "RT_Gun1_Muzzle" );
@@ -361,7 +374,7 @@ Vector CNPC_Portal_FloorTurret::GetAutoAimCenter()
 //-----------------------------------------------------------------------------
 void CNPC_Portal_FloorTurret::OnPhysGunPickup( CBasePlayer *pPhysGunUser, PhysGunPickup_t reason )
 {
-	if ( m_lifeState == LIFE_ALIVE && m_bEnabled )
+	if ( m_lifeState == LIFE_ALIVE && m_bEnabled && !IsOnFire() ) // Retract: IsOnFire() Isn't accurate to Portal 2, but gets the job done
 	{
 		m_bActive = true;
 		SetThink( &CNPC_Portal_FloorTurret::HeldThink );
@@ -388,17 +401,34 @@ void CNPC_Portal_FloorTurret::NotifySystemEvent(CBaseEntity *pNotify, notify_sys
 //-----------------------------------------------------------------------------
 bool CNPC_Portal_FloorTurret::PreThink( turretState_e state )
 {
+	if (IsOnFire())
+	{
+		m_fNextTalk = gpGlobals->curtime;
+		m_flBurnExplodeTime = random->RandomFloat(sv_portal_turret_burn_time_min.GetFloat(), sv_portal_turret_burn_time_max.GetFloat()) + gpGlobals->curtime;
+		
+		if (!random->RandomInt(0, 3))
+		{
+			EmitSound(GetTurretTalkName(PORTAL_TURRET_STARTBURNING));
+			m_fNextTalk = gpGlobals->curtime + 1.0;
+		}
+		SetThink(&CNPC_Portal_FloorTurret::BurnThink);
+		SetNextThink(gpGlobals->curtime + 0.1f);
+		return false;
+	}
+
 	// Working 2 enums into one integer
 	int iNewState = state;
 
 	// If the turret is dissolving go to a special state
 	if ( IsDissolving() )
 		iNewState = PORTAL_TURRET_DISSOLVED;
-
+	
 	// Need to play these sounds immediately
 	if ( m_iLastState != iNewState && ( ( iNewState == TURRET_TIPPED && !m_bDelayTippedTalk ) || 
 										iNewState == TURRET_RETIRING || 
 										iNewState == PORTAL_TURRET_DISSOLVED || 
+										iNewState == PORTAL_TURRET_STARTBURNING ||
+										iNewState == PORTAL_TURRET_BURNED ||
 										iNewState == PORTAL_TURRET_PICKUP ) )
 	{
 		m_fNextTalk = gpGlobals->curtime -1.0f;
@@ -457,6 +487,15 @@ bool CNPC_Portal_FloorTurret::PreThink( turretState_e state )
 			case PORTAL_TURRET_DISSOLVED:
 				EmitSound( pchScriptName );
 				m_fNextTalk = gpGlobals->curtime + 10.0f;	// Never going to talk again
+				break;
+
+			case PORTAL_TURRET_STARTBURNING:
+				EmitSound( pchScriptName );
+				m_fNextTalk = gpGlobals->curtime + 1.0f;
+				break;
+			case PORTAL_TURRET_BURNED:
+				EmitSound( pchScriptName );
+				m_fNextTalk = gpGlobals->curtime + 1.0f;
 				break;
 		}
 	}
@@ -1232,6 +1271,13 @@ void CNPC_Portal_FloorTurret::InactiveThink( void )
 	CheckPVSCondition();
 
 	SetNextThink( gpGlobals->curtime + 1.0f );
+	
+	if ( IsOnFire() )
+	{
+		ReturnToLife();
+		LaserOn();
+		PreThink( (turretState_e)PORTAL_TURRET_STARTBURNING );
+	}
 
 	// Wake up if we're not on our side
 	if ( !OnSide() && VPhysicsGetObject()->GetContactPoint( NULL, NULL ) && m_bEnabled )
@@ -1275,6 +1321,62 @@ void CNPC_Portal_FloorTurret::DisabledThink( void )
 		SetThink( NULL );
 	}
 
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+/*void CNPC_Portal_FloorTurret::BreakThink(void)
+{
+	Vector vecUp;
+	GetVectors( NULL, NULL, &vecUp );
+	Vector vecOrigin = WorldSpaceCenter() + ( vecUp * 12.0f );
+
+	// K-boom
+	RadiusDamage( CTakeDamageInfo( this, this, 15.0f, DMG_BLAST ), vecOrigin, (10*12), CLASS_NONE, this );
+
+	EmitSound( "NPC_FloorTurret.Destruct" );
+
+	breakablepropparams_t params( GetAbsOrigin(), GetAbsAngles(), vec3_origin, RandomAngularImpulse( -800.0f, 800.0f ) );
+	params.impactEnergyScale = 1.0f;
+	params.defCollisionGroup = COLLISION_GROUP_INTERACTIVE;
+
+	// no damage/damage force? set a burst of 100 for some movement
+	params.defBurstScale = 100;
+	PropBreakableCreateAll( GetModelIndex(), VPhysicsGetObject(), params, this, -1, true );
+
+	// Throw out some small chunks too obscure the explosion even more
+	CPVSFilter filter( vecOrigin );
+	Vector gibVelocity = RandomVector(-100,100);
+	int iModelIndex = modelinfo->GetModelIndex( g_PropDataSystem.GetRandomChunkModel( "MetalChunks" ) );	
+	te->BreakModel( filter, 0.0, vecOrigin, GetAbsAngles(), Vector(5,5,5), gibVelocity, iModelIndex, 150, 4, 2.5, BREAK_METAL );
+	
+	// We're done!
+	UTIL_Remove( this );
+}*/
+
+void CNPC_Portal_FloorTurret::BurnThink(void)
+{
+	if (gpGlobals->curtime <= m_flBurnExplodeTime)
+	{
+		if (gpGlobals->curtime > m_fNextTalk)
+		{
+			EmitSound(GetTurretTalkName(PORTAL_TURRET_BURNED ) );
+			m_fNextTalk = random->RandomFloat(0.5f, 0.75f) + gpGlobals->curtime;
+		}
+		SetThink(&CNPC_Portal_FloorTurret::BurnThink);
+		SetNextThink(gpGlobals->curtime + 0.1f);
+	}
+	else
+	{
+		SF_ENVEXPLOSION_NOSOUND;
+		ExplosionCreate(WorldSpaceCenter(), vec3_angle, this, 20, 200, SF_ENVEXPLOSION_NODLIGHTS);
+
+		UTIL_ScreenShake(WorldSpaceCenter(), 20.0f, 150.0f, 0.75f, 750.0f, SHAKE_START, false);
+		SetThink(&CNPC_Portal_FloorTurret::BreakThink);
+		SetNextThink(gpGlobals->curtime);
+		StopSound(GetTurretTalkName(PORTAL_TURRET_BURNED));
+	}
 }
 
 //-----------------------------------------------------------------------------

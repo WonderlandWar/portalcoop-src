@@ -114,7 +114,7 @@ void CTriggerBoxReflector::Touch( CBaseEntity *pOther )
 	if ( m_hAttachedBox )
 		return;
 
-	if ( !FClassnameIs( pOther, "prop_box" ) )
+	if ( !UTIL_IsValidCubeHolderAttachment( pOther ) )
 		return;
 
 	if ( m_bTemporary )

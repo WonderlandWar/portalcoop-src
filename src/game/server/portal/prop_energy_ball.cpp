@@ -347,9 +347,10 @@ bool CPropEnergyBall::ShouldCollide( int collisionGroup, int contentsMask ) cons
 
 bool CPropEnergyBall::HandleSpecialEntityImpact( CBaseEntity *pOther, bool bDoAnything, gamevcollisionevent_t *pEvent )
 {
-	CPropBox *pBox = dynamic_cast<CPropBox*>( pOther );
-	if ( pBox )
+	// RETRACT_PORT: Should reflector cubes and spheres also dissolve?
+	if ( UTIL_IsBoxOrWeightedCube( pOther ) )
 	{
+		CPropBox *pBox = static_cast<CPropBox*>( pOther );
 		bool bRet = true;
 		if ( pBox->m_hAttached )
 		{

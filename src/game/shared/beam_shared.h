@@ -126,6 +126,7 @@ public:
 	float GetEndWidth( void ) const;
 	float GetFadeLength( void ) const;
 	float GetNoise( void ) const;
+	float GetHaloScale( void ) const;
 	int GetBrightness( void ) const;
 	float GetFrame( void ) const;
 	float GetScrollRate( void ) const;
@@ -411,6 +412,11 @@ inline float CBeam::GetFadeLength( void ) const
 inline float CBeam::GetNoise( void ) const		
 { 
 	return m_fAmplitude; 
+}
+
+inline float CBeam::GetHaloScale( void ) const
+{
+	return m_fHaloScale;
 }
 
 inline int CBeam::GetBrightness( void ) const	

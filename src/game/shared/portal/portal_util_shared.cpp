@@ -228,31 +228,32 @@ void UTIL_Portal_ColorSet_GlowColor( PortalColorSet_t iPortalColorSet, Vector &v
 
 void UTIL_Portal_Trace_Filter( CTraceFilterSimpleClassnameList *traceFilterPortalShot )
 {
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_override" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_multiplayer" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_respawnable" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "func_physbox" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_portal_turret_floor" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_turret_floor" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_manhack" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_rollermine" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_cscanner" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_clawscanner" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_energy_ball" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_combine_ball" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics" );
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_override" );
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_multiplayer" );
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_respawnable" );
+	traceFilterPortalShot->AddClassnameToIgnore( "func_physbox" );
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_portal_turret_floor" );
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_turret_floor" );
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_manhack" );
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_rollermine" );
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_cscanner" );
+	traceFilterPortalShot->AddClassnameToIgnore( "npc_clawscanner" );
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_energy_ball" );
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_combine_ball" );
 	traceFilterPortalShot->AddClassnameToIgnore( "npc_security_camera" );
-	traceFilterPortalShot->AddClassnameToIgnore( "player" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "simple_physics_prop" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "simple_physics_brush" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "player" );
+	traceFilterPortalShot->AddClassnameToIgnore( "simple_physics_prop" );
+	traceFilterPortalShot->AddClassnameToIgnore( "simple_physics_brush" );
 	traceFilterPortalShot->AddClassnameToIgnore( "prop_ragdoll" );
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_glados_core" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "updateitem2" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "weapon_portalgun" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_box" ); 
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_radio" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_glados_core" );
+	traceFilterPortalShot->AddClassnameToIgnore( "updateitem2" );
+	traceFilterPortalShot->AddClassnameToIgnore( "weapon_portalgun" );
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_box" );
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_weighted_cube" );
+	traceFilterPortalShot->AddClassnameToIgnore( "prop_radio" );
 #ifdef GAME_DLL
-	traceFilterPortalShot->AddClassnameToIgnore( "func_box_reflector_shield" ); 
+	traceFilterPortalShot->AddClassnameToIgnore( "func_box_reflector_shield" );
 #endif
 }
 
@@ -900,6 +901,29 @@ void UTIL_Portal_TraceRay( const CProp_Portal *pPortal, const Ray_t &ray, unsign
 {
 	CTraceFilterSimple traceFilter( ignore, collisionGroup );
 	UTIL_Portal_TraceRay( pPortal, ray, fMask, &traceFilter, pTrace, bTraceHolyWall );
+}
+
+void UTIL_Portal_Laser_Prevent_Tilting( Vector& vDirection )
+{
+	if ( fabs( vDirection.z ) < 0.1 )
+	{
+		vDirection.z = 0.f;
+		vDirection.NormalizeInPlace();
+	}
+}
+
+bool UTIL_IsBoxOrWeightedCube( CBaseEntity *pEntity )
+{
+	if ( FClassnameIs( pEntity, "prop_box" ) )
+	{
+		return true;
+	}
+	else if ( FClassnameIs( pEntity, "prop_weighted_cube" ) )
+	{
+		return true;
+	}
+
+	return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -2306,13 +2330,4 @@ void UTIL_Portal_ComputeMatrix( CProp_Portal *pLocalPortal, CProp_Portal *pRemot
 	{
 		pLocalPortal->m_matrixThisToLinked.Identity(); //don't accidentally teleport objects to zero space
 	}
-}
-
-float GetReliableCurrentTime()
-{
-#ifdef CLIENT_DLL
-	return Plat_FloatTime();
-#else
-	return gpGlobals->curtime;
-#endif
 }
