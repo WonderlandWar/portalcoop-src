@@ -524,12 +524,11 @@ void CPortalLaser::TurnOnGlow(void)
 
 void CPortalLaser::FireLaser( Vector &vecStart, Vector &vecDirection, CPropWeightedCube *pReflector )
 {
-	trace_t tr;
 	Vector vecNewTermPoint;
 	Vector vDir;
 	Vector vecStartPos;
 	float flOtherBeamLength = 0.0;
-	Ray_t ray;
+	trace_t rootTrace;
 	if ( new_portal_laser.GetInt() )
 	{
 		Vector vecDirection_0;
@@ -540,7 +539,7 @@ void CPortalLaser::FireLaser( Vector &vecStart, Vector &vecDirection, CPropWeigh
 		bool bAutoAimDisabled = !m_bAutoAimEnabled;
 		vecDirection_0 = vecDirection;
 		
-		CBaseEntity *pTracedTarget = TraceLaser( true, vecStart, vecDirection_0, flTotalBeamLength, tr, infoList, &vecStartPos);
+		CBaseEntity *pTracedTarget = TraceLaser( true, vecStart, vecDirection_0, flTotalBeamLength, rootTrace, infoList, &vecStartPos );
 		bool bAutoAimSuccess = false;
 		if ( !bAutoAimDisabled )
 		{
@@ -549,12 +548,13 @@ void CPortalLaser::FireLaser( Vector &vecStart, Vector &vecDirection, CPropWeigh
 				vDir = ( ((vecDirection * flTotalBeamLength) + vecStart) + vecStartPos ) - vecStart;
 
 				VectorNormalize( vDir );
-				memset(&vecNewTermPoint, 0, sizeof(vecNewTermPoint));
+				//memset(&vecNewTermPoint, 0, sizeof(vecNewTermPoint));
 				//vec_t v43 = 0.0;
 				bAutoAimSuccess = false;
-				if ( pTracedTarget == TraceLaser( false, vecStart, vDir, flOtherBeamLength, tr, infoList, false ) )
+				trace_t autoaimTrace;
+				if ( pTracedTarget == TraceLaser( false, vecStart, vDir, flOtherBeamLength, autoaimTrace, infoList, false ) )
 				{
-					ray.Init( tr.startpos, tr.endpos );
+					rootTrace = autoaimTrace;
 
 					flTotalBeamLength = flOtherBeamLength;
 					vecDirection_0 = vDir;
@@ -562,33 +562,22 @@ void CPortalLaser::FireLaser( Vector &vecStart, Vector &vecDirection, CPropWeigh
 					DamageEntitiesAlongLaser( infoList, true );
 					bAutoAimSuccess = true;
 				}
-				infoList.RemoveAll();
-				if ( vecNewTermPoint.z < 0.0 )
-				{
-					//v43 = vecNewTermPoint.x;
-				}
-				else
-				{
-					vecNewTermPoint.x = 0.0;
-					vecNewTermPoint.y = 0.0;
-					//v43 = 0.0;
-				}
 			}
-			infoList.RemoveAll();
+			infoList.Purge();
 		}
 
 		if ( bAutoAimDisabled || !bAutoAimSuccess )
 		{
 			memset(&vDir, 0, sizeof(vDir));
 			//vec_t vDirX = 0.0;
-			UTIL_ClearTrace( tr );
+			UTIL_ClearTrace( rootTrace );
 
 			PortalLaserInfoList_t hitInfoList;
 
-			pTracedTarget = TraceLaser( false, vecStart, vecDirection_0, flTotalBeamLength, tr, hitInfoList, 0);
+			pTracedTarget = TraceLaser( false, vecStart, vecDirection_0, flTotalBeamLength, rootTrace, hitInfoList, 0);
 			DamageEntitiesAlongLaser( hitInfoList, false );
 
-			hitInfoList.RemoveAll();
+			hitInfoList.Purge();
 
 			if ( vDir.z >= 0.0 )
 			{
@@ -603,27 +592,26 @@ void CPortalLaser::FireLaser( Vector &vecStart, Vector &vecDirection, CPropWeigh
 			bAutoAimSuccess = false;
 			//vDirX = vDir.x;
 		}
-		bAutoAimDisabled = ( vecStart.x == m_vStartPoint.m_Value.x );
 		
 		m_vStartPoint = vecStart;
 
 		m_vEndPoint = ( (vecDirection_0 * flTotalBeamLength) + vecStart );
 
 		m_bIsAutoAiming = bAutoAimSuccess;
-		if ( tr.m_pEnt )
+		if ( rootTrace.m_pEnt )
 		{
-			CBaseEntity *pHitEntity = tr.m_pEnt;
+			CBaseEntity *pHitEntity = rootTrace.m_pEnt;
 			if ( CPhysicsShadowClone::IsShadowClone( pHitEntity ) )
 			{
 				pHitEntity = ((CPhysicsShadowClone*)(pHitEntity))->GetClonedEntity();
 			}
 		}
-		if ( !tr.m_pEnt || !ReflectLaserFromEntity( tr.m_pEnt ) )
+		if ( !rootTrace.m_pEnt || !ReflectLaserFromEntity( rootTrace.m_pEnt ) )
 		{
 			RemoveChildLaser();
 			if ( !pTracedTarget || !pTracedTarget->ClassMatches( "point_laser_target" ) )
 			{
-				BeamDamage( tr );
+				BeamDamage( rootTrace );
 			}
 		}
 	}
@@ -631,7 +619,7 @@ void CPortalLaser::FireLaser( Vector &vecStart, Vector &vecDirection, CPropWeigh
 	if ( m_bShouldSpark && m_flNextSparkTime <= gpGlobals->curtime )
 	{
 		m_flNextSparkTime = gpGlobals->curtime + 0.05;
-		g_pEffects->Sparks( tr.endpos, 1, 1, &tr.plane.normal );
+		g_pEffects->Sparks( rootTrace.endpos, 1, 1, &rootTrace.plane.normal );
 	}
 }
 
@@ -689,12 +677,12 @@ CBaseEntity *CPortalLaser::TraceLaser( bool bIsFirstTrace, Vector &vecStart, Vec
 
 	CUtlVector<CProp_Portal*> portalList;
 	Vector vAutoAimOffset;
-
+	
 	Vector vStrike;
 	while (1)
 	{
 		UTIL_ClearTrace(tr);
-		
+
 		Ray_t ray;
 		ray.Init( vStart, vStart + ( MAX_TRACE_LENGTH * vDir ) );			
 		enginetrace->TraceRay( ray, MASK_PORTAL_LASER, &traceFilter, &tr );
@@ -730,7 +718,6 @@ CBaseEntity *CPortalLaser::TraceLaser( bool bIsFirstTrace, Vector &vecStart, Vec
 		vDir = rayTransformed.m_Delta;
 		VectorNormalize(vDir);
 		UTIL_Portal_PointTransform(pFirstPortal->m_matrixThisToLinked, tr.endpos, vStart);
-
 		portalList.AddToHead( pFirstPortal->m_hLinkedPortal );
 	}
 	pHitEntity = GetEntitiesAlongLaser( tr.startpos, tr.endpos, &vStrike, infoList, bIsFirstTrace );
