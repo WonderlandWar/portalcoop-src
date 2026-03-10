@@ -1406,18 +1406,26 @@ bool CPortal_Player::PingChildrenOfEntity( CBaseEntity *pEntity, Vector vColor, 
 
 void CPortal_Player::PreThink(void)
 {
-	if (m_flLookForUseEntityTime >= gpGlobals->curtime && m_bLookForUseEntity)
+	if ( IsAlive() )
 	{
-		SetLookingForUseEntity(true);
-
-		if (PlayerUse())
+		if (m_flLookForUseEntityTime >= gpGlobals->curtime && m_bLookForUseEntity)
 		{
-			SetLookForUseEntity(false);
-			m_flLookForUseEntityTime = gpGlobals->curtime;
-		}
+			SetLookingForUseEntity(true);
 
-		// This should allow us to play the sound again if we press use again while we're already searching
+			if (PlayerUse())
+			{
+				SetLookForUseEntity(false);
+				m_flLookForUseEntityTime = gpGlobals->curtime;
+			}
+
+			// This should allow us to play the sound again if we press use again while we're already searching
+			SetLookingForUseEntity(false);
+		}
+	}
+	else
+	{
 		SetLookingForUseEntity(false);
+		SetLookForUseEntity(false);
 	}
 
 	QAngle vOldAngles = GetLocalAngles();
