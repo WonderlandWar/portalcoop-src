@@ -144,6 +144,13 @@ bool CTraceFilterLaser::ShouldHitEntity( IHandleEntity *pHandleEntity, int conte
 		return false;
 	}
 
+	// Transparent brush entities should never be hit, but transparent model based entities should
+	CBaseEntity *pHit = EntityFromEntityHandle( pHandleEntity );
+	if ( pHit && !pHit->GetBaseAnimating() && ( contentsMask & CONTENTS_WINDOW ) != 0 )
+	{
+		return false;
+	}
+
 	return CTraceFilterSimpleClassnameList::ShouldHitEntity( pHandleEntity, contentsMask );
 }
 
