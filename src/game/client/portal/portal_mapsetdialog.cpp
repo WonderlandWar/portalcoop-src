@@ -257,6 +257,20 @@ CMapSetDialog::~CMapSetDialog()
 	m_pMapSetList->DeleteAllItems();
 }
 
+void ParseCustomMapSet( const char *pFilename )
+{
+	if ( !g_pMapSetDialog )
+		return;
+		
+	char szFullDirectory[_MAX_PATH];
+	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/mapsets.txt", pFilename );
+
+	KeyValues *mapsets = new KeyValues( "mapsets" );
+	mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory );
+	g_pMapSetDialog->ParseMapSetKeyValues( mapsets, szFullDirectory );
+	mapsets->deleteThis();
+}
+
 void CMapSetDialog::SetupMapSetList( void )
 {
 	KeyValues *mapsets = new KeyValues( "mapsets" );
@@ -265,41 +279,8 @@ void CMapSetDialog::SetupMapSetList( void )
 	// Parse the official mapsets first
 	ParseMapSetKeyValues( mapsets, official_filename );
 	mapsets->deleteThis();
-	// Now parse custom ones
-	if ( true )
-	{
-		const char* pCurrentPath = "scripts/mapsets/";
-	
-		char szDirectory[_MAX_PATH];
-		Q_snprintf( szDirectory, sizeof( szDirectory ), "%s*", pCurrentPath );
 
-		FileFindHandle_t dirHandle;
-		const char *pDirFileName = g_pFullFileSystem->FindFirst( szDirectory, &dirHandle );
-
-		while (pDirFileName)
-		{
-			// Skip it if it's not a directory, is the root, is back, or is an invalid folder
-			if ( !g_pFullFileSystem->FindIsDirectory( dirHandle ) || 
-				 Q_strcmp( pDirFileName, "." ) == 0 || 
-				 Q_strcmp( pDirFileName, ".." ) == 0 )
-			{
-				pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
-				continue;
-			}
-
-			mapsets = new KeyValues( "mapsets" );
-
-			char szFullDirectory[_MAX_PATH];
-			Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "scripts/mapsets/%s/mapsets.txt", pDirFileName );
-			mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory );
-			ParseMapSetKeyValues( mapsets, szFullDirectory );
-			mapsets->deleteThis();
-
-			pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
-		}
-
-		g_pFullFileSystem->FindClose( dirHandle );
-	}
+	ExecuteLoadingMapSetFunction( ParseCustomMapSet );
 }
 
 void CMapSetDialog::SetupMapList( CMapSetItemPanelMapSet *pMapPanel )
@@ -449,8 +430,10 @@ static void CC_OpenMapSetDialog(const CCommand &args)
 	vgui::Panel *parent = (vgui::Panel *)NULL;
 
 	if (!g_pMapSetDialog)
-		g_pMapSetDialog = SETUP_PANEL( new CMapSetDialog(parent, "MapSetDialog"));
-	
+	{
+		g_pMapSetDialog = new CMapSetDialog(parent, "MapSetDialog");
+		SETUP_PANEL( g_pMapSetDialog );
+	}
 	if (!g_pMapSetDialog)
 		return;
 

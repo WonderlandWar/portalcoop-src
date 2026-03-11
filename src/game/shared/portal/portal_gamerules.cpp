@@ -2475,8 +2475,12 @@ void CSoundEmitterSystemBase::AddSoundsFromFile( const char *filename, bool bPre
 	Assert( scriptindex >= 0 );
 }
 
-static void LoadMapSetSounds( const char *manifestfile )
+static void LoadMapSetSounds( const char *pszPath )
 {
+	// Load the sounds
+	char manifestfile[_MAX_PATH];
+	Q_snprintf( manifestfile, sizeof( manifestfile ), "%s/game_sounds_manifest.txt", pszPath );
+
 	KeyValues *pManifest = new KeyValues( "game_sounds_manifest" );
 	if ( pManifest->LoadFromFile( g_pFullFileSystem, manifestfile, "GAME" ) )
 	{
@@ -2507,43 +2511,14 @@ static void LoadMapSetSounds( const char *manifestfile )
 	}
 }
 
-void OnMapSetDirectoryLoaded( const char *pszPath )
+void OnMapSetDirectoryLoaded( const char *pDirectory )
 {
-	// Load the sounds
-	char szBuffer[_MAX_PATH];
-	Q_snprintf( szBuffer, sizeof( szBuffer ), "%s/game_sounds_manifest.txt", pszPath );
-
-	LoadMapSetSounds( szBuffer );
+	LoadMapSetSounds( pDirectory );
 }
 
 void CPortalGameRules::MountMapSetContent( void )
 {
-	// Check the soundscripts
-	const char* pCurrentPath = "scripts/mapsets/";
-	
-	char szDirectory[_MAX_PATH];
-	Q_snprintf( szDirectory, sizeof( szDirectory ), "%s*", pCurrentPath );
-
-	FileFindHandle_t dirHandle;
-	const char *pDirFileName = g_pFullFileSystem->FindFirst( szDirectory, &dirHandle );
-
-	while (pDirFileName)
-	{
-		// Skip it if it's not a directory, is the root, is back, or is an invalid folder
-		if ( !g_pFullFileSystem->FindIsDirectory( dirHandle ) || 
-		Q_strcmp( pDirFileName, "." ) == 0 || 
-		Q_strcmp( pDirFileName, ".." ) == 0 )
-		{
-			pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
-			continue;
-		}
-
-		char szFullDirectory[_MAX_PATH];
-		Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "scripts/mapsets/%s/", pDirFileName );
-		OnMapSetDirectoryLoaded( szFullDirectory );
-
-		pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
-	}
+	ExecuteLoadingMapSetFunction( OnMapSetDirectoryLoaded );
 }
 
 #ifdef GAME_DLL

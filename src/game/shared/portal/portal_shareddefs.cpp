@@ -223,3 +223,33 @@ void CMapDataLoader::LevelInitPreEntity()
 
 	pMapData->deleteThis();
 }
+
+void ExecuteLoadingMapSetFunction( MapSetFunc func )
+{
+	// Check the soundscripts
+	const char* pCurrentPath = "scripts/mapsets/";
+	
+	char szDirectory[_MAX_PATH];
+	Q_snprintf( szDirectory, sizeof( szDirectory ), "%s*", pCurrentPath );
+
+	FileFindHandle_t dirHandle;
+	const char *pDirFileName = g_pFullFileSystem->FindFirst( szDirectory, &dirHandle );
+
+	while (pDirFileName)
+	{
+		// Skip it if it's not a directory, is the root, is back, or is an invalid folder
+		if ( !g_pFullFileSystem->FindIsDirectory( dirHandle ) || 
+		Q_strcmp( pDirFileName, "." ) == 0 || 
+		Q_strcmp( pDirFileName, ".." ) == 0 )
+		{
+			pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
+			continue;
+		}
+
+		char szFullDirectory[_MAX_PATH];
+		Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "scripts/mapsets/%s", pDirFileName );
+		func( szFullDirectory );
+
+		pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
+	}
+}
