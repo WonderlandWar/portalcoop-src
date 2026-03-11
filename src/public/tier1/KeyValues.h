@@ -432,6 +432,8 @@ inline bool  KeyValues::IsEmpty( int keySymbol )
 bool IsSteamDeck( bool bTrulyHardwareOnly = false );
 
 bool EvaluateConditional( const char *str );
+typedef bool (*EvaluateExtraConditional_f)(const char* str);
+void SetExtraConditionalFunc(EvaluateExtraConditional_f func);
 
 class CUtlSortVectorKeyValuesByName
 {

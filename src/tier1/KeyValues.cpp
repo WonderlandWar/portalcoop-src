@@ -40,6 +40,7 @@ static const char * s_LastFileLoadingFrom = "unknown"; // just needed for error 
 int (*KeyValues::s_pfGetSymbolForString)( const char *name, bool bCreate ) = &KeyValues::GetSymbolForStringClassic;
 const char *(*KeyValues::s_pfGetStringForSymbol)( int symbol ) = &KeyValues::GetStringForSymbolClassic;
 CKeyValuesGrowableStringTable *KeyValues::s_pGrowableStringTable = NULL;
+EvaluateExtraConditional_f pEvaluateExtraConditional = nullptr;
 
 #define KEYVALUES_TOKEN_SIZE	4096
 static char s_pTokenBuf[KEYVALUES_TOKEN_SIZE];
@@ -2248,6 +2249,9 @@ bool EvaluateConditional( const char *str )
 	if ( Q_stristr( str, "$POSIX" ) )
 		return IsPosix() ^ bNot;
 	
+	if (pEvaluateExtraConditional != nullptr)
+		return pEvaluateExtraConditional(str);
+	
 	return false;
 }
 
@@ -3262,4 +3266,9 @@ bool CKeyValuesDumpContextAsDevMsg::KvWriteText( char const *szText )
 		Msg( "%s", szText );
 	}
 	return true;
+}
+
+void SetExtraConditionalFunc(EvaluateExtraConditional_f func)
+{
+	pEvaluateExtraConditional = func;
 }

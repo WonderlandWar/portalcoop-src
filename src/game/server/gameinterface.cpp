@@ -126,6 +126,7 @@ extern ConVar tf_mm_servermode;
 #include "portal_shareddefs.h"
 #include "portal_gamerules.h"
 #include "player_resource.h"
+#include "vis/gamemounter.h"
 #endif
 
 #if defined( REPLAY_ENABLED )
@@ -645,7 +646,9 @@ bool CServerGameDLL::DLLInit( CreateInterfaceFn appSystemFactory,
 	// Yes, both the client and game .dlls will try to Connect, the soundemittersystem.dll will handle this gracefully
 	if ( !soundemitterbase->Connect( appSystemFactory ) )
 		return false;
-
+#ifdef PORTAL
+	AddRequiredSearchPaths();
+#endif
 	// cache the globals
 	gpGlobals = pGlobals;
 

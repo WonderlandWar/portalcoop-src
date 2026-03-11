@@ -22,6 +22,8 @@ $Project "Server (Portal)"
 {
 	$Folder	"Source Files"
 	{
+		$File	"$SRCDIR\game\shared\vis\gamemounter.cpp"
+		$File	"$SRCDIR\game\shared\vis\gamemounter.h"
 		$File	"ai_eventresponse.cpp"
 		$File	"ai_eventresponse.h"
 		$File	"ai_relationship.cpp"

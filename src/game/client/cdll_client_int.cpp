@@ -171,6 +171,7 @@ extern vgui::IInputInternal *g_InputInternal;
 #include "PortalRender.h"
 #include "portal_shareddefs.h"
 #include "portal_gamerules.h"
+#include "vis/gamemounter.h"
 #endif
 
 #ifdef SIXENSE
@@ -997,8 +998,9 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CreateInterfaceFn physi
 
 	if (!g_pMatSystemSurface)
 		return false;
-
-
+#ifdef PORTAL
+	AddRequiredSearchPaths();
+#endif
 	// it's ok if this is NULL. That just means the sourcevr.dll wasn't found
 	if ( CommandLine()->CheckParm( "-vr" ) )
 		g_pSourceVR = (ISourceVirtualReality *)appSystemFactory(SOURCE_VIRTUAL_REALITY_INTERFACE_VERSION, NULL);

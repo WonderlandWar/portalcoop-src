@@ -23,6 +23,8 @@ $Project "Client (Portal)"
 	$Folder	"Source Files"
 	{
 		-$File	"$SRCDIR\game\shared\weapon_parse_default.cpp"
+		$File	"$SRCDIR\game\shared\vis\gamemounter.cpp"
+		$File	"$SRCDIR\game\shared\vis\gamemounter.h"
 		//$File	"hud_chat.cpp"
 		$File	"hud_voicestatus.cpp"
 		$File	"c_team_objectiveresource.cpp"
