@@ -162,7 +162,6 @@ public:
 
 	KeyValues *GetMapSet()
 	{
-		// add chapters to combobox
 		for ( KeyValues *mapset = m_pMapSetsFile->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
 		{
 			if ( !V_strcmp( m_szMapSetName, mapset->GetName() ) )
