@@ -123,6 +123,8 @@ public:
 	int NumStepsTaken( void ) const { return m_StatsThisLevel.iNumStepsTaken; }
 	float NumSecondsTaken( void ) const { return m_StatsThisLevel.fNumSecondsTaken; }
 
+	static void MountMapSetContent( void );
+
 private:
 	// Rules change for the mega physgun
 	CNetworkVar( bool, m_bMegaPhysgun );

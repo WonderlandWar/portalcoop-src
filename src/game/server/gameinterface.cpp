@@ -747,7 +747,9 @@ bool CServerGameDLL::DLLInit( CreateInterfaceFn appSystemFactory,
 	// init the gamestatsupload connection
 	gamestatsuploader->InitConnection();
 #endif
-
+#ifdef PORTAL
+	CPortalGameRules::MountMapSetContent();
+#endif
 	return true;
 }
 #ifdef PORTAL

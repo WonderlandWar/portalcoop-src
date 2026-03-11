@@ -13,10 +13,17 @@
 #include "portal_shareddefs.h"
 #include "vcollide_parse.h"
 #include "viewport_panel_names.h"
+#include "filesystem.h"
+#include <tier1/utlstring.h>
+#include <tier1/utlhashtable.h>
+#include "SoundEmitterSystem/isoundemittersystembase.h"
+#include "interval.h"
+#include "engine/IEngineSound.h"
 
 #ifdef CLIENT_DLL
 	#include "c_world.h"
 	#include "c_physicsprop.h"
+	#include "tier3/tier3.h"
 #else
 	#include "player.h"
 	#include "game.h"
@@ -2137,6 +2144,407 @@ void CPortalGameRules::GetTaggedConVarList( KeyValues *pCvarTagList )
 	}
 }
 #endif
+
+struct CSoundEntry
+{
+	CUtlConstString				m_Name;
+	CSoundParametersInternal	m_SoundParams;
+	uint16						m_nScriptFileIndex;
+	bool						m_bRemoved : 1;
+	bool						m_bIsOverride : 1;
+
+	bool						IsOverride() const
+	{
+		return m_bIsOverride;
+	}
+};
+
+struct CSoundEntryHashFunctor : CaselessStringHashFunctor
+{
+	using CaselessStringHashFunctor::operator();
+	unsigned int operator()( CSoundEntry *e ) const
+	{
+		return CaselessStringHashFunctor::operator()( e->m_Name.Get() );
+	}
+};
+
+struct CSoundEntryEqualFunctor : CaselessStringEqualFunctor
+{
+	using CaselessStringEqualFunctor::operator();
+	bool operator()( CSoundEntry *lhs, CSoundEntry *rhs ) const
+	{
+		return CaselessStringEqualFunctor::operator()( lhs->m_Name.Get(), rhs->m_Name.Get() );
+	}
+	bool operator()( CSoundEntry *lhs, const char *rhs ) const
+	{
+		return CaselessStringEqualFunctor::operator()( lhs->m_Name.Get(), rhs );
+	}
+};
+
+class CSoundEmitterSystemBase : public ISoundEmitterSystemBase
+{
+public:
+	
+	void AddSoundsFromFile( const char *filename, bool bPreload, bool bIsOverride = false, bool bRefresh = false );
+	
+	bool		InitSoundInternalParameters( const char *soundname, KeyValues *kv, CSoundParametersInternal& params );
+	
+	float	TranslateAttenuation( const char *key );
+
+private:
+	CUtlHashtable< CUtlConstString, gender_t, CaselessStringHashFunctor, UTLConstStringCaselessStringEqualFunctor<char> > m_ActorGenders;
+	CUtlStableHashtable< CSoundEntry*, empty_t, CSoundEntryHashFunctor, CSoundEntryEqualFunctor, uint16, const char* > m_Sounds;
+
+	CUtlVector< CSoundEntry* >			m_SavedOverrides;
+	CUtlVector< FileNameHandle_t >				m_OverrideFiles;
+
+	struct CSoundScriptFile
+	{
+		FileNameHandle_t hFilename;
+		bool		dirty;
+	};
+
+	CUtlVector< CSoundScriptFile >	m_SoundKeyValues;
+	int					m_nInitCount;
+	unsigned int		m_uManifestPlusScriptChecksum;
+
+	CUtlSymbolTable		m_Waves;
+
+};
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : *soundname - 
+//			params - 
+// Output : Returns true on success, false on failure.
+//-----------------------------------------------------------------------------
+bool CSoundEmitterSystemBase::InitSoundInternalParameters( const char *soundname, KeyValues *kv, CSoundParametersInternal& params )
+{
+	KeyValues *pKey = kv->GetFirstSubKey();
+	while ( pKey )
+	{
+		if ( !Q_strcasecmp( pKey->GetName(), "channel" ) )
+		{
+			params.ChannelFromString( pKey->GetString() );
+		}
+		else if ( !Q_strcasecmp( pKey->GetName(), "volume" ) )
+		{
+			params.VolumeFromString( pKey->GetString() );
+		}
+		else if ( !Q_strcasecmp( pKey->GetName(), "pitch" ) )
+		{
+			params.PitchFromString( pKey->GetString() );
+		}
+		else if ( !Q_strcasecmp( pKey->GetName(), "wave" ) )
+		{
+			ExpandSoundNameMacros( params, pKey->GetString() );
+		}
+		else if ( !Q_strcasecmp( pKey->GetName(), "rndwave" ) )
+		{
+			KeyValues *pWaves = pKey->GetFirstSubKey();
+			while ( pWaves )
+			{
+				ExpandSoundNameMacros( params, pWaves->GetString() );
+
+				pWaves = pWaves->GetNextKey();
+			}
+		}
+		else if ( !Q_strcasecmp( pKey->GetName(), "attenuation" ) || !Q_strcasecmp( pKey->GetName(), "CompatibilityAttenuation" ) )
+		{
+			if ( !Q_strncasecmp( pKey->GetString(), "SNDLVL_", strlen( "SNDLVL_" ) ) )
+			{
+				DevMsg( "CSoundEmitterSystemBase::GetParametersForSound:  sound %s has \"attenuation\" with %s value!\n",
+					soundname, pKey->GetString() );
+			}
+
+			if ( !Q_strncasecmp( pKey->GetString(), "ATTN_", strlen( "ATTN_" ) ) )
+			{
+				params.SetSoundLevel( ATTN_TO_SNDLVL( TranslateAttenuation( pKey->GetString() ) ) );
+			}
+			else
+			{
+				interval_t interval;
+				interval = ReadInterval( pKey->GetString() );
+
+				// Translate from attenuation to soundlevel
+				float start = interval.start;
+				float end	= interval.start + interval.range;
+
+				params.SetSoundLevel( ATTN_TO_SNDLVL( start ), ATTN_TO_SNDLVL( end ) - ATTN_TO_SNDLVL( start ) );
+			}
+
+			// Goldsrc compatibility mode.. feed the sndlevel value through the sound engine interface in such a way
+			// that it can reconstruct the original sndlevel value and flag the sound as using Goldsrc attenuation.
+			bool bCompatibilityAttenuation = !Q_strcasecmp( pKey->GetName(), "CompatibilityAttenuation" );
+			if ( bCompatibilityAttenuation )
+			{
+				if ( params.GetSoundLevel().range != 0 )
+				{
+					Warning( "CompatibilityAttenuation for sound %s must have same start and end values.\n", soundname );
+				}
+
+				params.SetSoundLevel( SNDLEVEL_TO_COMPATIBILITY_MODE( params.GetSoundLevel().start ) );
+			}
+		}
+		else if ( !Q_strcasecmp( pKey->GetName(), "soundlevel" ) )
+		{
+			if ( !Q_strncasecmp( pKey->GetString(), "ATTN_", strlen( "ATTN_" ) ) )
+			{
+				DevMsg( "CSoundEmitterSystemBase::GetParametersForSound:  sound %s has \"soundlevel\" with %s value!\n",
+					soundname, pKey->GetString() );
+			}
+
+			params.SoundLevelFromString( pKey->GetString() );
+		}
+		else if ( !Q_strcasecmp( pKey->GetName(), "play_to_owner_only" ) )
+		{
+			params.SetOnlyPlayToOwner( pKey->GetInt() ? true : false );
+		}
+		else if ( !Q_strcasecmp( pKey->GetName(), "delay_msec" ) )
+		{
+			// Don't allow negative delay
+			params.SetDelayMsec( max( 0, pKey->GetInt() ) );
+
+		}
+
+		pKey = pKey->GetNextKey();
+	}
+
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : *key - 
+// Output : float
+//-----------------------------------------------------------------------------
+float CSoundEmitterSystemBase::TranslateAttenuation( const char *key )
+{
+	if ( !key )
+	{
+		Assert( 0 );
+		return ATTN_NORM;
+	}
+
+	if ( !Q_strcasecmp( key, "ATTN_NONE" ) )
+		return ATTN_NONE;
+
+	if ( !Q_strcasecmp( key, "ATTN_NORM" ) )
+		return ATTN_NORM;
+
+	if ( !Q_strcasecmp( key, "ATTN_IDLE" ) )
+		return ATTN_IDLE;
+
+	if ( !Q_strcasecmp( key, "ATTN_STATIC" ) )
+		return ATTN_STATIC;
+
+	if ( !Q_strcasecmp( key, "ATTN_RICOCHET" ) )
+		return ATTN_RICOCHET;
+
+	if ( !Q_strcasecmp( key, "ATTN_GUNFIRE" ) )
+		return ATTN_GUNFIRE;
+
+	DevMsg( "CSoundEmitterSystem:  Unknown attenuation key %s\n", key );
+
+	return ATTN_NORM;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : *filename - 
+//-----------------------------------------------------------------------------
+void CSoundEmitterSystemBase::AddSoundsFromFile( const char *filename, bool bPreload, bool bIsOverride /*=false*/, bool bRefresh /*=false*/ )
+{
+	CSoundScriptFile sf;
+	sf.hFilename = filesystem->FindOrAddFileName( filename );
+	sf.dirty = false;
+
+	int scriptindex = m_SoundKeyValues.AddToTail( sf );
+
+	int replaceCount = 0;
+	int newOverrideCount = 0;
+	int duplicatedReplacements = 0;
+
+	// Open the soundscape data file, and abort if we can't
+	KeyValues *kv = new KeyValues( "" );
+	if ( filesystem->LoadKeyValues( *kv, IFileSystem::TYPE_SOUNDEMITTER, filename, "GAME" ) )
+	{
+		// parse out all of the top level sections and save their names
+		KeyValues *pKeys = kv;
+		while ( pKeys )
+		{
+			if ( pKeys->GetFirstSubKey() )
+			{
+				if ( m_Sounds.Count() >= 65534 )
+				{
+					Warning( "Exceeded maximum number of sound emitter entries\n" );
+					break;
+				}
+
+				CSoundEntry *pEntry;
+
+				{
+					MEM_ALLOC_CREDIT();
+					pEntry = new CSoundEntry;
+				}
+
+				pEntry->m_Name = pKeys->GetName();
+				pEntry->m_bRemoved			= false;
+				pEntry->m_nScriptFileIndex	= scriptindex;
+				pEntry->m_bIsOverride		= bIsOverride;
+
+				if ( bIsOverride )
+				{
+					++newOverrideCount;
+				}
+
+				UtlHashHandle_t lookup = m_Sounds.Insert( pEntry ); // insert returns existing item if found
+				if ( m_Sounds[ lookup ] != pEntry )
+				{
+					if ( bIsOverride )
+					{
+						MEM_ALLOC_CREDIT();
+
+						// Store off the old sound if it's not already an "override" from another file!!!
+						// Otherwise, just whack it again!!!
+						if ( !m_Sounds[ lookup ]->IsOverride() )
+						{
+							m_SavedOverrides.AddToTail( m_Sounds[ lookup ] );
+						}
+						else
+						{
+							++duplicatedReplacements;
+						}
+
+						InitSoundInternalParameters( pKeys->GetName(), pKeys, pEntry->m_SoundParams );
+						pEntry->m_SoundParams.SetShouldPreload( bPreload ); // this gets handled by game code after initting.
+
+						m_Sounds.ReplaceKey( lookup, pEntry );
+
+						++replaceCount;
+					}
+					else if ( bRefresh )
+					{
+						InitSoundInternalParameters( pKeys->GetName(), pKeys, m_Sounds[ lookup ]->m_SoundParams );
+					}
+#if 0
+					else
+					{
+					 	DevMsg( "CSoundEmitterSystem::AddSoundsFromFile(%s):  Entry %s duplicated, skipping\n", filename, pKeys->GetName() );
+					}
+#endif
+				}
+				else
+				{
+					MEM_ALLOC_CREDIT();
+
+					InitSoundInternalParameters( pKeys->GetName(), pKeys, pEntry->m_SoundParams );
+					pEntry->m_SoundParams.SetShouldPreload( bPreload ); // this gets handled by game code after initting.
+				}
+			}
+			pKeys = pKeys->GetNextKey();
+		}
+
+		kv->deleteThis();
+	}
+	else
+	{
+		if ( !bIsOverride )
+		{
+			Warning( "CSoundEmitterSystem::AddSoundsFromFile:  No such file %s\n", filename );
+		}
+
+		// Discard
+		m_SoundKeyValues.Remove( scriptindex );
+
+		kv->deleteThis();
+
+		return;
+	}
+
+	
+	if ( bIsOverride )
+	{
+		DevMsg( "SoundEmitter:  adding map sound overrides from %s [%i total, %i replacements, %i duplicated replacements]\n", 
+			filename,
+			newOverrideCount,
+			replaceCount,
+			duplicatedReplacements );
+	}
+
+	Assert( scriptindex >= 0 );
+}
+
+static void LoadMapSetSounds( const char *manifestfile )
+{
+	KeyValues *pManifest = new KeyValues( "game_sounds_manifest" );
+	if ( pManifest->LoadFromFile( g_pFullFileSystem, manifestfile, "GAME" ) )
+	{
+		for ( KeyValues *soundfile = pManifest->GetFirstSubKey(); soundfile != NULL; soundfile = soundfile->GetNextKey() )
+		{
+			const char *soundlistname = soundfile->GetString();
+			const char *loadtype = soundfile->GetName();
+			CSoundEmitterSystemBase *pSoundEmitter = (CSoundEmitterSystemBase*)g_pSoundEmitterSystem;
+			//pSoundEmitter->AddSoundsFromFile( soundfilename, soundfilename, params );
+			
+			if ( !Q_stricmp( loadtype, "precache_file" ) )
+			{
+				//AccumulateFileNameAndTimestampIntoChecksum( &crc, soundlistname );
+
+				// Add and always precache
+				pSoundEmitter->AddSoundsFromFile( soundlistname, false );
+				continue;
+			}
+			else if ( !Q_stricmp( loadtype, "preload_file" ) )
+			{
+				//AccumulateFileNameAndTimestampIntoChecksum( &crc, soundlistname );
+
+				// Add and always precache
+				pSoundEmitter->AddSoundsFromFile( soundlistname, true );
+				continue;
+			}
+		}
+	}
+}
+
+void OnMapSetDirectoryLoaded( const char *pszPath )
+{
+	// Load the sounds
+	char szBuffer[_MAX_PATH];
+	Q_snprintf( szBuffer, sizeof( szBuffer ), "%s/game_sounds_manifest.txt", pszPath );
+
+	LoadMapSetSounds( szBuffer );
+}
+
+void CPortalGameRules::MountMapSetContent( void )
+{
+	// Check the soundscripts
+	const char* pCurrentPath = "scripts/mapsets/";
+	
+	char szDirectory[_MAX_PATH];
+	Q_snprintf( szDirectory, sizeof( szDirectory ), "%s*", pCurrentPath );
+
+	FileFindHandle_t dirHandle;
+	const char *pDirFileName = g_pFullFileSystem->FindFirst( szDirectory, &dirHandle );
+
+	while (pDirFileName)
+	{
+		// Skip it if it's not a directory, is the root, is back, or is an invalid folder
+		if ( !g_pFullFileSystem->FindIsDirectory( dirHandle ) || 
+		Q_strcmp( pDirFileName, "." ) == 0 || 
+		Q_strcmp( pDirFileName, ".." ) == 0 )
+		{
+			pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
+			continue;
+		}
+
+		char szFullDirectory[_MAX_PATH];
+		Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "scripts/mapsets/%s/", pDirFileName );
+		OnMapSetDirectoryLoaded( szFullDirectory );
+
+		pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
+	}
+}
 
 #ifdef GAME_DLL
 CON_COMMAND(displaychallengetype_server, "Shows what challenge the gamerules is running")

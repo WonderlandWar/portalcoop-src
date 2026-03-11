@@ -170,6 +170,7 @@ extern vgui::IInputInternal *g_InputInternal;
 #ifdef PORTAL
 #include "PortalRender.h"
 #include "portal_shareddefs.h"
+#include "portal_gamerules.h"
 #endif
 
 #ifdef SIXENSE
@@ -1149,6 +1150,10 @@ int CHLClient::Init( CreateInterfaceFn appSystemFactory, CreateInterfaceFn physi
 	{
 		RegisterSecureLaunchProcessFunc( pfnUnsafeCmdLineProcessor );
 	}
+	
+#ifdef PORTAL
+	CPortalGameRules::MountMapSetContent();
+#endif
 
 	return true;
 }
