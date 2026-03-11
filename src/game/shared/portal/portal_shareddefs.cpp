@@ -61,9 +61,17 @@ KeyValues *LoadRadioData()
 	return radios;
 }
 
+CMapInfo::CMapInfo()
+{
+	Reset();
+}
+
 void CMapInfo::Reset( void )
 {
-	g_MapInfo.m_iRequiredPlayers = -1;
+	m_iRequiredPlayers = -1;
+#ifdef CLIENT_DLL
+	V_strcpy( m_szCreditsFile, "scripts/credits.txt" );
+#endif
 }
 
 const char *g_pszAllPcoopMaps[] =
@@ -209,6 +217,9 @@ void CMapDataLoader::LevelInitPreEntity()
 	Msg("Map loaded: %s\n", pszMapName);
 
 	g_MapInfo.m_iRequiredPlayers = pMapData->GetInt( "required_players", -1 );
+#ifdef CLIENT_DLL
+	V_strcpy( g_MapInfo.m_szCreditsFile, pMapData->GetString( "credits_file", "scripts/credits.txt" ) );
+#endif
 
 	pMapData->deleteThis();
 }

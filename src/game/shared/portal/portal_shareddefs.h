@@ -145,12 +145,19 @@ extern KeyValues *LoadMapDataForMap( const char *map );
 class CMapInfo
 {
 public:
+	CMapInfo();
 	void Reset();
 
 	int GetRequiredPlayers() { return m_iRequiredPlayers; }
+#ifdef CLIENT_DLL
+	const char *GetCreditsFile( void ) { return m_szCreditsFile; }
+#endif
 
 private:
 	int m_iRequiredPlayers;
+#ifdef CLIENT_DLL
+	char m_szCreditsFile[32];
+#endif
 
 	friend class CMapDataLoader;
 };

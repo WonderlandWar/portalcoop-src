@@ -144,12 +144,10 @@ void CHudCredits::PrepareCredits( const char *pKeyName )
 	Clear();
 
 	KeyValues *pKV= new KeyValues( "CreditsFile" );
-	const char *pszCreditsFile = CREDITS_FILE;
 #ifdef PORTAL
-	if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA )
-	{
-		pszCreditsFile = "scripts/credits_rexaura.txt";
-	}
+	const char* pszCreditsFile = g_MapInfo.GetCreditsFile();
+#else
+	const char* pszCreditsFile = CREDITS_FILE;
 #endif
 	if ( !pKV->LoadFromFile( filesystem, pszCreditsFile, "MOD" ) )
 	{
