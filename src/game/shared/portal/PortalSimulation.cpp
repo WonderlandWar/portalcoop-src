@@ -215,20 +215,15 @@ CPortalSimulator::CPortalSimulator( void )
 	PS_SD_Static_World_StaticProps_ClippedProp_t::pTraceEntity = GetClientWorldEntity();
 #endif
 
-	m_InternalData.Simulation.hCollisionEntity = (CPSCollisionEntity *)CreateEntityByName( "portalsimulator_collisionentity" );
 #ifndef CLIENT_DLL
+	m_InternalData.Simulation.hCollisionEntity = (CPSCollisionEntity *)CreateEntityByName( "portalsimulator_collisionentity" );
 	Assert( m_InternalData.Simulation.hCollisionEntity != NULL );
 	if( m_InternalData.Simulation.hCollisionEntity )
 	{
 		m_InternalData.Simulation.hCollisionEntity->m_pOwningSimulator = this;
 		MarkAsOwned( m_InternalData.Simulation.hCollisionEntity );
 		m_InternalData.Simulation.Dynamic.EntFlags[m_InternalData.Simulation.hCollisionEntity->entindex()] |= PSEF_OWNS_PHYSICS;
-#ifdef GAME_DLL
 		DispatchSpawn( m_InternalData.Simulation.hCollisionEntity );
-#else
-		cl_entitylist->AddNonNetworkableEntity( m_InternalData.Simulation.hCollisionEntity );
-		m_InternalData.Simulation.hCollisionEntity.Get()->Spawn();
-#endif
 	}
 #endif
 }
