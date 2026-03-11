@@ -750,13 +750,73 @@ bool CChoreoStringPool::GetString( short stringId, char *buff, int buffSize )
 
 CChoreoStringPool g_ChoreoStringPool;
 
+static int Scene_ReadFileEx( const char *pFileName, void **ppBuf, bool bNullTerminate = false )
+{
+	int ret = filesystem->ReadFileEx( pFileName, "MOD", ppBuf, bNullTerminate );
+	if ( ret )
+		return ret;
+
+	return filesystem->ReadFileEx( pFileName, "GAME", ppBuf, bNullTerminate );
+}
+
 CChoreoScene *C_SceneEntity::LoadScene( const char *filename )
 {
+#if 1 // MAPBASE
+	char loadfile[MAX_PATH];
+#else
 	char loadfile[ 512 ];
+#endif
 	Q_strncpy( loadfile, filename, sizeof( loadfile ) );
 	Q_SetExtension( loadfile, ".vcd", sizeof( loadfile ) );
 	Q_FixSlashes( loadfile );
+#if 1 // MAPBASE
+	// 
+	// Raw scene file support
+	// 
+	void *pBuffer = 0;
+	size_t bufsize = scenefilecache->GetSceneBufferSize( loadfile );
+	CChoreoScene *pScene = NULL;
+	if ( bufsize > 0 )
+	{
+		// Definitely in scenes.image
+		pBuffer = malloc( bufsize );
+		if ( !scenefilecache->GetSceneData( filename, (byte *)pBuffer, bufsize ) )
+		{
+			free( pBuffer );
+			return NULL;
+		}
 
+	
+		if ( IsBufferBinaryVCD( (char*)pBuffer, bufsize ) )
+		{
+			pScene = new CChoreoScene( this );
+			CUtlBuffer buf( pBuffer, bufsize, CUtlBuffer::READ_ONLY );
+			if ( !pScene->RestoreFromBinaryBuffer( buf, loadfile, &g_ChoreoStringPool ) )
+			{
+				Warning( "Unable to restore scene '%s'\n", loadfile );
+				delete pScene;
+				pScene = NULL;
+			}
+		}
+	}
+	else if (Scene_ReadFileEx( loadfile, &pBuffer, true ))
+	{
+		// Not in scenes.image, but it's a raw file
+		g_TokenProcessor.SetBuffer((char*)pBuffer);
+		pScene = ChoreoLoadScene( loadfile, this, &g_TokenProcessor, Scene_Printf );
+	}
+	else
+	{
+		// Abandon ship
+		return NULL;
+	}
+
+	if(pScene)
+	{
+		pScene->SetPrintFunc( Scene_Printf );
+		pScene->SetEventCallbackInterface( this );
+	}
+#else
 	char *pBuffer = NULL;
 	size_t bufsize = scenefilecache->GetSceneBufferSize( loadfile );
 	if ( bufsize <= 0 )
@@ -791,6 +851,7 @@ CChoreoScene *C_SceneEntity::LoadScene( const char *filename )
 		g_TokenProcessor.SetBuffer( pBuffer );
 		pScene = ChoreoLoadScene( loadfile, this, &g_TokenProcessor, Scene_Printf );
 	}
+#endif
 
 	delete[] pBuffer;
 	return pScene;
