@@ -48,7 +48,7 @@ bool RestrictedMapPrefix( const char *pszPrefix, char *pszMissingMod, const char
 {
 	for ( int i = 0; i < g_FailedMountChecks.Count(); ++i )
 	{
-		if ( V_stristr( pszPrefix, g_FailedMountChecks[i].m_szPrefix ) ||
+		if ( V_stristr( pszPrefix, g_FailedMountChecks[i].m_szPrefix ) &&
 			// It's possible to have multiple map sets using the same prefix while also having different mods
 			( !pszCheckMod || ( !V_stricmp( pszCheckMod, g_FailedMountChecks[i].m_szModFolder ) ) )
 			)
