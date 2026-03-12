@@ -172,6 +172,7 @@ extern vgui::IInputInternal *g_InputInternal;
 #include "portal_shareddefs.h"
 #include "portal_gamerules.h"
 #include "vis/gamemounter.h"
+#include "GameUI/IGameUI.h"
 #endif
 
 #ifdef SIXENSE
@@ -1646,12 +1647,29 @@ void CHLClient::View_Fade( ScreenFade_t *pSF )
 	if ( pSF != NULL )
 		vieweffects->Fade( *pSF );
 }
-
+#ifdef PORTAL
+static CDllDemandLoader g_GameUI("GameUI");
+#endif
 //-----------------------------------------------------------------------------
 // Purpose: Per level init
 //-----------------------------------------------------------------------------
 void CHLClient::LevelInitPreEntity( char const* pMapName )
 {
+#ifdef PORTAL
+	char szMissingFolder[32];
+	if ( RestrictedMapPrefix( pMapName, szMissingFolder ) )
+	{
+		CreateInterfaceFn gameUIFactory = g_GameUI.GetFactory();
+		IGameUI *pGameUI = (IGameUI *) gameUIFactory(GAMEUI_INTERFACE_VERSION, NULL );
+
+		engine->DisconnectInternal();
+		
+		char szDisconnectMessage[128];
+		V_snprintf( szDisconnectMessage, sizeof( szDisconnectMessage ), "Couldn't mount %s", szMissingFolder );
+
+		pGameUI->OnLevelLoadingFinished( true, szDisconnectMessage, "Failed to mount content" );
+	}
+#endif
 	ReloadParticleEffects();
 
 	// HACK: Bogus, but the logic is too complicated in the engine

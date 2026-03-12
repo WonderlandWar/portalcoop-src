@@ -7,7 +7,10 @@
 #include "tier0/icommandline.h"
 #ifdef PORTAL
 #include "portal_shareddefs.h"
-#endif
+#ifdef CLIENT_DLL
+#include "gamestringpool.h"
+#endif // CLIENT_DLL
+#endif // PORTAL
 
 bool EvaluateExtraConditionals( const char* str )
 {
@@ -27,6 +30,65 @@ bool EvaluateExtraConditionals( const char* str )
 	return false;
 }
 
+#ifdef PORTAL
+struct FailedMount
+{
+	FailedMount( const char *pszModFolder, const char *pszPrefix )
+	{
+		V_strcpy( m_szModFolder, pszModFolder );
+		V_strcpy( m_szPrefix, pszPrefix );
+	}
+	char m_szModFolder[16];
+	char m_szPrefix[16];
+};
+
+CUtlVector<FailedMount> g_FailedMountChecks;
+
+bool RestrictedMapPrefix( const char *pszPrefix, char *pszMissingMod )
+{
+	for ( int i = 0; i < g_FailedMountChecks.Count(); ++i )
+	{
+		if ( V_stristr( pszPrefix, g_FailedMountChecks[i].m_szPrefix ) )
+		{
+			if ( pszMissingMod )
+			{
+				V_strcpy( pszMissingMod, g_FailedMountChecks[i].m_szModFolder );
+			}
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void AddCheckFiles( KeyValues *pGame, KeyValues *pPaths, const char *pModFolder )
+{
+	// Add the check files
+	KeyValues *pCheckFiles = pGame->FindKey( "checkfiles" );
+	if ( !pCheckFiles )
+		return;
+
+	for ( KeyValues *file = pCheckFiles->GetFirstSubKey(); file; file = file->GetNextKey() )
+	{
+		if ( !g_pFullFileSystem->FileExists( file->GetString() ) )
+		{
+			KeyValues *pMapPrefixes = pGame->FindKey( "map_prefixes" );
+			if ( !pMapPrefixes )
+				return;
+
+			for ( KeyValues *prefix = pMapPrefixes->GetFirstSubKey(); prefix; prefix = prefix->GetNextKey() )
+			{
+				// No need to add a restricted map prefix if it was already added
+				if ( !RestrictedMapPrefix( prefix->GetName() ) )
+				{
+					FailedMount failedmount( pModFolder, prefix->GetString() );
+					g_FailedMountChecks.AddToTail( failedmount );
+				}
+			}
+		}
+	}
+}
+#endif
 // brute forces our search paths, reads the users steam configs
 // to determine any additional steam library directories people have
 // as there's no other way to currently mount a different game (css) 
@@ -66,6 +128,9 @@ void MountPathLocal( KeyValues* pGame )
 			V_strncat( szTempPath, pPath->GetString(), ARRAYSIZE( szTempPath ) );
 
 			g_pFullFileSystem->AddSearchPath( szTempPath, "GAME" );
+#ifdef PORTAL
+			AddCheckFiles( pGame, pPaths, pPath->GetString() );
+#endif
 			ConColorMsg( Color( 144, 238, 144, 255 ), "\tAdding path: %s\n", pPath->GetString() );
 		}
 	}
@@ -102,6 +167,9 @@ void MountPathDedicated( KeyValues* pGame )
 		V_FixSlashes( gamedir );
 
 		g_pFullFileSystem->AddSearchPath( gamedir, "GAME" );
+#ifdef PORTAL
+		AddCheckFiles( pGame, pPaths, pPath->GetString() );
+#endif
 		ConColorMsg( Color( 90, 240, 90, 255 ), "\tAdding path: %s\n", gamedir );
 	}
 }
@@ -116,6 +184,7 @@ void MountSourceMod( KeyValues* pGame )
 
 	const char *defaultpath = NULL;
 	const char *szPath = CommandLine()->ParmValue( "-game", defaultpath );
+
 	if ( szPath )
 	{
 		ConColorMsg( Color( 90, 240, 90, 255 ), "Mounting %s (sourcemod)\n", szGameName );
@@ -124,17 +193,17 @@ void MountSourceMod( KeyValues* pGame )
 		if ( !pPaths )
 			return;
 
-		for ( KeyValues *pPath = pPaths->GetFirstSubKey(); pPath; pPath = pPath->GetNextKey() )
+		for ( KeyValues *folder = pPaths->GetFirstSubKey(); folder; folder = folder->GetNextKey() )
 		{
-			if ( !FStrEq( pPath->GetName(), "folder" ) )
-				continue;
-
 			char szTempPath[ MAX_PATH * 2 ];
-			Q_snprintf( szTempPath, sizeof( szTempPath ), "%s/../%s", szPath, pPath->GetString() );
+			Q_snprintf( szTempPath, sizeof( szTempPath ), "%s/../%s", szPath, folder->GetString() );
 			
 			V_AppendSlash( szTempPath, ARRAYSIZE( szTempPath ) );
 
 			g_pFullFileSystem->AddSearchPath( szTempPath, "GAME" );
+#ifdef PORTAL
+			AddCheckFiles( pGame, pPaths, folder->GetString() );
+#endif
 			ConColorMsg( Color( 90, 240, 90, 255 ), "\tAdding sourcemod path: %s\n", szTempPath );
 		}
 	}

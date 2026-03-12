@@ -3,3 +3,5 @@
 
 void AddRequiredSearchPaths();
 void AddRequiredMapSearchPaths( const char *pMapName );
+
+bool RestrictedMapPrefix( const char *pszPrefix, char *pszMissingMod = NULL );
