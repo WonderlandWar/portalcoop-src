@@ -545,6 +545,7 @@ void CPortalLaser::FireLaser( Vector &vecStart, Vector &vecDirection, CPropWeigh
 		{
 			if ( ShouldAutoAim(pTracedTarget) )
 			{
+				infoList.Purge();
 				vDir = ( ((vecDirection * flTotalBeamLength) + vecStart) + vecAutoAimOffset ) - vecStart;
 
 				VectorNormalize( vDir );
