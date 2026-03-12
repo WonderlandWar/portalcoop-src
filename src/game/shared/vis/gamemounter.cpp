@@ -44,11 +44,14 @@ struct FailedMount
 
 CUtlVector<FailedMount> g_FailedMountChecks;
 
-bool RestrictedMapPrefix( const char *pszPrefix, char *pszMissingMod )
+bool RestrictedMapPrefix( const char *pszPrefix, char *pszMissingMod, const char *pszCheckMod )
 {
 	for ( int i = 0; i < g_FailedMountChecks.Count(); ++i )
 	{
-		if ( V_stristr( pszPrefix, g_FailedMountChecks[i].m_szPrefix ) )
+		if ( V_stristr( pszPrefix, g_FailedMountChecks[i].m_szPrefix ) ||
+			// It's possible to have multiple map sets using the same prefix while also having different mods
+			( !pszCheckMod || ( !V_stricmp( pszCheckMod, g_FailedMountChecks[i].m_szModFolder ) ) )
+			)
 		{
 			if ( pszMissingMod )
 			{
@@ -79,7 +82,7 @@ void AddCheckFiles( KeyValues *pGame, KeyValues *pPaths, const char *pModFolder 
 			for ( KeyValues *prefix = pMapPrefixes->GetFirstSubKey(); prefix; prefix = prefix->GetNextKey() )
 			{
 				// No need to add a restricted map prefix if it was already added
-				if ( !RestrictedMapPrefix( prefix->GetName() ) )
+				if ( !RestrictedMapPrefix( prefix->GetName(), NULL, pModFolder ) )
 				{
 					FailedMount failedmount( pModFolder, prefix->GetString() );
 					g_FailedMountChecks.AddToTail( failedmount );
