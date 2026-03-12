@@ -1587,8 +1587,8 @@ bool CPortalGameRules::ShouldUseRobustRadiusDamage(CBaseEntity *pEntity)
 	return true;
 }
 
+ConVar sv_require_game_install_necessary_for_map( "sv_require_game_install_necessary_for_map", "1", FCVAR_REPLICATED, "Forces clients to have the maps' game to be mounted to play the server" );
 #ifndef CLIENT_DLL
-ConVar sv_require_game_install_necessary_for_map( "sv_require_game_install_necessary_for_map", "1", FCVAR_GAMEDLL, "Forces clients to have the maps' game to be mounted to play the server" );
 //=========================================================
 //=========================================================
 bool CPortalGameRules::ClientConnected( edict_t *pEntity, const char *pszName, const char *pszAddress, char *reject, int maxrejectlen )
@@ -1609,33 +1609,6 @@ bool CPortalGameRules::ClientConnected( edict_t *pEntity, const char *pszName, c
 			{
 				Q_strncpy( reject, UTIL_VarArgs( "This map needs the maxplayers amount set to %i or higher", nRequiredPlayers ), maxrejectlen );
 				return false;
-			}
-		}
-	}
-
-	if ( sv_require_game_install_necessary_for_map.GetBool() ) 
-	{
-		int nInstallBits = atoi( engine->GetClientConVarValue( index, "cl_game_install_bits" ) );
-
-		// Check to see if Portal is mounted, this may be unnecessary since there's already an engine crash if Portal isn't installed
-		if ( ( nInstallBits & INSTALL_BITS_PORTAL ) == 0 )
-		{
-			Q_strncpy( reject, "Portal must be installed to play on this server", maxrejectlen );
-			return false;
-		}
-		
-		// Now check for necessary mods
-		PortalGameType_t gametype = (PortalGameType_t)sv_portal_game.GetInt();
-		switch ( gametype )
-		{
-			case PORTAL_GAME_REXAURA:
-			{
-				if ( ( nInstallBits & INSTALL_BITS_REXAURA ) == 0 )
-				{
-					Q_strncpy( reject, "Rexaura must be installed to play on this map, see readme.txt for install instructions", maxrejectlen );
-					return false;
-				}
-				break;
 			}
 		}
 	}

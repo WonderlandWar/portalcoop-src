@@ -366,9 +366,6 @@ void CMapSetDialog::OnCommand( const char *command )
 				ConVarRef pcoop_require_all_players_force_amount( "pcoop_require_all_players_force_amount" );
 				pcoop_require_all_players_force_amount.SetValue( -2 );
 				
-				ConVarRef pcoop_ignore_installed_games_check( "pcoop_ignore_installed_games_check" );
-				pcoop_ignore_installed_games_check.SetValue( 0 );
-				
 				ConVarRef sv_require_game_install_necessary_for_map( "sv_require_game_install_necessary_for_map" );
 				sv_require_game_install_necessary_for_map.SetValue( 1 );				
 			}

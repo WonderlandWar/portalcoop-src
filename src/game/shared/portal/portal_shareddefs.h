@@ -185,9 +185,6 @@ inline bool Map_IsRexaura( const char *pMapName )
 	return V_stristr( pMapName, "rex2c_" ) || V_stristr( pMapName, "rex3c_" ) || V_stristr( pMapName, "rex_" );
 }
 
-#define INSTALL_BITS_PORTAL		(1<<0)
-#define INSTALL_BITS_REXAURA	(1<<1)
-
 typedef void (MapSetFunc)(const char *pDirectory );
 
 void ExecuteLoadingMapSetFunction( MapSetFunc func );

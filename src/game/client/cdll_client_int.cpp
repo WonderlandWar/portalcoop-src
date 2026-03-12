@@ -350,31 +350,6 @@ static ConVar s_cl_load_hl1_content("cl_load_hl1_content", "0", FCVAR_ARCHIVE, "
 
 ConVar r_lightmap_bicubic_set( "r_lightmap_bicubic_set", "0", FCVAR_ARCHIVE | FCVAR_HIDDEN, "Hack to get this convar to be re-set on first launch." );
 
-#ifdef PORTAL
-ConVar cl_game_install_bits( "cl_game_install_bits", "0", FCVAR_HIDDEN | FCVAR_DEVELOPMENTONLY | FCVAR_USERINFO );
-
-void SetupGameInstallBits()
-{
-	int nInstallBits = 0;
-		
-	// Check to see if Portal is mounted, this may be unnecessary since there's already an engine crash if Portal isn't installed
-	IMaterial *pMaterial = materials->FindMaterial( "nature/hazard_liquid", NULL, false );
-	if ( pMaterial && !pMaterial->IsErrorMaterial() )
-	{
-		nInstallBits |= INSTALL_BITS_PORTAL;
-	}
-
-	// Check to see if Rexaura is mounted
-	pMaterial = materials->FindMaterial( "vgui/bonusmaps/rex_bonus_04_recycle", NULL, false );
-	if ( pMaterial && !pMaterial->IsErrorMaterial() )
-	{
-		nInstallBits |= INSTALL_BITS_REXAURA;
-	}
-	
-	cl_game_install_bits.SetValue( nInstallBits );
-}
-#endif
-
 // Physics system
 bool g_bLevelInitialized;
 bool g_bTextMode = false;
@@ -1210,10 +1185,6 @@ void CHLClient::PostInit()
 
 	g_ClientVirtualReality.StartupComplete();
 
-#ifdef PORTAL
-	SetupGameInstallBits();
-#endif
-
 #ifdef HL1MP_CLIENT_DLL
 	if ( s_cl_load_hl1_content.GetBool() && steamapicontext && steamapicontext->SteamApps() )
 	{
@@ -1649,6 +1620,7 @@ void CHLClient::View_Fade( ScreenFade_t *pSF )
 }
 #ifdef PORTAL
 static CDllDemandLoader g_GameUI("GameUI");
+extern ConVar sv_require_game_install_necessary_for_map;
 #endif
 //-----------------------------------------------------------------------------
 // Purpose: Per level init
@@ -1656,18 +1628,21 @@ static CDllDemandLoader g_GameUI("GameUI");
 void CHLClient::LevelInitPreEntity( char const* pMapName )
 {
 #ifdef PORTAL
-	char szMissingFolder[32];
-	if ( RestrictedMapPrefix( pMapName, szMissingFolder ) )
+	if ( sv_require_game_install_necessary_for_map.GetBool() )
 	{
-		CreateInterfaceFn gameUIFactory = g_GameUI.GetFactory();
-		IGameUI *pGameUI = (IGameUI *) gameUIFactory(GAMEUI_INTERFACE_VERSION, NULL );
+		char szMissingFolder[32];
+		if ( RestrictedMapPrefix( pMapName, szMissingFolder ) )
+		{
+			CreateInterfaceFn gameUIFactory = g_GameUI.GetFactory();
+			IGameUI *pGameUI = (IGameUI *) gameUIFactory(GAMEUI_INTERFACE_VERSION, NULL );
 
-		engine->DisconnectInternal();
+			engine->DisconnectInternal();
 		
-		char szDisconnectMessage[128];
-		V_snprintf( szDisconnectMessage, sizeof( szDisconnectMessage ), "Couldn't mount %s", szMissingFolder );
+			char szDisconnectMessage[128];
+			V_snprintf( szDisconnectMessage, sizeof( szDisconnectMessage ), "Couldn't mount %s", szMissingFolder );
 
-		pGameUI->OnLevelLoadingFinished( true, szDisconnectMessage, "Failed to mount content" );
+			pGameUI->OnLevelLoadingFinished( true, szDisconnectMessage, "Failed to mount content" );
+		}
 	}
 #endif
 	ReloadParticleEffects();
