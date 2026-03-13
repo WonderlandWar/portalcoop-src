@@ -75,6 +75,8 @@ BEGIN_DATADESC( CProp_Portal )
 	
 	DEFINE_FIELD( m_bSharedEnvironmentConfiguration, FIELD_BOOLEAN ),
 	DEFINE_ARRAY( m_vPortalCorners, FIELD_POSITION_VECTOR, 4 ),
+	
+	DEFINE_FIELD( m_qLastPortalAngles, FIELD_VECTOR ),
 
 	// Function Pointers
 	DEFINE_THINKFUNC( DelayedPlacementThink ),
@@ -181,6 +183,8 @@ CProp_Portal::CProp_Portal( void )
 	pPolyhedron->Release();
 	Assert( pConvex != NULL );
 	m_pCollisionShape = physcollision->ConvertConvexToCollide( &pConvex, 1 );
+
+	m_qLastPortalAngles = vec3_angle;
 
 	CProp_Portal_Shared::AllPortals.AddToTail( this );
 }
@@ -1625,6 +1629,8 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	m_vPrevForward = vOldForward;
 
 	WakeNearbyEntities();
+
+	m_qLastPortalAngles = GetAbsAngles();
 
 	Teleport( &vOrigin, &qAngles, 0 );
 	

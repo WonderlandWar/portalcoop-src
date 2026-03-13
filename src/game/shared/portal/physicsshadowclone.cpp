@@ -1116,6 +1116,69 @@ CPhysicsShadowCloneLL *CPhysicsShadowClone::GetClonesOfEntity( const CBaseEntity
 }
 
 
+void CPhysicsShadowClone::DestroyClonedPhys( IPhysicsObject *pPhys )
+{
+	for( int i = m_CloneLinks.Count(); --i >= 0; )
+	{
+		if( pPhys == m_CloneLinks[i].pSource )
+		{
+			m_pOwnerPhysEnvironment->DestroyObject(	m_CloneLinks[i].pClone ); //also destroys shadow controller
+			m_CloneLinks.FastRemove( i );
+		}
+	}
+}
+
+void CPhysicsShadowClone::DestroyClonedCollideable( CPhysCollide *pCollide )
+{
+	for( int i = m_CloneLinks.Count(); --i >= 0; )
+	{
+		if( pCollide == m_CloneLinks[i].pSource->GetCollide() )
+		{
+			m_pOwnerPhysEnvironment->DestroyObject(	m_CloneLinks[i].pClone ); //also destroys shadow controller
+			m_CloneLinks.FastRemove( i );
+		}
+	}
+}
+
+void CPhysicsShadowClone::NotifyDestroy( IPhysicsObject *pDestroyingPhys, CBaseEntity *pOwningEntity )
+{
+	if( pOwningEntity )
+	{
+		CPhysicsShadowCloneLL *pCloneLL = GetClonesOfEntity( pOwningEntity );
+		while( pCloneLL )
+		{
+			pCloneLL->pClone->DestroyClonedPhys( pDestroyingPhys );
+			pCloneLL = pCloneLL->pNext;
+		}
+	}
+	else
+	{
+		for( int i = 0; i != s_ActiveShadowClones.Count(); ++i )
+		{
+			s_ActiveShadowClones[i]->DestroyClonedPhys( pDestroyingPhys );
+		}
+	}
+}
+
+void CPhysicsShadowClone::NotifyDestroy( CPhysCollide *pDestroyingCollide, CBaseEntity *pOwningEntity )
+{
+	if( pOwningEntity )
+	{
+		CPhysicsShadowCloneLL *pCloneLL = GetClonesOfEntity( pOwningEntity );
+		while( pCloneLL )
+		{
+			pCloneLL->pClone->DestroyClonedCollideable( pDestroyingCollide );
+			pCloneLL = pCloneLL->pNext;
+		}
+	}
+	else
+	{
+		for( int i = 0; i != s_ActiveShadowClones.Count(); ++i )
+		{
+			s_ActiveShadowClones[i]->DestroyClonedCollideable( pDestroyingCollide );
+		}
+	}
+}
 
 static void DrawDebugOverlayForShadowClone( CPhysicsShadowClone *pClone )
 {

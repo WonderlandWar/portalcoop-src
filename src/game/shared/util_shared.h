@@ -158,6 +158,19 @@ protected:
 	CUtlVector<IHandleEntity*>	m_PassEntities;
 };
 
+class CTraceFilterOnlyHitThis : public CTraceFilter
+{
+public:
+	// It does have a base, but we'll never network anything below here..
+	DECLARE_CLASS_NOBASE( CTraceFilterOnlyHitThis );
+
+	CTraceFilterOnlyHitThis( const IHandleEntity *hitentity );
+	virtual bool ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask );
+
+private:
+	const IHandleEntity *m_pHitEnt;
+};
+
 class CTraceFilterOnlyPlayer : public CTraceFilterSimple
 {
 public:

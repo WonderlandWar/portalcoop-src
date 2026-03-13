@@ -19,10 +19,13 @@
 //=============================================================================================================
 // PROP TYPES
 //=============================================================================================================
+ 
+DECLARE_AUTO_LIST( IBasePropAutoList )
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-class CBaseProp : public CBaseAnimating
+class CBaseProp : public CBaseAnimating, public IBasePropAutoList
 {
 	DECLARE_CLASS( CBaseProp, CBaseAnimating );
 	DECLARE_SERVERCLASS()

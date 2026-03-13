@@ -246,6 +246,17 @@ $Project "Client (Portal)"
 			// Portal 2
 			$File	"portal\c_env_portal_laser.cpp"
 			$File	"portal\c_portal_beam_helper.cpp"
+			
+			$File "portal\c_baseprojectedentity.h"
+			$File "portal\c_baseprojectedentity.cpp"
+			$File "portal\c_baseprojector.h"
+			$File "portal\c_baseprojector.cpp"
+			$File "portal/c_projectedwallentity.h"
+			$File "portal/c_projectedwallentity.cpp"
+			
+			$File "$SRCDIR\game\shared\portal\baseprojectedentity_shared.h"
+			$File "$SRCDIR\game\shared\portal\baseprojectedentity_shared.cpp"
+			$File "$SRCDIR\game\shared\portal\projectedwallentity_shared.cpp"
 
 			$Folder	"Weapons"
 			{

@@ -75,6 +75,8 @@ public:
 	virtual void	SetLocalViewAngles( QAngle& ang );
 
 	virtual void	RunCommand( C_BasePlayer *player, CUserCmd *ucmd, IMoveHelper *moveHelper );
+	
+	float			GetSavedTime() const;
 
 // Internal
 protected:
@@ -149,6 +151,7 @@ private:
 	float			m_flIdealPitch;
 	int				m_nLastCommandAcknowledged;
 
+	CGlobalVarsBase	m_SavedVars;
 };
  
 extern CPrediction *prediction;

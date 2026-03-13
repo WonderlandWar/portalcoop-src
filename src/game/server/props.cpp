@@ -52,6 +52,8 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
+IMPLEMENT_AUTO_LIST( IBasePropAutoList );
+
 #define DOOR_HARDWARE_GROUP 1
 
 // Any barrel farther away than this is ignited rather than exploded.

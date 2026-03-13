@@ -417,6 +417,18 @@ void CTraceFilterSimpleList::AddEntityToIgnore( IHandleEntity *pEntity )
 	m_PassEntities.AddToTail( pEntity );
 }
 
+//-----------------------------------------------------------------------------
+// Trace filter that hits only the pass entity
+//-----------------------------------------------------------------------------
+CTraceFilterOnlyHitThis::CTraceFilterOnlyHitThis( const IHandleEntity *hitentity )
+{
+	m_pHitEnt = hitentity;
+}
+
+bool CTraceFilterOnlyHitThis::ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask )
+{
+	return m_pHitEnt == pHandleEntity;
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: Custom trace filter used for NPC LOS traces

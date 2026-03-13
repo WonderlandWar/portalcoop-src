@@ -182,6 +182,8 @@ public:
 	
 	void					BroadcastPortalEvent( PortalEvent_t nEventType );
 	
+	QAngle					GetLastAngles() { return m_qLastPortalAngles; }
+	
 	CUtlVector<EHANDLE>		m_PortalEventListeners;			// Collection of entities (by handle) who wish to receive notification of portal events (fizzle, moved, etc)
 
 	CNetworkVar( unsigned char, m_iLinkageGroupID )
@@ -212,6 +214,8 @@ private:
 	CPhysCollide			*m_pCollisionShape;
 	void					RemovePortalMicAndSpeaker();	// Cleans up the portal's internal audio members
 	void					UpdateCorners( void );			// Updates the four corners of this portal on spawn and placement
+
+	QAngle					m_qLastPortalAngles;
 
 public:
 	
