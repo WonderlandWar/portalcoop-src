@@ -499,11 +499,19 @@ void CBaseProjectedEntity::SetSourcePortal( CProp_Portal* pPortal )
 #endif
 	if( pPortal )
 	{
+#ifdef CLIENT_DLL
+		m_vecSourcePortalCenter = pPortal->GetNetworkOrigin();
+		m_vecSourcePortalRemoteCenter = pPortal->m_hLinkedPortal->GetNetworkOrigin();
+
+		m_vecSourcePortalAngle = pPortal->GetNetworkAngles();
+		m_vecSourcePortalRemoteAngle = pPortal->m_hLinkedPortal->GetNetworkAngles();
+#else
 		m_vecSourcePortalCenter = pPortal->GetAbsOrigin();
 		m_vecSourcePortalRemoteCenter = pPortal->m_hLinkedPortal->GetAbsOrigin();
 
 		m_vecSourcePortalAngle = pPortal->GetAbsAngles();
 		m_vecSourcePortalRemoteAngle = pPortal->m_hLinkedPortal->GetAbsAngles();
+#endif
 	}
 	else
 	{

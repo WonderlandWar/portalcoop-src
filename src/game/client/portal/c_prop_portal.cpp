@@ -28,7 +28,7 @@
 #include "vcollide_parse.h"
 #include "collisionutils.h"
 #include "portal_placement.h"
-
+#include "c_baseprojectedentity.h"
 #include "c_portal_player.h"
 #include "prediction.h"
 #include "recvproxy.h"
@@ -1776,6 +1776,8 @@ void C_Prop_Portal::OnPortalMoved( void )
 	Vector mins, maxs;
 	CollisionProp()->WorldSpaceSurroundingBounds( &mins, &maxs );
 	::partition->ElementMoved( CollisionProp()->GetPartitionHandle(), mins, maxs );
+	
+	C_BaseProjectedEntity::TestAllForProjectionChanges();
 }
 
 void C_Prop_Portal::OnActiveStateChanged( void )

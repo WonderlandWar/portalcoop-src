@@ -87,7 +87,7 @@ void CProjectedWallEntity::Spawn( void )
 
 void CProjectedWallEntity::Precache( void )
 {
-	PrecacheParticleSystem("projected_wall_impact");
+	//PrecacheParticleSystem("projected_wall_impact");
 }
 
 void CProjectedWallEntity::OnRestore( void )
@@ -304,11 +304,6 @@ void CProjectedWallEntity::ProjectWall( void )
 				DisplaceObstructingEntities();
 
 				m_nNumSegments = ceil( ( m_flLength / m_flSegmentLength ) );
-#ifdef PORTAL_PAINT
-				// FIXME
-				//m_PaintPowers.SetCount( ceil( ( m_flLength / m_flSegmentLength ) ) );
-				CleansePaint();
-#endif
 			}
 		}
 	}

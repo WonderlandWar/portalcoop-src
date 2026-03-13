@@ -60,6 +60,9 @@ IterationRetval_t CPortalCollideableEnumerator::EnumElement( IHandleEntity *pHan
 		//not a static prop, w00t
 		CCollisionProperty *pEntityCollision = pEnt->CollisionProp();
 
+		// Ignore 'projected_wall_entity' objects for partial front/behind checks
+		bool bIsProjectedWallEntity = FClassnameIs( pEnt, "projected_wall_entity" );
+
 		if( !pEntityCollision->IsSolid() )
 			return ITERATION_CONTINUE; //not solid
 
@@ -68,10 +71,10 @@ IterationRetval_t CPortalCollideableEnumerator::EnumElement( IHandleEntity *pHan
 		float fBoundRadius = pEntityCollision->BoundingRadius();
 		float fPtPlaneDist = m_vPlaneNormal.Dot( ptEntCenter ) - m_fPlaneDist;
 
-		if( fPtPlaneDist < -fBoundRadius )
+		if( fPtPlaneDist < -fBoundRadius && !bIsProjectedWallEntity )
 			return ITERATION_CONTINUE; //object wholly behind the portal
 
-		if( !(fPtPlaneDist > fBoundRadius) && (fPtPlaneDist > -fBoundRadius) ) //object is not wholly in front of the portal, but could be partially in front, do more checks
+		if( !(fPtPlaneDist > fBoundRadius) && (fPtPlaneDist > -fBoundRadius) && !bIsProjectedWallEntity ) //object is not wholly in front of the portal, but could be partially in front, do more checks
 		{
 			Vector ptNearest;
 			pEntityCollision->CalcNearestPoint( m_ptForward1000, &ptNearest );

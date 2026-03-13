@@ -64,6 +64,8 @@ public:
 	virtual void RestoreToToolRecordedState( KeyValues * );
 	void DisplaceObstructingEntity( CBaseEntity *pEntity, bool bIgnoreStuck );
 private:
+
+	void CleanupWall();
 	virtual bool InitMaterials();
 	void DisplaceObstructingEntity( CBaseEntity *pEntity, const Vector &vOrigin, const Vector &vWallUp, const Vector &vWallRight, bool bIgnoreStuck );
 	void DisplaceObstructingEntities();
@@ -74,34 +76,11 @@ private:
 	void PaintWallSideRails( CMeshBuilder & , Vector & , Vector & , Vector & , Vector & ,float ,float );
 	
 	IMaterial *m_pBodyMaterial;
-	IMaterial *m_pPaintMaterialsMid[4];
-	IMaterial *m_pPaintMaterialsEnd1[4];
-	IMaterial *m_pPaintMaterialsEnd2[4];
-	IMaterial *m_pPaintMaterialsSing[4];
-	IMaterial *m_pPaintMaterialBounceLSpeed;
-	IMaterial *m_pPaintMaterialBounceRSpeed;
-	IMaterial *m_pPaintMaterialBounceLRSpeed;
-	IMaterial *m_pPaintMaterialRBounceLSpeed;
-	IMaterial *m_pPaintMaterialLBounceRSpeed;
-	IMaterialVar *m_pPaintColorMid;
-	IMaterialVar *m_pPaintColorEnd1;
-	IMaterialVar *m_pPaintColorEnd2;
-	IMaterialVar *m_pPaintColorSing;
 	IMaterial *m_pSideRailMaterial;
 	Vector m_vWorldSpace_WallMins;
 	Vector m_vWorldSpace_WallMaxs;
-	struct WallCollideableAtTime_t
-	{
-		Vector vStart;
-		Vector vEnd;
-		Vector vWorldMins;
-		Vector vWorldMaxs;
-		QAngle qAngles;
-		float flTime;
-		CPhysCollide *pCollideable;
-	};
-	CUtlVector<WallCollideableAtTime_t> m_WallCollideables;
-	CPhysCollide *m_pActiveCollideable;
+
+	CPhysCollide *m_pWallCollideable;
 	float m_flLength;
 	float m_flWidth;
 	float m_flHeight;

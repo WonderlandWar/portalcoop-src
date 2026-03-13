@@ -1257,7 +1257,7 @@ void CPortal_Player::PlayCoopPingEffect( void )
 	CTraceFilterSimpleClassnameList traceFilter( this, COLLISION_GROUP_NONE );
 	traceFilter.AddClassnameToIgnore( "player" );
 	traceFilter.AddClassnameToIgnore( "prop_energy_ball" );
-	traceFilter.AddClassnameToIgnore( "prop_combine_ball" );
+	traceFilter.AddClassnameToIgnore( "projected_wall_entity" );
 #if 0
 	bool bPortalBulletTrace = g_bBulletPortalTrace;
 	g_bBulletPortalTrace = true;

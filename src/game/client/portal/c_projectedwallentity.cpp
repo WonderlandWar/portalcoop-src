@@ -5,6 +5,7 @@
 #include "portal_player_shared.h"
 #include "prediction.h"
 #include "c_prop_portal.h"
+#include "vcollide_parse.h"
 
 #undef CProjectedWallEntity
 
@@ -42,6 +43,13 @@ IMPLEMENT_CLIENTCLASS_DT( C_ProjectedWallEntity, DT_ProjectedWallEntity, CProjec
 END_RECV_TABLE()
 
 BEGIN_PREDICTION_DATA( C_ProjectedWallEntity )
+	DEFINE_PRED_FIELD( m_flLength, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flWidth, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_flHeight, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_vWorldSpace_WallMins, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_vWorldSpace_WallMaxs, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_bIsHorizontal, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
+	//DEFINE_PRED_FIELD( m_pWallCollideable, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 END_PREDICTION_DATA()
 
 LINK_ENTITY_TO_CLASS( projected_wall_entity, C_ProjectedWallEntity )
@@ -50,27 +58,6 @@ C_ProjectedWallEntity::C_ProjectedWallEntity()
 {
 	m_pBodyMaterial = NULL;
 	m_pSideRailMaterial = NULL;
-	m_pPaintMaterialsMid[0] = NULL;
-	m_pPaintMaterialsEnd1[0] = NULL;
-	m_pPaintMaterialsEnd2[0] = NULL;
-	m_pPaintMaterialsSing[0] = NULL;
-	m_pPaintMaterialsMid[1] = NULL;
-	m_pPaintMaterialsEnd1[1] = NULL;
-	m_pPaintMaterialsEnd2[1] = NULL;
-	m_pPaintMaterialsSing[1] = NULL;
-	m_pPaintMaterialsMid[2] = NULL;
-	m_pPaintMaterialsEnd1[2] = NULL;
-	m_pPaintMaterialsEnd2[2] = NULL;
-	m_pPaintMaterialsSing[2] = NULL;
-	m_pPaintMaterialsMid[3] = NULL;
-	m_pPaintMaterialsEnd1[3] = NULL;
-	m_pPaintMaterialsEnd2[3] = NULL;
-	m_pPaintMaterialsSing[3] = NULL;
-	m_pPaintMaterialRBounceLSpeed = NULL;
-	m_pPaintMaterialLBounceRSpeed = NULL;
-	m_pPaintMaterialBounceRSpeed = NULL;
-	m_pPaintMaterialBounceLSpeed = NULL;
-	m_pPaintMaterialBounceLRSpeed = NULL;
 	m_nNumSegments = NULL;
 	m_flCurDisplayLength = 0.0;
 	m_flSegmentLength = 0.0;
@@ -124,20 +111,35 @@ void C_ProjectedWallEntity::OnProjected( void )
 	SetupWallParticles();
 }
 
+void C_ProjectedWallEntity::CleanupWall( void )
+{
+	if ( VPhysicsGetObject() )
+	{
+		VPhysicsDestroyObject();
+	}
+	if (m_pWallCollideable)
+	{
+		physcollision->DestroyCollide( m_pWallCollideable );
+		m_pWallCollideable = NULL;
+	}
+
+	m_vWorldSpace_WallMins = m_vWorldSpace_WallMaxs = vec3_origin;
+	m_flHeight = m_flWidth = m_flLength = 0.0;
+	m_hHitPortal = NULL;
+}
+
 void C_ProjectedWallEntity::ProjectWall( void )
 {
+	CleanupWall();
 	AddEffects( EF_NOINTERP );
-	//CheckForPlayersOnBridge();
+	CheckForPlayersOnBridge();
 
 	const Vector vStartPoint = GetStartPoint();
 	const Vector vEndPoint = GetEndPoint();
-
-	Vector vecForward;
-	Vector vecRight;
-	Vector vecUp;
-	AngleVectors( GetNetworkAngles(), &vecForward, &vecRight, &vecUp );
-
-	float fMaximumTime = fmaxf( prediction->InPrediction() ? prediction->GetSavedTime() : gpGlobals->curtime, engine->GetLastTimeStamp() );
+	
+	Vector vecForward, vecRight, vecUp;
+	QAngle qAngles = GetNetworkAngles();
+	AngleVectors( qAngles, &vecForward, &vecRight, &vecUp );
 
 	CPhysConvex *pTempConvex;
 
@@ -217,60 +219,78 @@ void C_ProjectedWallEntity::ProjectWall( void )
 
 	bool bSetLength = true;
 
-	CPhysCollide *pWallCollideable = physcollision->ConvertConvexToCollide( &pTempConvex, 1 );
-	if ( pWallCollideable )
+	m_pWallCollideable = physcollision->ConvertConvexToCollide( &pTempConvex, 1 );
+	if (m_pWallCollideable)
 	{
-		Vector vMaxs = vec3_origin;
-		Vector vMins = vec3_origin;
-		physcollision->CollideGetAABB(&vMins, &vMaxs, pWallCollideable, vec3_origin, vec3_angle);
+		solid_t solid;
+		V_strncpy( solid.surfaceprop, "hard_light_bridge", sizeof( solid.surfaceprop ) );
+		solid.params.massCenterOverride = g_PhysDefaultObjectParams.massCenterOverride;
+		solid.params.pGameData = this;
+		solid.params.mass = g_PhysDefaultObjectParams.mass;
+		solid.params.inertia = g_PhysDefaultObjectParams.inertia;
+		solid.params.damping = g_PhysDefaultObjectParams.damping;
+		solid.params.rotdamping = g_PhysDefaultObjectParams.rotdamping;
+		solid.params.rotInertiaLimit = g_PhysDefaultObjectParams.rotInertiaLimit;
+		solid.params.pName = g_PhysDefaultObjectParams.pName;
+		solid.params.volume = g_PhysDefaultObjectParams.volume;
+		solid.params.dragCoefficient = g_PhysDefaultObjectParams.dragCoefficient;
+		solid.params.enableCollisions = g_PhysDefaultObjectParams.enableCollisions;
 
-		WallCollideableAtTime_t collideable;
-		collideable.vStart = GetStartPoint();
-		collideable.vEnd = GetEndPoint();
-		collideable.vWorldMins = vMins;
-		collideable.vWorldMaxs = vMaxs;
-		collideable.qAngles = GetNetworkAngles();
-		collideable.pCollideable = pWallCollideable;
-		collideable.flTime = fMaximumTime;
-		m_WallCollideables.AddToTail( collideable );
-
-		// FIXME:
-		//m_vWorldSpace_WallMins = vMins;
-		//m_vWorldSpace_WallMaxs = vMaxs;
-
-		// set entity size
-		Vector vLocalMins = vMins - vStartPoint;
-		Vector vLocalMaxs = vMaxs - vStartPoint;
-		SetSize( vLocalMins, vLocalMaxs );
-
-		// Unsure if they actually used this function or not...original decompiled code below
-		m_flLength = vStartPoint.DistTo(vEndPoint);
-		//m_flLength = sqrt(
-		//	(((vStartPoint.x - vEndPoint.x) * (vStartPoint.x - vEndPoint.x))
-		//	+ ((vStartPoint.y - vEndPoint.y) * (vStartPoint.y - vEndPoint.y)))
-		//	+ ((vStartPoint.z - vEndPoint.z) * (vStartPoint.z - vEndPoint.z)));
-				
-		if ( bSetLength )
+		// create physics object
+		IPhysicsObject *physModel = PhysModelCreateCustom( this, m_pWallCollideable, vec3_origin, vec3_angle, "hard_light_bridge", true, &solid );
+		if (physModel)
 		{
-			m_flCurDisplayLength = 0.0;
-			SetNextClientThink( CLIENT_THINK_ALWAYS );
-		}
+			if ( VPhysicsGetObject() )
+				VPhysicsDestroyObject();
+			VPhysicsSetObject( physModel );
+			physModel->RecheckContactPoints();
 
-		CollisionProp()->MarkSurroundingBoundsDirty();
-		CollisionProp()->MarkPartitionHandleDirty();
+			if ( physModel->GetCollide() )
+			{
+				Vector vMaxs = vec3_origin;
+				Vector vMins = vec3_origin;
+				physcollision->CollideGetAABB(&vMins, &vMaxs, physModel->GetCollide(), vec3_origin, vec3_angle);
+				m_vWorldSpace_WallMins = vMins;
+				m_vWorldSpace_WallMaxs = vMaxs;
+
+				// set entity size
+				Vector vLocalMins = vMins - vStartPoint;
+				Vector vLocalMaxs = vMaxs - vStartPoint;
+				SetSize( vLocalMins, vLocalMaxs );
+
+				// Unsure if they actually used this function or not...original decompiled code below
+				m_flLength = vStartPoint.DistTo(vEndPoint);
+				//m_flLength = sqrt(
+				//	(((vStartPoint.x - vEndPoint.x) * (vStartPoint.x - vEndPoint.x))
+				//	+ ((vStartPoint.y - vEndPoint.y) * (vStartPoint.y - vEndPoint.y)))
+				//	+ ((vStartPoint.z - vEndPoint.z) * (vStartPoint.z - vEndPoint.z)));
 				
-		if ( prediction->InPrediction() )
-		{
-			CheckForPlayersOnBridge();
-			DisplaceObstructingEntities();
-		}
+				if ( bSetLength )
+				{
+					m_flCurDisplayLength = 0.0;
+					SetNextClientThink( CLIENT_THINK_ALWAYS );
+				}
 
-		m_nNumSegments = ceil( ( m_flLength / m_flSegmentLength ) );
-#ifdef PORTAL_PAINT
-		// FIXME
-		//m_PaintPowers.SetCount( ceil( ( m_flLength / m_flSegmentLength ) ) );
-		CleansePaint();
-#endif
+				// How useless.
+				m_flWidth = PROJECTED_WALL_WIDTH;
+				m_flHeight = PROJECTED_WALL_HEIGHT;
+
+				CollisionProp()->MarkSurroundingBoundsDirty();
+				CollisionProp()->MarkPartitionHandleDirty();
+				CollisionProp()->UpdatePartition();
+
+				if ( prediction->InPrediction() )
+				{
+					CheckForPlayersOnBridge();
+					Vector vRight;
+					Vector vUp;
+					AngleVectors( GetAbsAngles(), NULL, &vRight, &vUp);
+					m_bIsHorizontal = (vUp.z > 0.7 || vUp.z < -0.7) && vRight.z > -0.7 && vRight.z < 0.7;
+					DisplaceObstructingEntities();
+				}
+				m_nNumSegments = ceil( ( m_flLength / m_flSegmentLength ) );
+			}
+		}
 	}
 }
 
@@ -290,22 +310,26 @@ void C_ProjectedWallEntity::UpdateOnRemove( void )
 		CheckForPlayersOnBridge();
 
 	StopParticleEffects( this );
-	for ( int i = 0; i < m_WallCollideables.Count(); ++i )
+	
+	if ( VPhysicsGetObject() )
 	{
-		CPhysCollide *pCollideable = m_WallCollideables[i].pCollideable;
-		physcollision->DestroyCollide( pCollideable );
+		VPhysicsDestroyObject();
 	}
-
-	m_WallCollideables.RemoveAll();
+	if (m_pWallCollideable)
+	{
+		physcollision->DestroyCollide( m_pWallCollideable );
+		m_pWallCollideable = NULL;
+	}
+	
 	BaseClass::UpdateOnRemove();
 }
 
 bool C_ProjectedWallEntity::TestCollision( const Ray_t &ray, unsigned int mask, trace_t& trace )
 {
-	if ( !m_pActiveCollideable )
+	if ( !m_pWallCollideable )
 		return false;
 
-	physcollision->TraceBox( ray, mask, NULL, m_pActiveCollideable, vec3_origin, vec3_angle, &trace );
+	physcollision->TraceBox( ray, mask, NULL, m_pWallCollideable, vec3_origin, vec3_angle, &trace );
 	return trace.fraction < 1.0 || trace.allsolid || trace.startsolid;
 }
 
@@ -367,6 +391,9 @@ bool C_ProjectedWallEntity::InitMaterials( void )
 
 bool C_ProjectedWallEntity::ShouldSpawnParticles( C_Prop_Portal *pPortal )
 {
+	// In Portal: Retract and Portal: Cooperative, no particles spawn
+	return false;
+
 	if ( !pPortal->IsActivedAndLinked() )
 		return true;
 
@@ -394,6 +421,8 @@ bool C_ProjectedWallEntity::ShouldSpawnParticles( C_Prop_Portal *pPortal )
 
 void C_ProjectedWallEntity::SetupWallParticles()
 {
+	// In Portal: Retract and Portal: Cooperative, no particles spawn
+	return;
 	StopParticleEffects( this );
 
 	C_Prop_Portal *pSourcePortal = m_hSourcePortal;

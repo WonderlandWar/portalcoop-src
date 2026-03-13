@@ -22,11 +22,14 @@
 #include "c_portal_player.h"
 #include "c_basedoor.h"
 #include "prediction.h"
+#include "c_baseprojectedentity.h"
+typedef C_BaseProjectedEntity CBaseProjectedEntity;
 #else
 #include "func_portal_orientation.h"
 #include "portal_player.h"
 #include "portal_gamestats.h"
 #include "env_debughistory.h"
+#include "baseprojector.h"
 
 extern CUtlVector<CProp_Portal *> s_PortalLinkageGroups[256];
 #endif
@@ -476,6 +479,10 @@ void CProp_Portal::DelayedPlacementThink( void )
 
 #if defined( GAME_DLL )
 	SetContextThink( &CProp_Portal::TestRestingSurfaceThink, gpGlobals->curtime + 0.1f, s_pTestRestingSurfaceContext );
+
+	CBaseProjector::TestAllForProjectionChanges();
+#else
+	CBaseProjectedEntity::TestAllForProjectionChanges();
 #endif
 }
 

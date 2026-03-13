@@ -234,13 +234,7 @@ void UTIL_Portal_Trace_Filter( CTraceFilterSimpleClassnameList *traceFilterPorta
 	traceFilterPortalShot->AddClassnameToIgnore( "prop_physics_respawnable" );
 	traceFilterPortalShot->AddClassnameToIgnore( "func_physbox" );
 	traceFilterPortalShot->AddClassnameToIgnore( "npc_portal_turret_floor" );
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_turret_floor" );
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_manhack" );
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_rollermine" );
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_cscanner" );
-	traceFilterPortalShot->AddClassnameToIgnore( "npc_clawscanner" );
 	traceFilterPortalShot->AddClassnameToIgnore( "prop_energy_ball" );
-	traceFilterPortalShot->AddClassnameToIgnore( "prop_combine_ball" );
 	traceFilterPortalShot->AddClassnameToIgnore( "npc_security_camera" );
 	traceFilterPortalShot->AddClassnameToIgnore( "player" );
 	traceFilterPortalShot->AddClassnameToIgnore( "simple_physics_prop" );
@@ -252,6 +246,7 @@ void UTIL_Portal_Trace_Filter( CTraceFilterSimpleClassnameList *traceFilterPorta
 	traceFilterPortalShot->AddClassnameToIgnore( "prop_box" );
 	traceFilterPortalShot->AddClassnameToIgnore( "prop_weighted_cube" );
 	traceFilterPortalShot->AddClassnameToIgnore( "prop_radio" );
+	traceFilterPortalShot->AddClassnameToIgnore( "projected_wall_entity" );
 #ifdef GAME_DLL
 	traceFilterPortalShot->AddClassnameToIgnore( "func_box_reflector_shield" );
 #endif

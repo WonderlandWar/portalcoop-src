@@ -25,8 +25,8 @@ END_RECV_TABLE()
 
 BEGIN_PREDICTION_DATA( C_BaseProjectedEntity )
 
-	//DEFINE_PRED_FIELD( m_hHitPortal, FIELD_EHANDLE, FTYPEDESC_INSENDTABLE ),
-	//DEFINE_PRED_FIELD( m_hSourcePortal, FIELD_EHANDLE, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_hHitPortal, FIELD_EHANDLE, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_hSourcePortal, FIELD_EHANDLE, FTYPEDESC_INSENDTABLE ),
 	
 	DEFINE_PRED_FIELD( m_vecSourcePortalCenter, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_vecSourcePortalRemoteCenter, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
@@ -36,7 +36,7 @@ BEGIN_PREDICTION_DATA( C_BaseProjectedEntity )
 	DEFINE_PRED_FIELD( m_vecStartPoint, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_vecEndPoint, FIELD_VECTOR, FTYPEDESC_INSENDTABLE ),
 
-	DEFINE_PRED_FIELD( m_iMaxRemainingRecursions, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
+	//DEFINE_PRED_FIELD( m_iMaxRemainingRecursions, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 
 END_PREDICTION_DATA()
 
@@ -111,7 +111,7 @@ C_BasePlayer *C_BaseProjectedEntity::GetPredictionOwner( void )
 	if ( !m_hSourcePortal )
 		return NULL;
 	
-#if 0
+#if 1
 	C_Prop_Portal *pPropPortal = dynamic_cast<C_Prop_Portal*>( m_hSourcePortal.Get() );
 	
 	// FiredByPlayer is the most important!

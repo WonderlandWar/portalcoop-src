@@ -33,6 +33,7 @@
 #include "tier1/callqueue.h"
 #include "filters.h"
 #include <string>
+#include "baseprojector.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -776,6 +777,8 @@ void CProp_Portal::FizzleThink( void )
 	}
 
 	SetContextThink( NULL, TICK_NEVER_THINK, s_pFizzleThink );
+
+	CBaseProjector::TestAllForProjectionChanges();
 }
 
 
@@ -809,6 +812,8 @@ void CProp_Portal::Fizzle( void )
 	}
 
 	//SetContextThink( &CProp_Portal::FizzleThink, gpGlobals->curtime, s_pFizzleThink );
+
+	CBaseProjector::TestAllForProjectionChanges();
 }
 
 //-----------------------------------------------------------------------------
