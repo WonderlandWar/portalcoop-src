@@ -61,6 +61,7 @@ LINK_ENTITY_TO_CLASS( projected_wall_entity, CProjectedWallEntity )
 CProjectedWallEntity::CProjectedWallEntity()
 {
 	m_bWasEverProjected = false;
+	m_pWallCollideable = NULL;
 }
 
 CProjectedWallEntity::~CProjectedWallEntity()
@@ -243,7 +244,8 @@ void CProjectedWallEntity::ProjectWall( void )
 	if (!pTempConvex)
 		return;
 
-	m_pWallCollideable = physcollision->ConvertConvexToCollide( &pTempConvex, 1 );
+	int index = m_WallCollideables.AddToTail( physcollision->ConvertConvexToCollide( &pTempConvex, 1 ) );
+	m_pWallCollideable = m_WallCollideables[index];
 	if (m_pWallCollideable)
 	{
 		solid_t solid;
@@ -425,7 +427,16 @@ void CProjectedWallEntity::CleanupWall( void )
 	if (m_pWallCollideable)
 	{
 		CPhysicsShadowClone::NotifyDestroy( m_pWallCollideable, this );
-		physcollision->DestroyCollide( m_pWallCollideable );
+		// Only destroy the wall collideable if it's not the active one to prevent crashes.
+		for ( int i = 0; i < m_WallCollideables.Count(); ++i )
+		{
+			if ( m_WallCollideables[i] != m_pWallCollideable )
+			{
+				physcollision->DestroyCollide( m_WallCollideables[i] );
+				m_WallCollideables.Remove( i );
+				i = 0;
+			}
+		}
 		m_pWallCollideable = NULL;
 	}
 

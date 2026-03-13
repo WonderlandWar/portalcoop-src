@@ -87,6 +87,7 @@ private:
     void TraceForWallEndpoint( Vector * );
     void DrawWallBoundsHighlight();
     CPhysCollide *m_pWallCollideable;
+	CUtlVector<CPhysCollide*> m_WallCollideables;
     void CheckForPlayersOnBridge();
 	
 	CNetworkVector( m_vWorldSpace_WallMins );
