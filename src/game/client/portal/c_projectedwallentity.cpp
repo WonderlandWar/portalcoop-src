@@ -265,7 +265,7 @@ void C_ProjectedWallEntity::ProjectWall( void )
 				//	+ ((vStartPoint.y - vEndPoint.y) * (vStartPoint.y - vEndPoint.y)))
 				//	+ ((vStartPoint.z - vEndPoint.z) * (vStartPoint.z - vEndPoint.z)));
 				
-				if ( bSetLength )
+				if ( bSetLength && ( !GetPredictable() || (prediction->InPrediction() && prediction->IsFirstTimePredicted()) ) )
 				{
 					m_flCurDisplayLength = 0.0;
 					SetNextClientThink( CLIENT_THINK_ALWAYS );
