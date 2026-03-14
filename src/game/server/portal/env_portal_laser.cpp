@@ -203,7 +203,7 @@ void CPortalLaser::Precache( void )
 		PrecacheScriptSound("Laser.BeamLoop");
 
 	PrecacheScriptSound("Flesh.LaserBurn");
-	PrecacheScriptSound("Player.PainSmall");
+	PrecacheScriptSound("Laser.BurnPlayer");
 
 	PrecacheParticleSystem("laser_start_glow");
 	PrecacheParticleSystem("reflector_start_glow");
@@ -909,7 +909,7 @@ void CPortalLaser::DamageEntitiesAlongLaser( const PortalLaserInfoList_t &infoLi
 							pEntity->SetAbsVelocity( vecPushVelocity );
 
 							DamageEntity( pEntity, m_bIsLethal ? 100000 : LaserDamageAmount() );
-							pEntity->EmitSound( "HL2Player.BurnPain" );
+							pEntity->EmitSound( "Laser.BurnPlayer" );
 						}
 					}
 				}
