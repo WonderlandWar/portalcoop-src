@@ -50,7 +50,7 @@ bool RestrictedMapPrefix( const char *pszPrefix, char *pszMissingMod, const char
 	{
 		if ( V_stristr( pszPrefix, g_FailedMountChecks[i].m_szPrefix ) &&
 			// It's possible to have multiple map sets using the same prefix while also having different mods
-			( !pszCheckMod || ( !V_stricmp( pszCheckMod, g_FailedMountChecks[i].m_szModFolder ) ) )
+			( !pszCheckMod || !V_stricmp( pszCheckMod, g_FailedMountChecks[i].m_szModFolder ) )
 			)
 		{
 			if ( pszMissingMod )
