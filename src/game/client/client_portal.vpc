@@ -261,6 +261,11 @@ $Project "Client (Portal)"
 			$File "portal\c_trigger_catapult.cpp"
 			$File "portal\c_trigger_catapult.h"
 			$File "$SRCDIR\game\shared\portal\trigger_catapult_shared.cpp"
+			
+			$File 	"portal\c_prop_tractorbeam.cpp"
+			$File 	"portal\c_trigger_tractorbeam.h"
+			$File 	"portal\c_trigger_tractorbeam.cpp"
+			$File	"$SRCDIR\game\shared\portal\trigger_tractorbeam_shared.cpp" // NOTE: Portal 2's Server VPC doesn't have this.
 
 			$Folder	"Weapons"
 			{

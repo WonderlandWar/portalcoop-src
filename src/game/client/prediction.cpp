@@ -790,6 +790,7 @@ void CPrediction::StartCommand( C_BasePlayer *player, CUserCmd *cmd )
 	CPredictableId::ResetInstanceCounters();
 
 	player->m_pCurrentCommand = cmd;
+	player->m_LastCmd = *cmd;
 	C_BaseEntity::SetPredictionRandomSeed( cmd );
 	C_BaseEntity::SetPredictionPlayer( player );
 #endif

@@ -51,6 +51,9 @@
 #include "steam/steam_api.h"
 #include "sourcevr/isourcevirtualreality.h"
 #include "client_virtualreality.h"
+#ifdef PORTAL
+#include "c_portal_player.h"
+#endif
 
 #ifdef TF_CLIENT_DLL
 #include "tf_gamerules.h"
@@ -523,6 +526,14 @@ bool C_BasePlayer::AudioStateIsUnderwater( Vector vecMainViewOrigin )
 		int cont = enginetrace->GetPointContents ( vecMainViewOrigin );
 		return (cont & MASK_WATER);
 	}
+
+#ifdef PORTAL
+	C_Portal_Player *pPortalPlayer = (C_Portal_Player*)this;
+	if ( pPortalPlayer->GetTractorBeam() )
+	{
+		return true;
+	}
+#endif
 
 	return ( GetWaterLevel() >= WL_Eyes );
 }

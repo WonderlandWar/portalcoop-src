@@ -4364,67 +4364,6 @@ BEGIN_DATADESC( CBaseVPhysicsTrigger )
 	DEFINE_INPUTFUNC( FIELD_VOID, "Toggle", InputToggle ),
 END_DATADESC()
 
-
-IMPLEMENT_SERVERCLASS_ST( CBaseVPhysicsTrigger, DT_BaseVPhysicsTrigger )
-	//SendPropBool	( SENDINFO( m_bDisabled ) ),
-END_SEND_TABLE()
-
-//------------------------------------------------------------------------------
-// Spawn
-//------------------------------------------------------------------------------
-void CBaseVPhysicsTrigger::Spawn()
-{
-	Precache();
-
-	SetSolid( SOLID_VPHYSICS );	
-	AddSolidFlags( FSOLID_NOT_SOLID );
-
-	// NOTE: Don't make yourself FSOLID_TRIGGER here or you'll get game 
-	// collisions AND vphysics collisions.  You don't want any game collisions
-	// so just use FSOLID_NOT_SOLID
-
-	SetMoveType( MOVETYPE_NONE );
-	SetModel( STRING( GetModelName() ) );    // set size and link into world
-	if ( showtriggers.GetInt() == 0 )
-	{
-		AddEffects( EF_NODRAW );
-	}
-
-	CreateVPhysics();
-}
-
-//------------------------------------------------------------------------------
-// Create VPhysics
-//------------------------------------------------------------------------------
-bool CBaseVPhysicsTrigger::CreateVPhysics()
-{
-	IPhysicsObject *pPhysics;
-	if ( !HasSpawnFlags( SF_VPHYSICS_MOTION_MOVEABLE ) )
-	{
-		pPhysics = VPhysicsInitStatic();
-	}
-	else
-	{
-		pPhysics = VPhysicsInitShadow( false, false );
-	}
-
-	pPhysics->BecomeTrigger();
-	return true;
-}
-
-//------------------------------------------------------------------------------
-// Cleanup
-//------------------------------------------------------------------------------
-void CBaseVPhysicsTrigger::UpdateOnRemove()
-{
-	if ( VPhysicsGetObject())
-	{
-		VPhysicsGetObject()->RemoveTrigger();
-	}
-
-	BaseClass::UpdateOnRemove();
-}
-
 //------------------------------------------------------------------------------
 // Activate
 //------------------------------------------------------------------------------
@@ -4482,64 +4421,6 @@ void CBaseVPhysicsTrigger::InputDisable( inputdata_t &inputdata )
 			VPhysicsGetObject()->EnableCollisions( false );
 		}
 	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CBaseVPhysicsTrigger::StartTouch( CBaseEntity *pOther )
-{
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CBaseVPhysicsTrigger::EndTouch( CBaseEntity *pOther )
-{
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-bool CBaseVPhysicsTrigger::PassesTriggerFilters( CBaseEntity *pOther )
-{
-	if ( pOther->GetMoveType() != MOVETYPE_VPHYSICS && !pOther->IsPlayer() )
-		return false;
-
-	// First test spawn flag filters
-	if ( HasSpawnFlags(SF_TRIGGER_ALLOW_ALL) ||
-		(HasSpawnFlags(SF_TRIGGER_ALLOW_CLIENTS) && (pOther->GetFlags() & FL_CLIENT)) ||
-		(HasSpawnFlags(SF_TRIGGER_ALLOW_NPCS) && (pOther->GetFlags() & FL_NPC)) ||
-		(HasSpawnFlags(SF_TRIGGER_ALLOW_PUSHABLES) && FClassnameIs(pOther, "func_pushable")) ||
-		(HasSpawnFlags(SF_TRIGGER_ALLOW_PHYSICS) && pOther->GetMoveType() == MOVETYPE_VPHYSICS))
-	{
-		bool bOtherIsPlayer = pOther->IsPlayer();
-		if( HasSpawnFlags(SF_TRIGGER_ONLY_PLAYER_ALLY_NPCS) && !bOtherIsPlayer )
-		{
-			CAI_BaseNPC *pNPC = pOther->MyNPCPointer();
-
-			if( !pNPC || !pNPC->IsPlayerAlly() )
-			{
-				return false;
-			}
-		}
-
-		if ( HasSpawnFlags(SF_TRIGGER_ONLY_CLIENTS_IN_VEHICLES) && bOtherIsPlayer )
-		{
-			if ( !((CBasePlayer*)pOther)->IsInAVehicle() )
-				return false;
-		}
-
-		if ( HasSpawnFlags(SF_TRIGGER_ONLY_CLIENTS_OUT_OF_VEHICLES) && bOtherIsPlayer )
-		{
-			if ( ((CBasePlayer*)pOther)->IsInAVehicle() )
-				return false;
-		}
-
-		CBaseFilter *pFilter = m_hFilter.Get();
-		return (!pFilter) ? true : pFilter->PassesFilter( this, pOther );
-	}
-	return false;
 }
 
 //=====================================================================================================================

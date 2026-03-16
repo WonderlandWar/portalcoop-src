@@ -5,19 +5,15 @@
 // $NoKeywords: $
 //=============================================================================//
 #include "cbase.h"
-#include "npc_turret_floor.h"
 #include "portal_player.h"
 #include "weapon_physcannon.h"
 #include "basehlcombatweapon_shared.h"
 #include "ammodef.h"
-#include "ai_senses.h"
-#include "ai_memory.h"
-#include "rope.h"
-#include "rope_shared.h"
 #include "prop_portal_shared.h"
 #include "Sprite.h"
 #include "explode.h"
 #include "props.h"
+#include "npc_portal_turret_floor.h"
 
 #define SF_FLOOR_TURRET_AUTOACTIVATE		0x00000020
 #define SF_FLOOR_TURRET_STARTINACTIVE		0x00000040
@@ -37,8 +33,6 @@
 #define TURRET_FLOOR_DAMAGE_MULTIPLIER 3.0f
 #define TURRET_FLOOR_BULLET_FORCE_MULTIPLIER 0.4f
 #define TURRET_FLOOR_PHYSICAL_FORCE_MULTIPLIER 135.0f
-
-#define PORTAL_FLOOR_TURRET_NUM_ROPES 4
 
 //Turret states
 enum portalTurretState_e
@@ -100,93 +94,6 @@ const char* GetTurretTalkName( int iState )
 	return g_PortalTalkNames[ iState - TURRET_STATE_TOTAL ];
 }
 
-
-class CNPC_Portal_FloorTurret : public CNPC_FloorTurret
-{
-	DECLARE_CLASS( CNPC_Portal_FloorTurret, CNPC_FloorTurret );
-	DECLARE_SERVERCLASS();
-	DECLARE_DATADESC();
-
-public:
-
-	CNPC_Portal_FloorTurret( void );
-
-	virtual void	Precache( void );
-	virtual void	Spawn( void );
-	virtual void	Activate( void );
-	virtual void	UpdateOnRemove( void );
-	virtual int		OnTakeDamage( const CTakeDamageInfo &info );
-
-	virtual bool	ShouldAttractAutoAim( CBaseEntity *pAimingEnt );
-	virtual float	GetAutoAimRadius();
-	virtual Vector	GetAutoAimCenter();
-
-	virtual void	OnPhysGunPickup( CBasePlayer *pPhysGunUser, PhysGunPickup_t reason );
-
-	virtual void	NotifySystemEvent( CBaseEntity *pNotify, notify_system_event_t eventType, const notify_system_event_params_t &params );
-
-	virtual bool	PreThink( turretState_e state );
-	virtual void	Shoot( const Vector &vecSrc, const Vector &vecDirToEnemy, bool bStrict = false );
-	virtual void	SetEyeState( eyeState_t state );
-
-	virtual bool	OnSide( void );
-
-	virtual float	GetAttackDamageScale( CBaseEntity *pVictim );
-	virtual Vector	GetAttackSpread( CBaseCombatWeapon *pWeapon, CBaseEntity *pTarget );
-
-	// Think functions
-	virtual void	Retire( void );
-	virtual void	Deploy( void );
-	virtual void	ActiveThink( void );
-	virtual void	SearchThink( void );
-	virtual void	AutoSearchThink( void );
-	virtual void	TippedThink( void );
-	virtual void	HeldThink( void );
-	virtual void	InactiveThink( void );
-	virtual void	SuppressThink( void );
-	virtual void	DisabledThink( void );
-	virtual void	HackFindEnemy( void );
-	virtual void	BurnThink( void );
-	//virtual void	BreakThink( void );
-
-	virtual void	StartTouch( CBaseEntity *pOther );
-
-	bool	IsLaserOn( void ) { return m_bLaserOn; }
-	void	LaserOff( void );
-	void	LaserOn( void );
-	void	RopesOn();
-	void	RopesOff();
-
-	void	FireBullet( const char *pTargetName );
-
-	// Inputs
-	void	InputFireBullet( inputdata_t &inputdata );
-
-private:
-
-	CHandle<CRopeKeyframe>	m_hRopes[ PORTAL_FLOOR_TURRET_NUM_ROPES ];
-	
-	bool AllowedToIgnite() { return true; }
-
-	CNetworkVar( bool, m_bOutOfAmmo );
-	CNetworkVar( bool, m_bLaserOn );
-	CNetworkVar( int, m_sLaserHaloSprite );
-
-	int		m_iBarrelAttachments[ 4 ];
-	bool	m_bShootWithBottomBarrels;
-	bool	m_bDamageForce;
-
-	float	m_fSearchSpeed;
-	float	m_fMovingTargetThreashold;
-	float	m_flDistToEnemy;
-	float	m_flBurnExplodeTime;
-
-	turretState_e	m_iLastState;
-	float			m_fNextTalk;
-	bool			m_bDelayTippedTalk;
-
-};
-
 LINK_ENTITY_TO_CLASS( npc_portal_turret_floor, CNPC_Portal_FloorTurret );
 
 //Datatable
@@ -243,6 +150,7 @@ CNPC_Portal_FloorTurret::CNPC_Portal_FloorTurret( void )
 
 	m_bDamageForce = true;
 	m_flBurnExplodeTime = 0.0;
+	m_bIsDead = false;
 }
 
 void CNPC_Portal_FloorTurret::Precache( void )
@@ -1202,6 +1110,7 @@ void CNPC_Portal_FloorTurret::TippedThink( void )
 			//Try to look straight
 			if ( UpdateFacing() == false )
 			{
+				m_bIsDead = true;
 				m_OnTipped.FireOutput( this, this );
 				SetEyeState( TURRET_EYE_DEAD );
 				//SetCollisionGroup( COLLISION_GROUP_DEBRIS_TRIGGER );
@@ -1315,6 +1224,7 @@ void CNPC_Portal_FloorTurret::DisabledThink( void )
 	SetNextThink( gpGlobals->curtime + 0.5 );
 	if ( OnSide() )
 	{
+		m_bIsDead = true;
 		m_OnTipped.FireOutput( this, this );
 		SetEyeState( TURRET_EYE_DEAD );
 		//SetCollisionGroup( COLLISION_GROUP_DEBRIS_TRIGGER );
@@ -1379,6 +1289,15 @@ void CNPC_Portal_FloorTurret::BurnThink(void)
 	}
 }
 
+void CNPC_Portal_FloorTurret::TractorBeamThink( void )
+{
+	if ( !m_bIsDead )
+	{
+		PreThink( TURRET_DEPLOYING );
+		SetNextThink( gpGlobals->curtime + 0.1 );
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: The turret doesn't run base AI properly, which is a bad decision.
 //			As a result, it has to manually find enemies.
@@ -1430,6 +1349,31 @@ void CNPC_Portal_FloorTurret::HackFindEnemy( void )
 	else
 	{
 		m_fMovingTargetThreashold = 20.0f;
+	}
+}
+
+void CNPC_Portal_FloorTurret::OnEnteredTractorBeam( void )
+{
+	Vector impulse;
+	impulse.x = RandomFloat( -30, 30 );
+	impulse.y = RandomFloat( -70, 70 );
+	impulse.z = 100;
+
+	ApplyLocalAngularVelocityImpulse( impulse );
+
+	if ( !m_bIsDead )
+	{
+		SetThink( &CNPC_Portal_FloorTurret::TractorBeamThink );
+		SetNextThink( gpGlobals->curtime + 0.1 );
+	}
+}
+
+void CNPC_Portal_FloorTurret::OnExitedTractorBeam( void )
+{
+	if ( !m_bIsDead )
+	{
+		SetThink( &CNPC_Portal_FloorTurret::ActiveThink );
+		SetNextThink( gpGlobals->curtime + 0.1 );
 	}
 }
 

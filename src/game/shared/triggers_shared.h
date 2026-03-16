@@ -17,6 +17,7 @@
 #else
 #include "c_basetoggle.h"
 #define CBaseTrigger C_BaseTrigger
+#define CBaseVPhysicsTrigger C_BaseVPhysicsTrigger
 #endif
 
 //
@@ -57,9 +58,8 @@ public:
 	
 	// By default, triggers aren't predicted, not really an accurate name
 	virtual bool IsPredicted( void ) { return false; }
-#ifdef GAME_DLL
 	CBaseTrigger();
-
+#ifdef GAME_DLL
 	virtual int UpdateTransmitState( void ) OVERRIDE
 	{
 		if ( IsPredicted() )
@@ -112,7 +112,6 @@ public:
 	
 	string_t	m_iFilterName;
 #else
-	CBaseTrigger();
 	void UpdatePartitionListEntry( void );
 	virtual void PreDataUpdate( DataUpdateType_t updatetype ) OVERRIDE;
 	virtual void OnDataChanged( DataUpdateType_t updatetype ) OVERRIDE;
@@ -141,6 +140,71 @@ protected:
 	CUtlVector< CHandle<CBasePlayer> >	m_hTouchingPlayers;
 
 	DECLARE_DATADESC();
+#endif
+};
+
+//------------------------------------------------------------------------------
+// Base VPhysics trigger implementation
+// NOTE: This uses vphysics to compute touch events.  It doesn't do a per-frame Touch call, so the 
+// Entity I/O is different from a regular trigger
+//------------------------------------------------------------------------------
+#define SF_VPHYSICS_MOTION_MOVEABLE	0x1000
+
+class CBaseVPhysicsTrigger : public CBaseEntity
+{
+	DECLARE_CLASS( CBaseVPhysicsTrigger , CBaseEntity );
+	DECLARE_NETWORKCLASS();
+
+public:
+
+	// By default, triggers aren't predicted, not really an accurate name
+	virtual bool IsPredicted(void) { return false; }
+	
+#ifdef GAME_DLL
+	virtual int UpdateTransmitState( void ) OVERRIDE
+	{
+		if ( IsPredicted() )
+		{
+			return SetTransmitState( FL_EDICT_PVSCHECK );
+		}
+		
+		return SetTransmitState( FL_EDICT_DONTSEND );
+	}
+
+	DECLARE_DATADESC();
+	virtual void Activate( void );
+
+	void InputToggle( inputdata_t &inputdata );
+	void InputEnable( inputdata_t &inputdata );
+	void InputDisable( inputdata_t &inputdata );
+#else
+	virtual bool PredictionErrorShouldResetLatchedForAllPredictables( void ) { return false; }
+
+	CBaseVPhysicsTrigger();
+	void UpdatePartitionListEntry( void );
+	virtual void PreDataUpdate( DataUpdateType_t updatetype ) OVERRIDE;
+	virtual void OnDataChanged( DataUpdateType_t updatetype ) OVERRIDE;
+	bool m_bOldDisabled;
+#endif
+	CNetworkVar( bool, m_bDisabled );
+	CNetworkHandle( CBaseFilter, m_hFilter );
+
+	// Functions that are shared between the client & server
+	//
+	virtual void Spawn();
+	virtual void UpdateOnRemove();
+	virtual bool CreateVPhysics();
+
+	virtual bool PassesTriggerFilters(CBaseEntity *pOther);
+	
+	// UNDONE: Pass trigger event in or change Start/EndTouch.  Add ITriggerVPhysics perhaps?
+	// BUGBUG: If a player touches two of these, his movement will screw up.
+	// BUGBUG: If a player uses crouch/uncrouch it will generate touch events and clear the motioncontroller flag
+	virtual void StartTouch( CBaseEntity *pOther );
+	virtual void EndTouch( CBaseEntity *pOther );
+protected:
+#ifdef GAME_DLL
+	string_t					m_iFilterName;
 #endif
 };
 

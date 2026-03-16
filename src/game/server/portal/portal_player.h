@@ -23,6 +23,7 @@ class CPortal_Player;
 #include "in_buttons.h"
 #include "func_liquidportal.h"
 #include "ai_speech.h"			// For expresser host
+#include "trigger_tractorbeam.h"
 
 #define PINGTIME 3.0
 
@@ -297,7 +298,9 @@ private:
 	string_t					m_iszExpressionScene;
 	EHANDLE						m_hExpressionSceneEnt;
 	float						m_flExpressionLoopTime;
-
+	
+	CNetworkHandle( CTrigger_TractorBeam, m_hTractorBeam )
+    int m_nTractorBeamCount;
 	
 	struct RecentPortalTransform_t
 	{
@@ -333,6 +336,10 @@ public:
 public:
 	void PickTeam( void );
 #endif
+		
+	void SetInTractorBeam( CTrigger_TractorBeam *pTractorBeam );
+	void SetLeaveTractorBeam( CTrigger_TractorBeam *pTractorBeam, bool bKeepFloating );
+	CTrigger_TractorBeam* GetTractorBeam( void ) const { return m_hTractorBeam.Get(); }
 };
 
 inline CPortal_Player *ToPortalPlayer( CBaseEntity *pEntity )

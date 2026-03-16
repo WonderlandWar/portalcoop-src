@@ -13,6 +13,8 @@
 #ifdef CLIENT_DLL
 #define CTriggerPlayerMovement C_TriggerPlayerMovement
 #define CTriggerPush C_TriggerPush
+#else
+extern ConVar showtriggers;
 #endif
 
 IMPLEMENT_NETWORKCLASS_ALIASED( BaseTrigger, DT_BaseTrigger )
@@ -122,6 +124,144 @@ bool CBaseTrigger::PassesTriggerFilters(CBaseEntity *pOther)
 		return (!pFilter) ? true : pFilter->PassesFilter( this, pOther );
 	}
 	return false;
+}
+
+IMPLEMENT_NETWORKCLASS_ALIASED( BaseVPhysicsTrigger, DT_BaseVPhysicsTrigger )
+BEGIN_NETWORK_TABLE( CBaseVPhysicsTrigger, DT_BaseVPhysicsTrigger )
+#ifdef GAME_DLL
+	SendPropBool( SENDINFO( m_bDisabled ) ),
+	SendPropInt( SENDINFO(m_spawnflags), -1, SPROP_NOSCALE ),
+	SendPropEHandle( SENDINFO( m_hFilter ) )
+#else
+	RecvPropBool( RECVINFO( m_bDisabled ) ),
+	RecvPropInt( RECVINFO(m_spawnflags) ),
+	RecvPropEHandle( RECVINFO( m_hFilter ) )
+#endif
+END_NETWORK_TABLE()
+
+//------------------------------------------------------------------------------
+// Spawn
+//------------------------------------------------------------------------------
+void CBaseVPhysicsTrigger::Spawn()
+{
+#ifndef CLIENT_DLL
+	Precache();
+
+	SetSolid( SOLID_VPHYSICS );	
+	AddSolidFlags( FSOLID_NOT_SOLID );
+
+	// NOTE: Don't make yourself FSOLID_TRIGGER here or you'll get game 
+	// collisions AND vphysics collisions.  You don't want any game collisions
+	// so just use FSOLID_NOT_SOLID
+
+	SetMoveType( MOVETYPE_NONE );
+	SetModel( STRING( GetModelName() ) );    // set size and link into world
+	if ( showtriggers.GetInt() == 0 )
+	{
+		AddEffects( EF_NODRAW );
+	}
+
+	CreateVPhysics();
+#endif
+}
+
+//------------------------------------------------------------------------------
+// Create VPhysics
+//------------------------------------------------------------------------------
+bool CBaseVPhysicsTrigger::CreateVPhysics()
+{
+	IPhysicsObject *pPhysics;
+	if ( !HasSpawnFlags( SF_VPHYSICS_MOTION_MOVEABLE ) )
+	{
+		pPhysics = VPhysicsInitStatic();
+	}
+	else
+	{
+		pPhysics = VPhysicsInitShadow( false, false );
+	}
+
+	pPhysics->BecomeTrigger();
+	return true;
+}
+
+//------------------------------------------------------------------------------
+// Cleanup
+//------------------------------------------------------------------------------
+void CBaseVPhysicsTrigger::UpdateOnRemove()
+{
+	if ( VPhysicsGetObject())
+	{
+		VPhysicsGetObject()->RemoveTrigger();
+	}
+
+	BaseClass::UpdateOnRemove();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Returns true if this entity passes the filter criteria, false if not.
+// Input  : pOther - The entity to be filtered.
+//-----------------------------------------------------------------------------
+bool CBaseVPhysicsTrigger::PassesTriggerFilters(CBaseEntity *pOther)
+{
+#ifdef CLIENT_DLL
+	AssertMsg( IsPredicted(), "We shouldn't be touched, how is this being called?" );
+#endif
+	if ( pOther->GetMoveType() != MOVETYPE_VPHYSICS && !pOther->IsPlayer() )
+		return false;
+
+	// First test spawn flag filters
+	if ( HasSpawnFlags(SF_TRIGGER_ALLOW_ALL) ||
+		(HasSpawnFlags(SF_TRIGGER_ALLOW_CLIENTS) && (pOther->GetFlags() & FL_CLIENT)) ||
+		(HasSpawnFlags(SF_TRIGGER_ALLOW_NPCS) && (pOther->GetFlags() & FL_NPC)) ||
+		(HasSpawnFlags(SF_TRIGGER_ALLOW_PUSHABLES) && FClassnameIs(pOther, "func_pushable")) ||
+		(HasSpawnFlags(SF_TRIGGER_ALLOW_PHYSICS) && pOther->GetMoveType() == MOVETYPE_VPHYSICS))
+	{
+		bool bOtherIsPlayer = pOther->IsPlayer();
+		if( HasSpawnFlags(SF_TRIGGER_ONLY_PLAYER_ALLY_NPCS) && !bOtherIsPlayer )
+		{
+#ifndef CLIENT_DLL
+			CAI_BaseNPC *pNPC = pOther->MyNPCPointer();
+
+			if( !pNPC || !pNPC->IsPlayerAlly() )
+			{
+				return false;
+			}
+#else
+			return false;
+#endif
+		}
+
+		if ( HasSpawnFlags(SF_TRIGGER_ONLY_CLIENTS_IN_VEHICLES) && bOtherIsPlayer )
+		{
+			if ( !((CBasePlayer*)pOther)->IsInAVehicle() )
+				return false;
+		}
+
+		if ( HasSpawnFlags(SF_TRIGGER_ONLY_CLIENTS_OUT_OF_VEHICLES) && bOtherIsPlayer )
+		{
+			if ( ((CBasePlayer*)pOther)->IsInAVehicle() )
+				return false;
+		}
+
+		CBaseFilter *pFilter = m_hFilter.Get();
+		return (!pFilter) ? true : pFilter->PassesFilter( this, pOther );
+	}
+	return false;
+}
+	
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CBaseVPhysicsTrigger::StartTouch( CBaseEntity *pOther )
+{
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CBaseVPhysicsTrigger::EndTouch( CBaseEntity *pOther )
+{
 }
 
 //-----------------------------------------------------------------------------

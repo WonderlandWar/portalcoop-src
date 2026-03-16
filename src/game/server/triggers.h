@@ -37,45 +37,6 @@ public:
 // Global list of triggers that care about weapon fire
 extern CUtlVector< CHandle<CTriggerMultiple> >	g_hWeaponFireTriggers;
 
-
-//------------------------------------------------------------------------------
-// Base VPhysics trigger implementation
-// NOTE: This uses vphysics to compute touch events.  It doesn't do a per-frame Touch call, so the 
-// Entity I/O is different from a regular trigger
-//------------------------------------------------------------------------------
-#define SF_VPHYSICS_MOTION_MOVEABLE	0x1000
-
-class CBaseVPhysicsTrigger : public CBaseEntity
-{
-	DECLARE_CLASS( CBaseVPhysicsTrigger , CBaseEntity );
-	DECLARE_SERVERCLASS();
-
-public:
-	DECLARE_DATADESC();
-
-	virtual void Spawn();
-	virtual void UpdateOnRemove();
-	virtual bool CreateVPhysics();
-	virtual void Activate( void );
-	virtual bool PassesTriggerFilters(CBaseEntity *pOther);
-
-	// UNDONE: Pass trigger event in or change Start/EndTouch.  Add ITriggerVPhysics perhaps?
-	// BUGBUG: If a player touches two of these, his movement will screw up.
-	// BUGBUG: If a player uses crouch/uncrouch it will generate touch events and clear the motioncontroller flag
-	virtual void StartTouch( CBaseEntity *pOther );
-	virtual void EndTouch( CBaseEntity *pOther );
-
-	void InputToggle( inputdata_t &inputdata );
-	void InputEnable( inputdata_t &inputdata );
-	void InputDisable( inputdata_t &inputdata );
-	
-
-protected:
-	bool						m_bDisabled;
-	string_t					m_iFilterName;
-	CHandle<class CBaseFilter>	m_hFilter;
-};
-
 //-----------------------------------------------------------------------------
 // Purpose: Hurts anything that touches it. If the trigger has a targetname,
 //			firing it will toggle state.

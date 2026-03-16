@@ -35,7 +35,9 @@ public:
 		m_flFOVRate = 0;
 		m_bForceLocalPlayerDraw = false;
 		m_bPrevForceLocalPlayerDraw = false;
-
+#ifdef PORTAL
+		m_fTBeamEndTime = 0.0f;
+#endif
 		m_szScriptOverlayMaterial.GetForModify()[0] = '\0';
 	}
 
@@ -81,7 +83,9 @@ public:
 	audioparams_t			m_audio;
 
 	bool					m_bSlowMovement;
-
+#ifdef PORTAL
+	float					m_fTBeamEndTime;
+#endif
 	CNetworkString( m_szScriptOverlayMaterial, MAX_PATH );
 };
 

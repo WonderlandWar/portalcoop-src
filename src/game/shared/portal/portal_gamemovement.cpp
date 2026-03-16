@@ -149,11 +149,15 @@ public:
 	virtual int CheckStuck( void );
 
 	virtual void SetGroundEntity( trace_t *pm );
+	
+	// Handle MOVETYPE_WALK.
+	virtual void	FullWalkMove();
 
 	void HandlePortallingLegacy( void ); // This is Portal 1 code but ported to gamemovement partially mixed with Portal 2 code
 
 private:
-
+	
+	virtual void	TBeamMove();
 
 	CPortal_Player	*GetPortalPlayer();
 	
@@ -459,6 +463,28 @@ void CPortalGameMovement::AirAccelerate( Vector& wishdir, float wishspeed, float
 		mv->m_vecVelocity[i] += accelspeed * wishdir[i];
 		mv->m_outWishVel[i] += accelspeed * wishdir[i];
 	}
+}
+
+void CPortalGameMovement::TBeamMove( void )
+{
+	CPortal_Player *pPortalPlayer = GetPortalPlayer();
+
+	CTrigger_TractorBeam *pTractorBeam = pPortalPlayer->GetTractorBeam();
+	if ( !pTractorBeam )
+		return;
+
+	if ( gpGlobals->frametime > 0.0f )
+	{
+		Vector vLinear;
+		AngularImpulse angAngular;
+		vLinear.Init();
+		angAngular.Init();
+
+		pTractorBeam->CalculateFrameMovement( NULL, pPortalPlayer, gpGlobals->frametime, vLinear, angAngular );
+		mv->m_vecVelocity += vLinear * gpGlobals->frametime;
+	}
+
+	TryPlayerMove( 0, 0 );
 }
 
 //-----------------------------------------------------------------------------
@@ -905,6 +931,135 @@ CBaseHandle CPortalGameMovement::TestPlayerPosition( const Vector& pos, int coll
 	else
 	{	
 		return INVALID_EHANDLE;
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CPortalGameMovement::FullWalkMove( )
+{
+	if ( !CheckWater() ) 
+	{
+		StartGravity();
+	}
+
+	// If we are leaping out of the water, just update the counters.
+	if (player->m_flWaterJumpTime)
+	{
+		WaterJump();
+		TryPlayerMove();
+		// See if we are still in water?
+		CheckWater();
+		return;
+	}
+
+	// If we are swimming in the water, see if we are nudging against a place we can jump up out
+	//  of, and, if so, start out jump.  Otherwise, if we are not moving up, then reset jump timer to 0
+	if ( player->GetWaterLevel() >= WL_Waist ) 
+	{
+		if ( player->GetWaterLevel() == WL_Waist )
+		{
+			CheckWaterJump();
+		}
+
+			// If we are falling again, then we must not trying to jump out of water any more.
+		if ( mv->m_vecVelocity[2] < 0 && 
+			 player->m_flWaterJumpTime )
+		{
+			player->m_flWaterJumpTime = 0;
+		}
+
+		// Was jump button pressed?
+		if (mv->m_nButtons & IN_JUMP)
+		{
+			CheckJumpButton();
+		}
+		else
+		{
+			mv->m_nOldButtons &= ~IN_JUMP;
+		}
+
+		// Perform regular water movement
+		WaterMove();
+
+		// Redetermine position vars
+		CategorizePosition();
+
+		// If we are on ground, no downward velocity.
+		if ( player->GetGroundEntity() != NULL )
+		{
+			mv->m_vecVelocity[2] = 0;			
+		}
+	}
+	else
+	// Not fully underwater
+	{
+		// Was jump button pressed?
+		if (mv->m_nButtons & IN_JUMP)
+		{
+ 			CheckJumpButton();
+		}
+		else
+		{
+			mv->m_nOldButtons &= ~IN_JUMP;
+		}
+
+		// Fricion is handled before we add in any base velocity. That way, if we are on a conveyor, 
+		//  we don't slow when standing still, relative to the conveyor.
+		if (player->GetGroundEntity() != NULL)
+		{
+			mv->m_vecVelocity[2] = 0.0;
+			Friction();
+		}
+
+		// Make sure velocity is valid.
+		CheckVelocity();
+		
+		CPortal_Player *pPortalPlayer = static_cast< CPortal_Player* >( player );
+		if ( pPortalPlayer->GetTractorBeam() )
+		{
+			TBeamMove();
+		}
+		else
+		{
+			if (player->GetGroundEntity() != NULL)
+			{
+				WalkMove();
+			}
+			else
+			{
+				AirMove();  // Take into account movement when in air.
+			}
+		}
+
+		// Set final flags.
+		CategorizePosition();
+
+		// Make sure velocity is valid.
+		CheckVelocity();
+
+		// Add any remaining gravitational component.
+		if ( !CheckWater() )
+		{
+			FinishGravity();
+		}
+
+		// If we are on ground, no downward velocity.
+		if ( player->GetGroundEntity() != NULL )
+		{
+			mv->m_vecVelocity[2] = 0;
+		}
+		CheckFalling();
+	}
+
+	if  ( ( m_nOldWaterLevel == WL_NotInWater && player->GetWaterLevel() != WL_NotInWater ) ||
+		  ( m_nOldWaterLevel != WL_NotInWater && player->GetWaterLevel() == WL_NotInWater ) )
+	{
+		PlaySwimSound();
+#if !defined( CLIENT_DLL )
+		player->Splash();
+#endif
 	}
 }
 

@@ -75,6 +75,127 @@ void TracePlayerBoxAgainstCollidables( trace_t& trace,
 	UTIL_Portal_TraceRay_With( player->m_hPortalEnvironment, ray, MASK_PLAYERSOLID, &traceFilter, &trace, true );
 }
 
+void CPortal_Player::SetInTractorBeam( CTrigger_TractorBeam *pTractorBeam )
+{
+	// TODO:
+	if ( !pTractorBeam )
+		return;
+
+	CTrigger_TractorBeam *pNewPrimaryTractorBeam = pTractorBeam;
+
+	// Special check if we're already in a tbeam
+	if ( m_nTractorBeamCount > 0 )
+	{
+		CTrigger_TractorBeam *pOldTractorBeam = m_hTractorBeam.Get();
+		if ( pOldTractorBeam )
+		{			
+			CProp_Portal *pPortal = m_hPortalEnvironment.Get();
+			if ( pPortal && UTIL_Portal_EntityIsInPortalHole( pPortal, this ) )
+			{
+				// If we're in a portal that points the opposite way, don't take this as the primary tbeam
+				if ( pPortal->m_plane_Origin.AsVector3D().Dot(pTractorBeam->GetForceDirection()) < -0.95f)
+				{
+					pNewPrimaryTractorBeam = pOldTractorBeam;
+				}	
+			}
+			else if ( pOldTractorBeam->GetForceDirection().Dot( pTractorBeam->GetForceDirection() ) < -0.95f )
+			{
+				// If they new is opposite the old, don't take this as the primary tbeam
+				pNewPrimaryTractorBeam = pOldTractorBeam;
+			}
+		}
+	}
+
+	m_hTractorBeam = pNewPrimaryTractorBeam;
+	m_nTractorBeamCount++;
+
+	m_Local.m_bSlowMovement = true;
+	m_Local.m_fTBeamEndTime = 0.0f;
+	SetGravity( FLT_MIN );
+
+	// TODO:
+#if defined ( GAME_DLL ) && 1
+	triggerevent_t event;
+	if ( PhysGetTriggerEvent( &event, pTractorBeam ) && event.pObject )
+	{
+		// these all get done again on save/load, so check
+		event.pObject->EnableGravity( false );
+	}
+#endif
+	
+	//CSingleUserRecipientFilter user( this );
+	//enginesound->SetPlayerDSP( user, 32, false );
+}
+
+void CPortal_Player::SetLeaveTractorBeam( CTrigger_TractorBeam *pTractorBeam, bool bKeepFloating )
+{
+	if ( !pTractorBeam || m_hTractorBeam.Get() == pTractorBeam )
+	{
+		m_hTractorBeam = NULL;
+	}
+
+	m_nTractorBeamCount--;
+
+	Assert( m_nTractorBeamCount >= 0 );
+
+	if ( m_nTractorBeamCount <= 0 )
+	{
+		m_nTractorBeamCount = 0;
+
+		// Don't turn off gravity if we're going through a portal that the tbeam is also going through
+		if ( !bKeepFloating )
+		{
+			m_Local.m_bSlowMovement = false;
+			SetGravity( 1.0f );
+
+#ifdef GAME_DLL
+			triggerevent_t event;
+			if ( PhysGetTriggerEvent( &event, pTractorBeam ) && event.pObject )
+			{
+				event.pObject->EnableGravity( true );
+			}
+#endif
+		}
+		
+		m_Local.m_fTBeamEndTime = gpGlobals->curtime;
+	}
+	else if ( m_hTractorBeam == NULL )
+	{
+		// We're probably touching another TBeam, lets find it
+		const Vector &absOrigin = GetAbsOrigin();
+		const Vector &mins = GetPlayerMins();
+		const Vector &maxs = GetPlayerMaxs();
+		
+		Ray_t ray;
+		ray.Init( absOrigin, absOrigin, mins, maxs );
+
+		for ( int i = 0; i < ITriggerTractorBeamAutoList::AutoList().Count(); ++i )
+		{
+			CTrigger_TractorBeam *pBeam = static_cast< CTrigger_TractorBeam* >( ITriggerTractorBeamAutoList::AutoList()[ i ] );
+			if ( pBeam == pTractorBeam )
+				continue;
+
+			trace_t tr;
+			// This will cause a crash, but TraceBox won't
+			//enginetrace->ClipRayToEntity( ray, MASK_SHOT, pBeam, &tr );
+			physcollision->TraceBox( ray, MASK_SHOT, NULL, pBeam->VPhysicsGetObject()->GetCollide(), pBeam->CollisionProp()->GetCollisionOrigin(), pBeam->CollisionProp()->GetCollisionAngles(), &tr );
+			if (!tr.m_pEnt && tr.DidHit()) // This is necessary to replicate the ClipRayToEntity behavior
+			{
+				tr.m_pEnt = pBeam;
+			}
+
+			if ( tr.startsolid || ( tr.fraction < 1.0f && tr.m_pEnt == pTractorBeam ) )
+			{
+				 m_hTractorBeam = pBeam;
+				 break;
+			}
+		}
+	}
+	
+	//CSingleUserRecipientFilter user( this );
+	//enginesound->SetPlayerDSP( user, 0, false );
+}
+
 //-----------------------------------------------------------------------------
 // Consider the weapon's built-in accuracy, this character's proficiency with
 // the weapon, and the status of the target. Use this information to determine

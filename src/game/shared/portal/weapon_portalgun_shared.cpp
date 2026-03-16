@@ -803,51 +803,57 @@ float CWeaponPortalgun::TraceFirePortal( bool bPortal2, const Vector &vTraceStar
 	CTraceFilterSimpleClassnameList traceFilterPortalShot( this, COLLISION_GROUP_NONE );
 	UTIL_Portal_Trace_Filter( &traceFilterPortalShot );
 #endif
+	// RETRACT_PART2:
+	// If the player is in a tractor beam, then don't do the near portal check
+	// because it makes it hard to position the portal if it was slightly missplaced initially
+	CPortal_Player *pPlayer = (CPortal_Player*)GetPlayerOwner();
+	if ( !pPlayer || !pPlayer->GetTractorBeam() )
+	{
+		Ray_t rayEyeArea;
+		rayEyeArea.Init( vTraceStart + vDirection * 24.0f, vTraceStart + vDirection * -24.0f );
 
-	Ray_t rayEyeArea;
-	rayEyeArea.Init( vTraceStart + vDirection * 24.0f, vTraceStart + vDirection * -24.0f );
-
-	float fMustBeCloserThan = 2.0f;
+		float fMustBeCloserThan = 2.0f;
 	
-	CProp_Portal *pNearPortal = UTIL_Portal_FirstAlongRay( rayEyeArea, fMustBeCloserThan );
+		CProp_Portal *pNearPortal = UTIL_Portal_FirstAlongRay( rayEyeArea, fMustBeCloserThan );
 
-	if ( !pNearPortal )
-	{
-		// Check for portal near and infront of you
-		rayEyeArea.Init( vTraceStart + vDirection * -24.0f, vTraceStart + vDirection * 48.0f );
-
-		fMustBeCloserThan = 2.0f;
-
-		pNearPortal = UTIL_Portal_FirstAlongRay( rayEyeArea, fMustBeCloserThan );
-	}
-
-	if ( pNearPortal && pNearPortal->IsActivedAndLinked() )
-	{
-		iPlacedBy = PORTAL_PLACED_BY_PEDESTAL;
-
-		Vector vPortalForward;
-		pNearPortal->GetVectors( &vPortalForward, 0, 0 );
-
-		if ( vDirection.Dot( vPortalForward ) < 0.01f )
+		if ( !pNearPortal )
 		{
-			// If shooting out of the world, fizzle
-			if ( !bTest )
+			// Check for portal near and infront of you
+			rayEyeArea.Init( vTraceStart + vDirection * -24.0f, vTraceStart + vDirection * 48.0f );
+
+			fMustBeCloserThan = 2.0f;
+
+			pNearPortal = UTIL_Portal_FirstAlongRay( rayEyeArea, fMustBeCloserThan );
+		}
+
+		if ( pNearPortal && pNearPortal->IsActivedAndLinked() )
+		{
+			iPlacedBy = PORTAL_PLACED_BY_PEDESTAL;
+
+			Vector vPortalForward;
+			pNearPortal->GetVectors( &vPortalForward, 0, 0 );
+
+			if ( vDirection.Dot( vPortalForward ) < 0.01f )
 			{
-				CProp_Portal *pPortal = bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get();
+				// If shooting out of the world, fizzle
+				if ( !bTest )
+				{
+					CProp_Portal *pPortal = bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get();
 
-				pPortal->m_iDelayedFailure = ( ( pNearPortal->m_bIsPortal2 ) ? ( PORTAL_FIZZLE_NEAR_RED ) : ( PORTAL_FIZZLE_NEAR_BLUE ) );
-				VectorAngles( vPortalForward, pPortal->m_qDelayedAngles );
-				pPortal->m_vDelayedPosition = pNearPortal->GetAbsOrigin();
+					pPortal->m_iDelayedFailure = ( ( pNearPortal->m_bIsPortal2 ) ? ( PORTAL_FIZZLE_NEAR_RED ) : ( PORTAL_FIZZLE_NEAR_BLUE ) );
+					VectorAngles( vPortalForward, pPortal->m_qDelayedAngles );
+					pPortal->m_vDelayedPosition = pNearPortal->GetAbsOrigin();
 
-				vFinalPosition = pPortal->m_vDelayedPosition;
-				qFinalAngles = pPortal->m_qDelayedAngles;
+					vFinalPosition = pPortal->m_vDelayedPosition;
+					qFinalAngles = pPortal->m_qDelayedAngles;
 
-			}
-			UTIL_TraceLine( vTraceStart - vDirection * 16.0f, vTraceStart + (vDirection * m_fMaxRange1), MASK_SHOT_PORTAL, &traceFilterPortalShot, &tr );
-			return PORTAL_ANALOG_SUCCESS_NEAR;
+				}
+				UTIL_TraceLine( vTraceStart - vDirection * 16.0f, vTraceStart + (vDirection * m_fMaxRange1), MASK_SHOT_PORTAL, &traceFilterPortalShot, &tr );
+				return PORTAL_ANALOG_SUCCESS_NEAR;
 			
-			//UTIL_TraceLine( vTraceStart - vDirection * 16.0f, vTraceStart + (vDirection * m_fMaxRange1), MASK_SHOT_PORTAL, &traceFilterPortalShot, &tr );
-			//return PORTAL_ANALOG_SUCCESS_OVERLAP_LINKED;
+				//UTIL_TraceLine( vTraceStart - vDirection * 16.0f, vTraceStart + (vDirection * m_fMaxRange1), MASK_SHOT_PORTAL, &traceFilterPortalShot, &tr );
+				//return PORTAL_ANALOG_SUCCESS_OVERLAP_LINKED;
+			}
 		}
 	}
 

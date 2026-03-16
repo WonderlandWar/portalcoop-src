@@ -332,6 +332,7 @@ SendPropDataTable( "portalnonlocaldata", 0, &REFERENCE_SEND_TABLE( DT_PortalNonL
 	SendPropBool(SENDINFO(m_bHeldObjectOnOppositeSideOfPortal)),
 	
 	SendPropVector( SENDINFO( m_vecAnimStateBaseVelocity ), 0, SPROP_COORD_MP | SPROP_CHANGES_OFTEN ),
+	SendPropEHandle( SENDINFO( m_hTractorBeam ) ),
 
 	// Data that only gets sent to the local player
 	SendPropDataTable( "portallocaldata", 0, &REFERENCE_SEND_TABLE(DT_PortalLocalPlayerExclusive), SendProxy_SendLocalDataTable ),
@@ -745,6 +746,10 @@ CPortal_Player::CPortal_Player()
 	m_bForceBumpWeapon = false;
 
 	m_bCatapulted = false;
+
+	m_hTractorBeam = NULL;
+
+	m_nTractorBeamCount = 0;
 
 	AddToPauseList( this );
 

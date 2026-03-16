@@ -330,6 +330,7 @@ IMPLEMENT_CLIENTCLASS_DT(C_Portal_Player, DT_Portal_Player, CPortal_Player)
 	RecvPropBool( RECVINFO( m_bHeldObjectOnOppositeSideOfPortal ) ),
 
 	RecvPropVector( RECVINFO( m_vecAnimStateBaseVelocity ) ),
+	RecvPropEHandle( RECVINFO( m_hTractorBeam ) ),
 	
 	RecvPropDataTable( "portallocaldata", 0, 0, &REFERENCE_RECV_TABLE(DT_PortalLocalPlayerExclusive) ),
 	
@@ -406,6 +407,10 @@ C_Portal_Player::C_Portal_Player()
 	m_CCDeathHandle = INVALID_CLIENT_CCHANDLE;
 	m_flDeathCCWeight = 0.0f;
 #endif
+
+	m_hTractorBeam = NULL;
+
+	m_nTractorBeamCount = 0;
 	
 	m_bIsListenServerHost = false;
 
@@ -803,6 +808,20 @@ void C_Portal_Player::UpdateLookAt( void )
 void C_Portal_Player::ClientThink( void )
 {
 	//PortalEyeInterpolation.m_bNeedToUpdateEyePosition = true;
+	
+	if ( IsLocalPlayer() )
+	{
+		if ( m_Local.m_bSlowMovement && m_Local.m_fTBeamEndTime != 0.0f && gpGlobals->curtime > m_Local.m_fTBeamEndTime + 1.0f )
+		{
+			m_Local.m_bSlowMovement = false;
+			SetGravity( 1.0f );
+
+			if ( VPhysicsGetObject() )
+			{
+				VPhysicsGetObject()->EnableGravity( true );
+			}
+		}
+	}
 
 	Vector vForward;
 	AngleVectors( GetLocalAngles(), &vForward );

@@ -86,7 +86,9 @@ public:
 	CNetworkVarEmbedded( audioparams_t, m_audio );
 
 	CNetworkVar( bool, m_bSlowMovement );
-
+#ifdef PORTAL
+	CNetworkVar( float, m_fTBeamEndTime );
+#endif
 	CNetworkString( m_szScriptOverlayMaterial, MAX_PATH );
 };
 

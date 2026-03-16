@@ -331,6 +331,7 @@ public:
 	// Get the command number associated with the current usercmd we're running (if in predicted code).
 	int CurrentCommandNumber() const;
 	const CUserCmd *GetCurrentUserCommand() const;
+	CUserCmd const *GetLastUserCommand( void );
 
 	const QAngle& GetPunchAngle();
 	void SetPunchAngle( const QAngle &angle );
@@ -415,6 +416,8 @@ public:
 protected:
 	fogparams_t				m_CurrentFog;
 	EHANDLE					m_hOldFogController;
+	
+	CUserCmd				m_LastCmd;
 
 public:
 	int m_StuckLast;
@@ -720,6 +723,11 @@ inline const CUserCmd *CBasePlayer::GetCurrentUserCommand() const
 {
 	Assert( m_pCurrentCommand );
 	return m_pCurrentCommand;
+}
+
+inline CUserCmd const *C_BasePlayer::GetLastUserCommand( void )
+{
+	return &m_LastCmd;
 }
 
 #endif // C_BASEPLAYER_H

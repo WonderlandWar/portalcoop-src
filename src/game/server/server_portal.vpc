@@ -386,6 +386,13 @@ $Project "Server (Portal)"
 			$File "portal\trigger_catapult.h"
 			$File "$SRCDIR\game\shared\portal\trigger_catapult_shared.cpp"
 			
+			$File 	"portal\prop_tractorbeam.h"
+			$File 	"portal\prop_tractorbeam.cpp"
+			$File 	"portal/trigger_tractorbeam.h"
+			$File 	"portal/trigger_tractorbeam.cpp"
+			$File	"$SRCDIR\game\shared\portal\trigger_tractorbeam_shared.h"
+			$File	"$SRCDIR\game\shared\portal\trigger_tractorbeam_shared.cpp"
+			
 			$Folder	"Weapons"
 			{
 				$File	"$SRCDIR\game\shared\portal\weapon_physcannon.cpp"

@@ -17,6 +17,7 @@
 #include "c_func_liquidportal.h"
 #include "colorcorrectionmgr.h"
 #include "in_buttons.h"
+#include "c_trigger_tractorbeam.h"
 
 class C_EntityPortalledNetworkMessage : public CMemZeroOnNew
 {
@@ -294,7 +295,10 @@ private:
 #ifdef CCDEATH
 	ClientCCHandle_t	m_CCDeathHandle;	// handle to death cc effect
 	float				m_flDeathCCWeight;	// for fading in cc effect	
-#endif //CCDEATH
+#endif //CCDEATH	
+
+	CHandle<C_Trigger_TractorBeam> m_hTractorBeam;
+	int m_nTractorBeamCount;
 
 	bool m_bToolMode_EyeHasPortalled_LastRecord; //when recording, keep track of whether we teleported the camera position last capture or not. Need to avoid interpolating when switching
 
@@ -311,6 +315,10 @@ public:
 
 	void FixPortalEnvironmentOwnership( void ); //if we run prediction, there are multiple cases where m_hPortalEnvironment != CPortalSimulator::GetSimulatorThatOwnsEntity( this ), and that's bad
 	CHandle<C_Func_LiquidPortal>	m_hSurroundingLiquidPortal; //a liquid portal whose volume the player is standing in
+	
+	void SetInTractorBeam( C_Trigger_TractorBeam *pTractorBeam );
+	void SetLeaveTractorBeam( C_Trigger_TractorBeam *pTractorBeam, bool bKeepFloating );
+	C_Trigger_TractorBeam* GetTractorBeam( void ) const { return m_hTractorBeam.Get(); }
 
 	Vector m_vecAnimStateBaseVelocity;
 private:
