@@ -18,15 +18,12 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-const char *CTriggerCatapult::s_szPlayerPassesTriggerFiltersThinkContext = "CTriggerCatapult::PlayerPassesTriggerFiltersThink";
-
 extern ConVar catapult_physics_drag_boost;
 
 
 BEGIN_DATADESC( CTriggerCatapult )
 
 	DEFINE_THINKFUNC( LaunchThink ),
-	DEFINE_THINKFUNC( PlayerPassesTriggerFiltersThink ),
 
 	DEFINE_KEYFIELD( m_flPlayerVelocity,	FIELD_FLOAT,	"playerSpeed" ),
 	DEFINE_KEYFIELD( m_flPhysicsVelocity,	FIELD_FLOAT,	"physicsSpeed" ),
@@ -41,8 +38,6 @@ BEGIN_DATADESC( CTriggerCatapult )
 	DEFINE_KEYFIELD( m_bApplyAngularImpulse, FIELD_BOOLEAN, "applyAngularImpulse" ),
 
 	DEFINE_KEYFIELD( m_flEntryAngleTolerance,	FIELD_FLOAT,	"EntryAngleTolerance" ),
-	//DEFINE_KEYFIELD( m_flAirControlSupressionTime,	FIELD_FLOAT,	"AirCtrlSupressionTime" ),
-	DEFINE_KEYFIELD( m_bDirectionSuppressAirControl, FIELD_BOOLEAN, "DirectionSuppressAirControl" ),
 
 	DEFINE_FIELD( m_hLaunchTarget, FIELD_EHANDLE ),
 	DEFINE_ARRAY( m_flRefireDelay, FIELD_TIME, MAX_PLAYERS + 1 ),
@@ -60,25 +55,21 @@ END_DATADESC()
 
 LINK_ENTITY_TO_CLASS( trigger_catapult, CTriggerCatapult );
 
-//IMPLEMENT_SERVERCLASS_ST( CTriggerCatapult, DT_TriggerCatapult )
-//	SendPropArray3( SENDINFO_ARRAY3(m_flRefireDelay), SendPropFloat(SENDINFO_ARRAY(m_flRefireDelay)) ),
-//	SendPropFloat( SENDINFO( m_flPlayerVelocity ) ),
-//	SendPropFloat( SENDINFO( m_flPhysicsVelocity ) ),
-//	SendPropQAngles( SENDINFO( m_vecLaunchAngles ) ),
-//	//SendPropStringT( SENDINFO( m_strLaunchTarget ) ),
-//	SendPropInt( SENDINFO( m_ExactVelocityChoice ) ),
-//	SendPropBool( SENDINFO( m_bUseExactVelocity ) ),
-//	SendPropBool( SENDINFO( m_bUseThresholdCheck ) ),
-//	SendPropBool( SENDINFO( m_bOnlyVelocityCheck ) ),
-//	SendPropFloat( SENDINFO( m_flLowerThreshold ) ),
-//	SendPropFloat( SENDINFO( m_flUpperThreshold ) ),
-//	SendPropFloat( SENDINFO( m_flAirControlSupressionTime ) ),
-//	SendPropBool( SENDINFO( m_bApplyAngularImpulse ) ),
-//	SendPropFloat( SENDINFO( m_flEntryAngleTolerance ) ),
-//	SendPropEHandle( SENDINFO( m_hLaunchTarget ) ),
-//	SendPropBool( SENDINFO( m_bPlayersPassTriggerFilters ) ),
-//	SendPropBool( SENDINFO( m_bDirectionSuppressAirControl ) ),
-//END_SEND_TABLE()
+IMPLEMENT_SERVERCLASS_ST( CTriggerCatapult, DT_TriggerCatapult )
+	SendPropArray3( SENDINFO_ARRAY3(m_flRefireDelay), SendPropFloat(SENDINFO_ARRAY(m_flRefireDelay)) ),
+	SendPropFloat( SENDINFO( m_flPlayerVelocity ) ),
+	SendPropFloat( SENDINFO( m_flPhysicsVelocity ) ),
+	SendPropQAngles( SENDINFO( m_vecLaunchAngles ) ),
+	SendPropInt( SENDINFO( m_ExactVelocityChoice ) ),
+	SendPropBool( SENDINFO( m_bUseExactVelocity ) ),
+	SendPropBool( SENDINFO( m_bUseThresholdCheck ) ),
+	SendPropBool( SENDINFO( m_bOnlyVelocityCheck ) ),
+	SendPropFloat( SENDINFO( m_flLowerThreshold ) ),
+	SendPropFloat( SENDINFO( m_flUpperThreshold ) ),
+	SendPropBool( SENDINFO( m_bApplyAngularImpulse ) ),
+	SendPropFloat( SENDINFO( m_flEntryAngleTolerance ) ),
+	SendPropEHandle( SENDINFO( m_hLaunchTarget ) ),
+END_SEND_TABLE()
 
 
 //-----------------------------------------------------------------------------
@@ -285,7 +276,7 @@ void CTriggerCatapult::Spawn( void )
 
 	for ( int i = 0; i < MAX_PLAYERS + 1; ++i )
 	{
-		m_flRefireDelay[i] = 0.0f;
+		m_flRefireDelay.Set( i, 0.0f );
 	}
 
 	m_flLowerThreshold = clamp( m_flLowerThreshold, 0.0f, 1.0f );
@@ -294,8 +285,8 @@ void CTriggerCatapult::Spawn( void )
 	SetTransmitState( FL_EDICT_PVSCHECK );
 
 	m_hLaunchTarget = gEntList.FindEntityByName( NULL, m_strLaunchTarget );
-
-	SetContextThink( &CTriggerCatapult::PlayerPassesTriggerFiltersThink, gpGlobals->curtime + 1.0f, s_szPlayerPassesTriggerFiltersThinkContext );
+	if ( m_hLaunchTarget )
+		m_hLaunchTarget->SetTransmitState( FL_EDICT_ALWAYS );
 }
 
 
@@ -324,6 +315,8 @@ void CTriggerCatapult::InputSetLaunchTarget( inputdata_t &in )
 	m_strLaunchTarget = in.value.StringID();
 
 	m_hLaunchTarget = gEntList.FindEntityByName( NULL, m_strLaunchTarget );
+	if ( m_hLaunchTarget )
+		m_hLaunchTarget->SetTransmitState( FL_EDICT_ALWAYS );
 }
 
 //-----------------------------------------------------------------------------
@@ -384,23 +377,6 @@ void CTriggerCatapult::LaunchThink( void )
 	{
 		SetThink( NULL );
 	}
-}
-
-//Think once a second, looking for a living player. Once one is found, evaluate if they pass our trigger filters and network that down to the client
-void CTriggerCatapult::PlayerPassesTriggerFiltersThink( void )
-{
-	for( int i = 1; i != gpGlobals->maxClients; ++i )
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
-		if( pPlayer && pPlayer->IsAlive() )
-		{
-			m_bPlayersPassTriggerFilters = PassesTriggerFilters( pPlayer );
-			SetContextThink( NULL, TICK_NEVER_THINK, s_szPlayerPassesTriggerFiltersThinkContext ); //never test again
-			return;
-		}
-	}
-
-	SetContextThink( &CTriggerCatapult::PlayerPassesTriggerFiltersThink, gpGlobals->curtime + 1.0f, s_szPlayerPassesTriggerFiltersThinkContext );
 }
 
 //-----------------------------------------------------------------------------

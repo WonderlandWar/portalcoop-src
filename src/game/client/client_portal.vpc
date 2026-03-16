@@ -257,6 +257,10 @@ $Project "Client (Portal)"
 			$File "$SRCDIR\game\shared\portal\baseprojectedentity_shared.h"
 			$File "$SRCDIR\game\shared\portal\baseprojectedentity_shared.cpp"
 			$File "$SRCDIR\game\shared\portal\projectedwallentity_shared.cpp"
+			
+			$File "portal\c_trigger_catapult.cpp"
+			$File "portal\c_trigger_catapult.h"
+			$File "$SRCDIR\game\shared\portal\trigger_catapult_shared.cpp"
 
 			$Folder	"Weapons"
 			{
