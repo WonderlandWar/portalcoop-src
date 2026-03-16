@@ -17,8 +17,8 @@ public:
     C_Beam *GetBeam( int i );
     C_Beam *GetFirstBeam();
     C_Beam *GetLastBeam();
-    void UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vEndPoint, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr , bool bTestWindow = false );
-    void UpdatePointDirection( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vDirection, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr, bool bTestWindow = false );
+    void UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vEndPoint, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr );
+    void UpdatePointDirection( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vDirection, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr );
 
 private:
     C_Beam *m_pBeamTemplate;

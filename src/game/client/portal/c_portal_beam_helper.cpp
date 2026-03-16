@@ -49,14 +49,14 @@ C_Beam *C_PortalBeamHelper::CreateBeam( void )
   return pNewBeam;
 }
 
-void C_PortalBeamHelper::UpdatePointDirection( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vDirection, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr, bool bTestWindow )
+void C_PortalBeamHelper::UpdatePointDirection( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vDirection, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr )
 {
 	Vector vEndPoint = vStartPoint + ( vDirection * MAX_TRACE_LENGTH );
 
-	C_PortalBeamHelper::UpdatePoints( pEmitter, vStartPoint, vEndPoint, fMask, pTraceFilter, tr, bTestWindow );
+	C_PortalBeamHelper::UpdatePoints( pEmitter, vStartPoint, vEndPoint, fMask, pTraceFilter, tr );
 }
 
-void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vEndPoint, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr, bool bTestWindow )
+void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vEndPoint, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr )
 {
 	Vector vStart = vStartPoint;
 
@@ -95,14 +95,16 @@ void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoi
     
 		UTIL_ClearTrace( tempTrace );
 
-		if ( bTestWindow )
+		if ( (fMask & CONTENTS_WINDOW) )
 		{
+			//int fWindowMask = (fMask & ~CONTENTS_WINDOW);
 			trace_t tempTrace2;
-			enginetrace->TraceRay( ray, fMask | CONTENTS_WINDOW, pTraceFilter, &tempTrace2 );
+			enginetrace->TraceRay( ray, fMask, pTraceFilter, &tempTrace2 );
 
-			if ( tempTrace2.m_pEnt && tempTrace2.m_pEnt->GetBaseAnimating() )
+			extern bool Laser_CanHitTransparentEntity( CBaseEntity *pEntity );
+			if ( ( tempTrace2.contents & CONTENTS_WINDOW ) != 0 && !Laser_CanHitTransparentEntity( tempTrace2.m_pEnt ) )
 			{
-				fMask |= CONTENTS_WINDOW;
+				fMask &= ~CONTENTS_WINDOW;
 			}
 		}
 

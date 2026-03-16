@@ -5,8 +5,9 @@
 #include "util_shared.h"
 //#include "c_prop_weightedcube.h"
 #include "debugoverlay_shared.h"
+#include "model_types.h"
 
-#define	MASK_PORTAL_LASER (CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_MONSTER|CONTENTS_DEBRIS|CONTENTS_HITBOX)
+#define	MASK_PORTAL_LASER (CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_MONSTER|CONTENTS_DEBRIS|CONTENTS_HITBOX|CONTENTS_WINDOW)
 
 class C_PortalLaser : public C_BaseAnimating
 {
@@ -132,6 +133,20 @@ CTraceFilterSimpleClassnameList( passentity, collisionGroup )
 	m_hPortalLaser = NULL;
 }
 
+bool Laser_CanHitTransparentEntity( CBaseEntity *pEntity )
+{
+	if ( !pEntity || pEntity->IsWorld() )
+	{
+		return false;
+	}
+
+	if ( !pEntity->GetModel() || modelinfo->GetModelType( pEntity->GetModel() ) == mod_brush )
+	{
+		return false;
+	}
+
+	return true;
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -145,10 +160,13 @@ bool CTraceFilterLaser::ShouldHitEntity( IHandleEntity *pHandleEntity, int conte
 	}
 
 	// Transparent brush entities should never be hit, but transparent model based entities should
-	CBaseEntity *pHit = EntityFromEntityHandle( pHandleEntity );
-	if ( pHit && !pHit->GetBaseAnimating() && ( contentsMask & CONTENTS_WINDOW ) != 0 )
+	CBaseEntity *pHit = (CBaseEntity *)( pHandleEntity );
+	if ( ( contentsMask & CONTENTS_WINDOW ) != 0 )
 	{
-		return false;
+		if ( !Laser_CanHitTransparentEntity( pHit ) )
+		{
+			return false;
+		}
 	}
 
 	return CTraceFilterSimpleClassnameList::ShouldHitEntity( pHandleEntity, contentsMask );
@@ -221,13 +239,13 @@ void C_PortalLaser::ClientThink( void )
 		else
 #endif
 		{
-			m_beamHelper.UpdatePointDirection( this, vStart, vDir, MASK_PORTAL_LASER, &traceFilter, &tr, true );
+			m_beamHelper.UpdatePointDirection( this, vStart, vDir, MASK_PORTAL_LASER, &traceFilter, &tr );
 		}
 	}
 	else
 #endif
 	{
-		m_beamHelper.UpdatePoints( this, m_vStartPoint, m_vEndPoint, MASK_PORTAL_LASER, &traceFilter, &tr, true );
+		m_beamHelper.UpdatePoints( this, m_vStartPoint, m_vEndPoint, MASK_PORTAL_LASER, &traceFilter, &tr );
 	}
 }
 
