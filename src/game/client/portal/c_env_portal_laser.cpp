@@ -7,7 +7,7 @@
 #include "debugoverlay_shared.h"
 #include "model_types.h"
 
-#define	MASK_PORTAL_LASER (CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_MONSTER|CONTENTS_DEBRIS|CONTENTS_HITBOX|CONTENTS_WINDOW)
+#define	MASK_PORTAL_LASER (CONTENTS_SOLID|CONTENTS_MOVEABLE|CONTENTS_MONSTER|CONTENTS_DEBRIS|CONTENTS_HITBOX)
 
 class C_PortalLaser : public C_BaseAnimating
 {
@@ -148,25 +148,30 @@ bool Laser_CanHitTransparentEntity( CBaseEntity *pEntity )
 	return true;
 }
 
+bool Laser_CanHitReflectorNoCast( C_PortalLaser *pLaser, IHandleEntity *pReflector )
+{
+	if ( pLaser && !pLaser->m_bDidFirstTrace && (pLaser->GetReflector() && pLaser->GetReflector() == pReflector) )
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool Laser_CanHitReflector( C_BaseEntity* pLaserEntity, IHandleEntity *pReflector )
+{
+	return Laser_CanHitReflectorNoCast( dynamic_cast<C_PortalLaser*>( pLaserEntity ), pReflector );
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 bool CTraceFilterLaser::ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask )
 {
 	C_PortalLaser *pLaser = m_hPortalLaser;
-	if ( pLaser && !pLaser->m_bDidFirstTrace && (pLaser->GetReflector() && pLaser->GetReflector() == pHandleEntity) )
+	if ( !Laser_CanHitReflectorNoCast( pLaser, pHandleEntity ) )
 	{
 		return false;
-	}
-
-	// Transparent brush entities should never be hit, but transparent model based entities should
-	CBaseEntity *pHit = EntityFromEntityHandle( pHandleEntity );
-	if ( ( contentsMask & CONTENTS_WINDOW ) != 0 )
-	{
-		if ( !Laser_CanHitTransparentEntity( pHit ) )
-		{
-			return false;
-		}
 	}
 
 	return CTraceFilterSimpleClassnameList::ShouldHitEntity( pHandleEntity, contentsMask );

@@ -56,6 +56,32 @@ void C_PortalBeamHelper::UpdatePointDirection( C_BaseEntity *pEmitter, Vector &v
 	C_PortalBeamHelper::UpdatePoints( pEmitter, vStartPoint, vEndPoint, fMask, pTraceFilter, tr );
 }
 
+class CBeamEnumerator : public CFlaggedEntitiesEnum
+{
+public:
+	CBeamEnumerator( C_BaseEntity** pList, int listMax, C_BaseEntity *pEmitter ) : CFlaggedEntitiesEnum( pList, listMax, 0 )
+	{
+		m_pEmitter = pEmitter;
+	}
+	virtual IterationRetval_t EnumElement( IHandleEntity *pHandleEntity )
+	{
+		IClientEntity *pClientEntity = cl_entitylist->GetClientEntityFromHandle( pHandleEntity->GetRefEHandle() );
+		C_BaseEntity *pEntity = pClientEntity ? pClientEntity->GetBaseEntity() : NULL;
+
+		if ( !pEntity || !pEntity->GetBaseAnimating() )
+			return ITERATION_CONTINUE;
+
+		if ( m_pEmitter == pEntity )
+			ITERATION_CONTINUE;
+
+		AddToList( pEntity );
+
+		return ITERATION_CONTINUE;
+	}
+
+	C_BaseEntity *m_pEmitter;
+};
+
 void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vEndPoint, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr )
 {
 	Vector vStart = vStartPoint;
@@ -95,21 +121,48 @@ void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoi
     
 		UTIL_ClearTrace( tempTrace );
 
-		if ( (fMask & CONTENTS_WINDOW) )
-		{
-			//int fWindowMask = (fMask & ~CONTENTS_WINDOW);
-			trace_t tempTrace2;
-			enginetrace->TraceRay( ray, fMask, pTraceFilter, &tempTrace2 );
-
-			extern bool Laser_CanHitTransparentEntity( CBaseEntity *pEntity );
-			if ( ( tempTrace2.contents & CONTENTS_WINDOW ) != 0 && !Laser_CanHitTransparentEntity( tempTrace2.m_pEnt ) )
-			{
-				fMask &= ~CONTENTS_WINDOW;
-			}
-		}
-
 		enginetrace->TraceRay( ray, fMask, pTraceFilter, &tempTrace );
 
+		// Clip the trace against translucent model based entities
+		{
+			float flLastDist = vStart.DistTo( tempTrace.endpos );
+			C_BaseEntity *list[256];
+			CBeamEnumerator rayEnum( list, 256, pEmitter );
+			partition->EnumerateElementsAlongRay( PARTITION_CLIENT_NON_STATIC_EDICTS, ray, false, &rayEnum );
+			
+			int nCount = rayEnum.GetCount();
+			for ( int j = 0; j < nCount; ++j )
+			{
+				CBaseAnimating *pEntity = (CBaseAnimating*)list[j];
+				extern bool Laser_CanHitReflector( C_BaseEntity* pLaserEntity, IHandleEntity *pReflector );
+				if ( pEntity && Laser_CanHitReflector( pEmitter, pEntity ) )
+				{
+					trace_t clipTrace;
+					enginetrace->ClipRayToEntity( ray, fMask, pEntity, &clipTrace );
+					
+					//clipTrace.endpos = vStart + ( clipTrace.fraction * ray.m_Delta );
+					if ( clipTrace.DidHit() )
+					{
+						clipTrace.m_pEnt = pEntity;
+					}
+					else
+					{
+						continue;
+					}
+
+					float flDistance = vStart.DistTo( clipTrace.endpos );
+					if ( flLastDist > flDistance )
+					{
+						//extern bool Laser_CanHitTransparentEntity( CBaseEntity *pEntity );
+						//if ( Laser_CanHitTransparentEntity( clipTrace.m_pEnt ) )
+						{
+							flLastDist = flDistance;
+							tempTrace = clipTrace;
+						}
+					}
+				}
+			}
+		}
 		BeamHelper_Laser_OnTrace( pEmitter );
 
 		if ( r_visualizetraces.GetBool() )
