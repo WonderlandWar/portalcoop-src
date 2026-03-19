@@ -141,11 +141,7 @@ void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoi
 					enginetrace->ClipRayToEntity( ray, fMask, pEntity, &clipTrace );
 					
 					//clipTrace.endpos = vStart + ( clipTrace.fraction * ray.m_Delta );
-					if ( clipTrace.DidHit() )
-					{
-						clipTrace.m_pEnt = pEntity;
-					}
-					else
+					if ( !clipTrace.DidHit() )
 					{
 						continue;
 					}
