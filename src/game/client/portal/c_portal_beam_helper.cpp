@@ -164,9 +164,6 @@ void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoi
 			}
 		}
 		BeamHelper_Laser_OnTrace( pEmitter );
-
-		if ( r_visualizetraces.GetBool() )
-		  DebugDrawLine( tempTrace.startpos, tempTrace.endpos, 255, 0, 0, 1, -1.0 );
 		
 		C_Prop_Portal *pPortal;
 		if ( UTIL_DidTraceTouchPortals( ray, tempTrace, &pPortal, 0 )
