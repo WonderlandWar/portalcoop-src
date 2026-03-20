@@ -9,6 +9,9 @@
 #include <KeyValues.h>
 #include "particle_parse.h"
 #include "particles/particles.h"
+#ifdef PORTAL
+#include "portal_shareddefs.h"
+#endif
 
 #ifdef GAME_DLL
 #include "te_effect_dispatch.h"
@@ -57,7 +60,35 @@ int GetAttachTypeFromString( const char *pszString )
 
 	return -1;
 }
+#ifdef PORTAL
+static CUtlVector<CUtlString> *g_pParticleList = NULL;
+void GetParticleManifestFromMapSets( const char *pFilename )
+{
+	char szFullDirectory[_MAX_PATH];
+	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/particles_manifest.txt", pFilename );
 
+	KeyValues *manifest = new KeyValues( szFullDirectory );
+	if ( manifest->LoadFromFile( filesystem, szFullDirectory, "GAME" ) )
+	{
+		for ( KeyValues *sub = manifest->GetFirstSubKey(); sub != NULL; sub = sub->GetNextKey() )
+		{
+			if ( !Q_stricmp( sub->GetName(), "file" ) )
+			{
+				g_pParticleList->AddToTail( sub->GetString() );
+				continue;
+			}
+
+			Warning( "CParticleMgr::Init:  Manifest '%s' with bogus file type '%s', expecting 'file'\n", szFullDirectory, sub->GetName() );
+		}
+	}
+	else
+	{
+		Warning( "PARTICLE SYSTEM: Unable to load manifest file '%s'\n", szFullDirectory );
+	}
+
+	manifest->deleteThis();
+}
+#endif
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : list - 
@@ -85,6 +116,11 @@ void GetParticleManifest( CUtlVector<CUtlString>& list )
 	}
 
 	manifest->deleteThis();
+#ifdef PORTAL
+	g_pParticleList = &list;
+	ExecuteLoadingMapSetFunction( GetParticleManifestFromMapSets );
+	g_pParticleList = NULL;
+#endif
 }
 
 
