@@ -21,6 +21,9 @@ public:
 	void EndTouch( CBaseEntity *pOther );
 
 	bool IsBehindTrigger( CBaseEntity *pOther );
+	
+	void InputActivate( inputdata_t &inputdata );
+	void InputDeactivate( inputdata_t &inputdata );
 
 private:
 
@@ -41,6 +44,9 @@ BEGIN_DATADESC( CTriggerSensor )
 
 	DEFINE_OUTPUT( m_OnActivate, "OnActivate" ),
 	DEFINE_OUTPUT( m_OnDeactivate, "OnDeactivate" ),
+
+	DEFINE_INPUTFUNC( FIELD_VOID, "Activate", InputActivate ),
+	DEFINE_INPUTFUNC( FIELD_VOID, "Deactivate", InputDeactivate ),
 
 END_DATADESC()
 
@@ -127,4 +133,22 @@ void CTriggerSensor::EndTouch( CBaseEntity *pOther )
 			break;
 		}
 	}
+}
+
+void CTriggerSensor::InputActivate( inputdata_t &inputdata )
+{
+	if ( m_bActivated )
+		return;
+
+	m_OnActivate.FireOutput( inputdata.pActivator, inputdata.pCaller );
+	m_bActivated = true;
+}
+
+void CTriggerSensor::InputDeactivate( inputdata_t &inputdata )
+{
+	if ( m_bActivated == false )
+		return;
+
+	m_OnDeactivate.FireOutput( inputdata.pActivator, inputdata.pCaller );
+	m_bActivated = false;
 }
