@@ -558,7 +558,7 @@ void cc_bot_sendcommand( const CCommand &args )
 
 	// get the bot's player object
 	CBasePlayer *pPlayer = UTIL_PlayerByName( args[1] );
-	if ( !pPlayer )
+	if ( !pPlayer || !pPlayer->IsBot() )
 	{
 		Msg( "No bot with name %s\n", args[1] );
 		return;
@@ -619,7 +619,7 @@ CON_COMMAND_F( bot_teleport, "Teleport the specified bot to the specified positi
 
 	// get the bot's player object
 	CBasePlayer *pBot = UTIL_PlayerByName( args[1] );
-	if ( !pBot )
+	if ( !pBot || !pBot->IsBot() )
 	{
 		Msg( "No bot with name %s\n", args[1] );
 		return;
