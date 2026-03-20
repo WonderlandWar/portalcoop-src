@@ -1,11 +1,18 @@
 #include "cbase.h"
 #include "triggers.h"
+#include "saverestore_utlvector.h"
 
 struct TouchingEntities_t
 {
+	DECLARE_SIMPLE_DATADESC();
 	EHANDLE hEntity;
 	bool bBehind;
 };
+
+BEGIN_SIMPLE_DATADESC( TouchingEntities_t )
+	DEFINE_FIELD( hEntity, FIELD_EHANDLE ),
+	DEFINE_FIELD( bBehind, FIELD_BOOLEAN ),
+END_DATADESC()
 
 class CTriggerSensor : public CBaseTrigger
 {
@@ -38,7 +45,8 @@ private:
 
 LINK_ENTITY_TO_CLASS( trigger_sensor, CTriggerSensor );
 BEGIN_DATADESC( CTriggerSensor )
-
+	
+	DEFINE_UTLVECTOR( m_SensorEntities, FIELD_EMBEDDED ),
 	DEFINE_FIELD( m_bActivated, FIELD_BOOLEAN ),
 	DEFINE_KEYFIELD( m_qTriggerDirection, FIELD_VECTOR, "TriggerDirection" ),
 
@@ -77,6 +85,15 @@ void CTriggerSensor::StartTouch( CBaseEntity *pOther )
 {
 	if ( !PassesTriggerFilters( pOther ) )
 		return;
+	
+	for ( int i = 0; i < m_SensorEntities.Count(); ++i )
+	{
+		if ( pOther == m_SensorEntities[i].hEntity )
+		{
+			m_SensorEntities.Remove( i );
+			i = 0;
+		}
+	}
 
 	TouchingEntities_t touching;
 	touching.hEntity = pOther;
