@@ -1,0 +1,130 @@
+#include "cbase.h"
+#include "triggers.h"
+
+struct TouchingEntities_t
+{
+	EHANDLE hEntity;
+	bool bBehind;
+};
+
+class CTriggerSensor : public CBaseTrigger
+{
+public:
+	DECLARE_CLASS( CTriggerSensor, CBaseTrigger );
+	DECLARE_DATADESC();
+
+	CTriggerSensor();
+
+	void Spawn( void );
+
+	void StartTouch( CBaseEntity *pOther );
+	void EndTouch( CBaseEntity *pOther );
+
+	bool IsBehindTrigger( CBaseEntity *pOther );
+
+private:
+
+	bool m_bActivated;
+	QAngle m_qTriggerDirection;
+
+	COutputEvent m_OnActivate;
+	COutputEvent m_OnDeactivate;
+
+	CUtlVector< TouchingEntities_t > m_SensorEntities;
+};
+
+LINK_ENTITY_TO_CLASS( trigger_sensor, CTriggerSensor );
+BEGIN_DATADESC( CTriggerSensor )
+
+	DEFINE_FIELD( m_bActivated, FIELD_BOOLEAN ),
+	DEFINE_KEYFIELD( m_qTriggerDirection, FIELD_VECTOR, "TriggerDirection" ),
+
+	DEFINE_OUTPUT( m_OnActivate, "OnActivate" ),
+	DEFINE_OUTPUT( m_OnDeactivate, "OnDeactivate" ),
+
+END_DATADESC()
+
+CTriggerSensor::CTriggerSensor()
+{
+	m_bActivated = false;
+}
+
+void CTriggerSensor::Spawn( void )
+{
+	InitTrigger();
+	BaseClass::Spawn();
+}
+
+bool CTriggerSensor::IsBehindTrigger( CBaseEntity *pOther )
+{
+	Vector vTargetDir = GetAbsOrigin() - pOther->WorldSpaceCenter();
+	VectorNormalize(vTargetDir);
+
+	Vector vTriggerDirection;
+	AngleVectors( m_qTriggerDirection, &vTriggerDirection );
+
+	float fDotPr = DotProduct( vTriggerDirection, vTargetDir );
+	return fDotPr > 0;
+}
+
+void CTriggerSensor::StartTouch( CBaseEntity *pOther )
+{
+	if ( !PassesTriggerFilters( pOther ) )
+		return;
+
+	TouchingEntities_t touching;
+	touching.hEntity = pOther;
+	touching.bBehind = IsBehindTrigger( pOther );
+	m_SensorEntities.AddToTail( touching );
+}
+
+void CTriggerSensor::EndTouch( CBaseEntity *pOther )
+{
+	if ( !PassesTriggerFilters( pOther ) )
+		return;
+
+	TouchingEntities_t *touching = NULL;
+	for ( int i = 0; i < m_SensorEntities.Count(); ++i )
+	{
+		if ( pOther == m_SensorEntities[i].hEntity )
+		{
+			touching = &m_SensorEntities[i];
+			break;
+		}
+	}
+
+	if ( !touching )
+		return;
+
+	bool bToggleState = false;
+	if ( touching->bBehind )
+	{
+		bToggleState = !IsBehindTrigger( pOther );
+	}
+	else
+	{
+		bToggleState = IsBehindTrigger( pOther );
+	}
+
+	if ( bToggleState )
+	{
+		m_bActivated = !m_bActivated;
+		if ( m_bActivated )
+		{
+			m_OnActivate.FireOutput( pOther, pOther );
+		}
+		else
+		{
+			m_OnDeactivate.FireOutput( pOther, pOther );
+		}
+	}
+	
+	for ( int i = 0; i < m_SensorEntities.Count(); ++i )
+	{
+		if ( pOther == m_SensorEntities[i].hEntity )
+		{
+			m_SensorEntities.Remove( i );
+			break;
+		}
+	}
+}
