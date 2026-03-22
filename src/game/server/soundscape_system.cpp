@@ -12,7 +12,9 @@
 #include "filesystem.h"
 #include "game.h"
 #include "util_shared.h"
-
+#ifdef PORTAL
+#include "portal_shareddefs.h"
+#endif
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -125,7 +127,35 @@ void CSoundscapeSystem::PrintDebugInfo()
 	}
 	Msg( "----------------------------------\n\n" );
 }
+#ifdef PORTAL
+void LoadMapSetSoundscapes( const char *pFileName )
+{
+	// Load the sounds
+	char manifestfile[_MAX_PATH];
+	Q_snprintf( manifestfile, sizeof( manifestfile ), "%s/soundscapes_manifest.txt", pFileName );
+	
+	if ( !g_pFullFileSystem->FileExists( manifestfile, "GAME" ) )
+		return;
 
+	KeyValues *manifest = new KeyValues( SOUNDSCAPE_MANIFEST_FILE );
+	if ( filesystem->LoadKeyValues( *manifest, IFileSystem::TYPE_SOUNDSCAPE, manifestfile, "GAME" ) )
+	{
+		for ( KeyValues *sub = manifest->GetFirstSubKey(); sub != NULL; sub = sub->GetNextKey() )
+		{
+			if ( !Q_stricmp( sub->GetName(), "file" ) )
+			{
+				// Add
+				g_SoundscapeSystem.AddSoundscapeFile( sub->GetString() );
+				continue;
+			}
+
+			Warning( "CSoundscapeSystem::Init:  Manifest '%s' with bogus file type '%s', expecting 'file'\n", 
+				manifestfile, sub->GetName() );
+		}
+	}
+	manifest->deleteThis();
+}
+#endif
 bool CSoundscapeSystem::Init()
 {
 	m_soundscapeCount = 0;
@@ -169,6 +199,9 @@ bool CSoundscapeSystem::Init()
 		Error( "Unable to load manifest file '%s'\n", SOUNDSCAPE_MANIFEST_FILE );
 	}
 	manifest->deleteThis();
+#ifdef PORTAL
+	ExecuteLoadingMapSetFunction( LoadMapSetSoundscapes );
+#endif
 	m_activeIndex = 0;
 
 	return true;

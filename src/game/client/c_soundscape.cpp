@@ -15,6 +15,9 @@
 #include "view.h"
 #include "engine/ivdebugoverlay.h"
 #include "tier0/icommandline.h"
+#ifdef PORTAL
+#include "portal_shareddefs.h"
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -206,7 +209,8 @@ public:
 	void ProcessSoundMixer( KeyValues *pSoundMixer, subsoundscapeparams_t &params );
 	// "dsp_volume"
 	void ProcessDSPVolume( KeyValues *pKey, subsoundscapeparams_t &params );
-
+	
+	void AddSoundScapeFile( const char *filename );
 
 private:
 
@@ -214,8 +218,6 @@ private:
 	{
 		return gpGlobals->framecount == m_nRestoreFrame ? true : false;
 	}
-
-	void	AddSoundScapeFile( const char *filename );
 
 	void		TouchPlayLooping( KeyValues *pAmbient );
 	void		TouchPlayRandom( KeyValues *pPlayRandom );
@@ -297,7 +299,35 @@ void C_SoundscapeSystem::AddSoundScapeFile( const char *filename )
 		script->deleteThis();
 	}
 }
-
+#ifdef PORTAL
+void LoadMapSetSoundscapes( const char *pFileName )
+{
+	// Load the sounds
+	char manifestfile[_MAX_PATH];
+	Q_snprintf( manifestfile, sizeof( manifestfile ), "%s/soundscapes_manifest.txt", pFileName );
+	
+	if ( !g_pFullFileSystem->FileExists( manifestfile, "GAME" ) )
+		return;
+	
+	KeyValues *manifest = new KeyValues( SOUNDSCAPE_MANIFEST_FILE );
+	if ( filesystem->LoadKeyValues( *manifest, IFileSystem::TYPE_SOUNDSCAPE, manifestfile, "GAME" ) )
+	{
+		for ( KeyValues *sub = manifest->GetFirstSubKey(); sub != NULL; sub = sub->GetNextKey() )
+		{
+			if ( !Q_stricmp( sub->GetName(), "file" ) )
+			{
+				// Add
+				g_SoundscapeSystem.AddSoundScapeFile( sub->GetString() );
+				continue;
+			}
+			
+			Warning( "C_SoundscapeSystem::Init:  Manifest '%s' with bogus file type '%s', expecting 'file'\n", 
+				manifestfile, sub->GetName() );
+		}
+	}
+	manifest->deleteThis();
+}
+#endif
 // parse the script file, setup index table
 bool C_SoundscapeSystem::Init()
 {
@@ -341,6 +371,9 @@ bool C_SoundscapeSystem::Init()
 	}
 
 	manifest->deleteThis();
+#ifdef PORTAL
+	ExecuteLoadingMapSetFunction( LoadMapSetSoundscapes );
+#endif
 
 	return true;
 }
