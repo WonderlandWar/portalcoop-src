@@ -67,6 +67,9 @@ void GetParticleManifestFromMapSets( const char *pFilename )
 	char szFullDirectory[_MAX_PATH];
 	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/particles_manifest.txt", pFilename );
 
+	if ( !g_pFullFileSystem->FileExists( szFullDirectory, "GAME" ) )
+		return;
+
 	KeyValues *manifest = new KeyValues( szFullDirectory );
 	if ( manifest->LoadFromFile( filesystem, szFullDirectory, "GAME" ) )
 	{

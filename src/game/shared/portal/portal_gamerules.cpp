@@ -2454,6 +2454,9 @@ static void LoadMapSetSounds( const char *pszPath )
 	char manifestfile[_MAX_PATH];
 	Q_snprintf( manifestfile, sizeof( manifestfile ), "%s/game_sounds_manifest.txt", pszPath );
 
+	if ( !g_pFullFileSystem->FileExists( manifestfile, "GAME" ) )
+		return;
+
 	KeyValues *pManifest = new KeyValues( "game_sounds_manifest" );
 	if ( pManifest->LoadFromFile( g_pFullFileSystem, manifestfile, "GAME" ) )
 	{
