@@ -6,7 +6,7 @@
 #include "collisionutils.h"
 #include "beam_shared.h"
 
-ConVar sv_box_reflector_temporary_time( "sv_box_reflector_temporary_time", "2.5", FCVAR_CHEAT );
+ConVar sv_box_reflector_temporary_time( "sv_box_reflector_temporary_time", "4", FCVAR_CHEAT );
 ConVar sv_box_reflector_temporary_beam_decay_to( "sv_box_reflector_temporary_beam_decay_to", "0.02", FCVAR_CHEAT );
 ConVar sv_box_reflector_temporary_beam_old( "sv_box_reflector_temporary_beam_old", "1", FCVAR_CHEAT );
 ConVar sv_box_reflector_beamupdate_thinkrate( "sv_box_reflector_beamupdate_thinkrate", "0.5", FCVAR_CHEAT );
