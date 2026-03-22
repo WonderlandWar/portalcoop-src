@@ -1411,7 +1411,7 @@ bool CPortal_Player::PingChildrenOfEntity( CBaseEntity *pEntity, Vector vColor, 
 
 void CPortal_Player::PreThink(void)
 {
-	if ( IsAlive() )
+	if ( IsAlive() && GetHealth() > 0 )
 	{
 		if (m_flLookForUseEntityTime >= gpGlobals->curtime && m_bLookForUseEntity)
 		{
