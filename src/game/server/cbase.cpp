@@ -109,8 +109,8 @@ END_DATADESC()
 // ID Stamp used to uniquely identify every output
 int CEventAction::s_iNextIDStamp = 0;
 
-#if defined ( TF_DLL ) || defined ( PORTAL )
-//#define USE_SERVER_TIME
+#if defined ( TF_DLL ) //|| defined ( PORTAL )
+#define USE_SERVER_TIME
 #endif
 
 static float GetCurrentTimeForEventQueue( void )
