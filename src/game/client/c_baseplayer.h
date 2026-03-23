@@ -277,7 +277,8 @@ public:
 	void						ClearZoomOwner( void );
 
 	float						GetFOVDistanceAdjustFactor();
-
+	
+	void						VelocityPunch( const Vector &vecForce );
 	virtual void				ViewPunch( const QAngle &angleOffset );
 	void						ViewPunchReset( float tolerance = 0 );
 

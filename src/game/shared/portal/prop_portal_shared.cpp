@@ -117,13 +117,22 @@ void CProp_Portal::SetActive( bool bActive )
 	m_bOldActivatedState = m_bActivated;
 	m_bActivated = bActive;
 
-#ifdef GAME_DLL
 	if ( !bActive )
 	{
+#ifdef GAME_DLL
 		PunchAllPenetratingPlayers();
-		m_OnFizzled.FireOutput( this, this );
-	}
+		m_OnFizzled.FireOutput(this, this);
+#else
+		if ( prediction->InPrediction() )
+		{
+			C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
+			if ( pLocalPlayer )
+			{
+				PunchPenetratingPlayer( pLocalPlayer );
+			}
+		}
 #endif
+	}
 }
 
 void CProp_Portal::PortalSimulator_TookOwnershipOfEntity( CBaseEntity *pEntity )
@@ -397,9 +406,37 @@ void CProp_Portal::StealPortal( CProp_Portal *pHitPortal )
 
 #ifdef GAME_DLL
 		pHitPortal->PunchAllPenetratingPlayers();
+#else
+		C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
+		if ( pLocalPlayer )
+		{
+			pHitPortal->PunchPenetratingPlayer( pLocalPlayer );
+		}
 #endif
 		//m_pHitPortal->m_pPortalReplacingMe = NULL;
 		//m_pHitPortal = NULL;
+	}
+}
+
+void CProp_Portal::PunchPenetratingPlayer( CBasePlayer *pPlayer )
+{
+	if( m_PortalSimulator.IsReadyToSimulate() )
+	{
+		ICollideable *pCollideable = pPlayer->GetCollideable();
+		if ( pCollideable )
+		{
+			Vector vMin, vMax;
+
+			pCollideable->WorldSpaceSurroundingBounds( &vMin, &vMax );
+
+			if ( UTIL_IsBoxIntersectingPortal( ( vMin + vMax ) / 2.0f, ( vMax - vMin ) / 2.0f, this ) )
+			{
+				Vector vForward;
+				GetVectors( &vForward, 0, 0 );
+				vForward *= 100.0f;
+				pPlayer->VelocityPunch( vForward );
+			}
+		}
 	}
 }
 
@@ -1077,6 +1114,12 @@ void CProp_Portal::UpdatePortalLinkage( void )
 		m_PortalSimulator.ReleaseAllEntityOwnership();
 #ifdef GAME_DLL
 		PunchAllPenetratingPlayers();
+#else
+		C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
+		if ( pLocalPlayer )
+		{
+			PunchPenetratingPlayer( pLocalPlayer );
+		}
 #endif
 		m_hLinkedPortal = NULL;
 #ifdef CLIENT_DLL

@@ -867,29 +867,6 @@ void CProp_Portal::RemovePortalMicAndSpeaker()
 	}
 }
 #endif
-void CProp_Portal::PunchPenetratingPlayer( CBaseEntity *pPlayer )
-{
-#if 1
-	if( m_PortalSimulator.IsReadyToSimulate() )
-	{
-		ICollideable *pCollideable = pPlayer->GetCollideable();
-		if ( pCollideable )
-		{
-			Vector vMin, vMax;
-
-			pCollideable->WorldSpaceSurroundingBounds( &vMin, &vMax );
-
-			if ( UTIL_IsBoxIntersectingPortal( ( vMin + vMax ) / 2.0f, ( vMax - vMin ) / 2.0f, this ) )
-			{
-				Vector vForward;
-				GetVectors( &vForward, 0, 0 );
-				vForward *= 100.0f;
-				pPlayer->VelocityPunch( vForward );
-			}
-		}
-	}
-#endif
-}
 
 void CProp_Portal::PunchAllPenetratingPlayers( void )
 {

@@ -82,6 +82,7 @@ public:
 	
 	void					DoFizzleEffect( int iEffect, PortalColorSet_t iPortalColorSet, bool bDelayedPos = true ); //display cool visual effect
 	void					Fizzle( void ); //display cool visual effect
+	void					PunchPenetratingPlayer( CBasePlayer *pPlayer ); // adds outward force to player intersecting the portal plane
 
 	void					PlacePortal( const Vector &vOrigin, const QAngle &qAngles, float fPlacementSuccess, bool bDelay = false );
 	void SetFiredByPlayer( CBasePlayer *pPlayer );

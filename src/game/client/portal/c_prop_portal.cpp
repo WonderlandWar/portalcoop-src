@@ -61,7 +61,6 @@ ConVar sv_portal_debug_touch("sv_portal_debug_touch", "0", FCVAR_REPLICATED);
 ConVar sv_portal_placement_never_fail("sv_portal_placement_never_fail", "0", FCVAR_REPLICATED | FCVAR_CHEAT);
 ConVar sv_portal_new_velocity_check("sv_portal_new_velocity_check", "1", FCVAR_REPLICATED | FCVAR_CHEAT);
 
-static CUtlVector<C_Prop_Portal *> s_PortalLinkageGroups[256];
 #undef CProp_Portal
 IMPLEMENT_CLIENTCLASS_DT( C_Prop_Portal, DT_Prop_Portal, CProp_Portal )
 
@@ -129,15 +128,15 @@ static C_PortalInitHelper s_PortalInitHelper;
 
 CProp_Portal *CProp_Portal::FindPortal( unsigned char iLinkageGroupID, bool bPortal2, bool bCreateIfNothingFound /*= false*/ )
 {
-	int iPortalCount = s_PortalLinkageGroups[iLinkageGroupID].Count();
+	int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
 
 	if( iPortalCount != 0 )
 	{
 		CProp_Portal *pFoundInactive = NULL;
-		CProp_Portal **pPortals = s_PortalLinkageGroups[iLinkageGroupID].Base();
+		CProp_Portal **pPortals = CProp_Portal_Shared::AllPortals.Base();
 		for( int i = 0; i != iPortalCount; ++i )
 		{
-			if( pPortals[i]->m_bIsPortal2 == bPortal2 )
+			if( pPortals[i]->m_bIsPortal2 == bPortal2 && pPortals[i]->m_iLinkageGroupID == iLinkageGroupID )
 			{
 				if( pPortals[i]->IsActive() )
 					return pPortals[i];
@@ -1298,69 +1297,7 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	// Don't fizzle me if I moved from a location another portalgun shot
 //	if (m_pPortalReplacingMe)
 //		m_pPortalReplacingMe->m_pHitPortal = NULL;
-	
-	if( IsActive() )
-	{
-		CProp_Portal *pLink = m_hLinkedPortal.Get();
-
-		if( !(pLink && pLink->IsActive()) )
-		{
-			//no old link, or inactive old link
-			
-			if( pLink )
-			{
-				Vector vLinkOrigin = pLink->m_ptOrigin;
-				QAngle qLinkAngles = pLink->m_qAbsAngle;
-
-				//we had an old link, must be inactive
-				if( pLink->m_hLinkedPortal.Get() != NULL )
-					pLink->NewLocation( vLinkOrigin, qLinkAngles );
-
-				pLink = NULL;
-			}
-
-			int iPortalCount = s_PortalLinkageGroups[m_iLinkageGroupID].Count();
-
-			if( iPortalCount != 0 )
-			{
-				CProp_Portal **pPortals = s_PortalLinkageGroups[m_iLinkageGroupID].Base();
-				for( int i = 0; i != iPortalCount; ++i )
-				{
-					CProp_Portal *pCurrentPortal = pPortals[i];
-					if( pCurrentPortal == this )
-						continue;
-					if( pCurrentPortal->IsActive() && pCurrentPortal->m_hLinkedPortal.Get() == NULL )
-					{
-						Vector vCurrentOrigin = pCurrentPortal->m_ptOrigin;
-						QAngle qCurrentAngles = pCurrentPortal->m_qAbsAngle;
-
-						pLink = pCurrentPortal;
-						pCurrentPortal->m_hLinkedPortal = this;
-						pCurrentPortal->NewLocation( vCurrentOrigin, qCurrentAngles );
-						break;
-					}
-				}
-			}
-		}
-	
-
-		m_hLinkedPortal = pLink;
-
-		if( pLink != NULL )
-		{
-			CHandle<CProp_Portal> hThis = this;
-			CHandle<CProp_Portal> hRemote = pLink;
-
-			this->m_hLinkedPortal = hRemote;
-			pLink->m_hLinkedPortal = hThis;
-			m_bIsPortal2 = !m_hLinkedPortal->m_bIsPortal2;
-		}
-	}
-	else
-	{
-		m_hLinkedPortal = NULL;
-	}
-
+		
 	//Warning( "C_Portal_Base2D::NewLocation(client) %f     %.2f %.2f %.2f\n", gpGlobals->curtime, XYZ( vOrigin ) );
 
 	//get absolute origin and angles, but cut out interpolation, use the network position and angles as transformed by any move parent
@@ -1405,12 +1342,30 @@ void C_Prop_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 
 	m_pLinkedPortal = m_hLinkedPortal;
 	
+	//if the other portal should be static, let's not punch stuff resting on it
+	bool bOtherShouldBeStatic = false;
+	if( !m_hLinkedPortal )
+		bOtherShouldBeStatic = true;
+
+	
 	PortalMoved(); //updates link matrix and internals
 	UpdatePortalLinkage();
 	OnPortalMoved();
 	UpdateTeleportMatrix();
 
 	UpdateGhostRenderables();
+
+	if ( m_hLinkedPortal )
+	{
+		if( !bOtherShouldBeStatic ) 
+		{
+			C_BasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
+			if ( pLocalPlayer )
+			{
+				m_hLinkedPortal->PunchPenetratingPlayer( pLocalPlayer );
+			}
+		}
+	}
 
 	C_Prop_Portal *pRemote = m_hLinkedPortal.Get();
 	if( pRemote )

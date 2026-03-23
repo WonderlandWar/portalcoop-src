@@ -5478,17 +5478,6 @@ bool CBasePlayer::HasWeapons( void )
 	return false;
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : &vecForce - 
-//-----------------------------------------------------------------------------
-void CBasePlayer::VelocityPunch( const Vector &vecForce )
-{
-	// Clear onground and add velocity.
-	SetGroundEntity( NULL );
-	ApplyAbsVelocityImpulse(vecForce );
-}
-
 
 //--------------------------------------------------------------------------------------------------------------
 // VEHICLES

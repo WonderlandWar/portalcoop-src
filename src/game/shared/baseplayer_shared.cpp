@@ -1423,6 +1423,17 @@ ConVar	sv_suppress_viewpunch( "sv_suppress_viewpunch", "0", FCVAR_REPLICATED | F
 
 //-----------------------------------------------------------------------------
 // Purpose: 
+// Input  : &vecForce - 
+//-----------------------------------------------------------------------------
+void CBasePlayer::VelocityPunch( const Vector &vecForce )
+{
+	// Clear onground and add velocity.
+	SetGroundEntity( NULL );
+	ApplyAbsVelocityImpulse(vecForce );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
 //-----------------------------------------------------------------------------
 void CBasePlayer::ViewPunch( const QAngle &angleOffset )
 {

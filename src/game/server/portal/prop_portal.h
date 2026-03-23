@@ -137,7 +137,7 @@ public:
 	void					ResetModel( void ); //sets the model and bounding box
 	void					DoFizzleEffect( int iEffect, PortalColorSet_t iPortalColorSet, bool bDelayedPos = true ); //display cool visual effect
 	void					Fizzle( void ); //go inactive
-	void					PunchPenetratingPlayer( CBaseEntity *pPlayer ); // adds outward force to player intersecting the portal plane
+	void					PunchPenetratingPlayer( CBasePlayer *pPlayer ); // adds outward force to player intersecting the portal plane
 	void					PunchAllPenetratingPlayers( void ); // adds outward force to player intersecting the portal plane
 
 	virtual void			StartTouch( CBaseEntity *pOther );
