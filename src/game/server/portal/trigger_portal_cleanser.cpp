@@ -207,14 +207,30 @@ void CTriggerPortalCleanser::FizzleBaseAnimating( CBaseEntity *pOther, CTriggerP
 		{
 			// The portal weight box, used for puzzles in the portal mod is differentiated by its name
 			// always being 'box'. We use special logic when the cleanser dissolves a box so this is a special output for it.
-			if ( pBaseAnimating->NameMatches( "box" ) || UTIL_IsBoxOrWeightedCube( pBaseAnimating ) )
+			if ( pBaseAnimating->NameMatches( "box" ) || FClassnameIs( pBaseAnimating, "prop_box" ) )
 			{
 				pTrigger->m_OnDissolveBox.FireOutput( pOther, pTrigger );
+			}
+			else
+			{
+				CPropWeightedCube *pCube = FClassnameIs( pBaseAnimating, "prop_weighted_cube" ) ? (CPropWeightedCube*)pBaseAnimating : NULL;
+				if ( pCube && pCube->GetCubeType() != CUBE_SPHERE )
+				{
+					pTrigger->m_OnDissolveBox.FireOutput( pOther, pTrigger );
+				}
 			}
 
 			if ( pBaseAnimating->NameMatches( "sphere" ) )
 			{
 				pTrigger->m_OnDissolveSphere.FireOutput( pOther, pTrigger );
+			}
+			else
+			{
+				CPropWeightedCube *pCube = FClassnameIs( pBaseAnimating, "prop_weighted_cube" ) ? (CPropWeightedCube*)pBaseAnimating : NULL;
+				if ( pCube && pCube->GetCubeType() == CUBE_SPHERE )
+				{
+					pTrigger->m_OnDissolveSphere.FireOutput( pOther, pTrigger );
+				}
 			}
 		}
 
