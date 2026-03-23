@@ -1746,6 +1746,7 @@ void CPortalGameRules::ClientDisconnected( edict_t *pClient )
 }
 
 float g_flTimeWhenPaused = 0.0f;
+float g_flGameTimeWhenPaused = 0.0f;
 float g_flServerTimeWhenPaused = 0.0f;
 int g_iPauseTick = 0;
 CUtlVector<CBaseEntity*> g_AllPausables;
@@ -1753,6 +1754,7 @@ CUtlVector<CBaseEntity*> g_AllPausables;
 void ResetAllPauseData( void )
 {
 	g_flTimeWhenPaused = 0.0f;
+	g_flGameTimeWhenPaused = 0.0f;
 	g_flServerTimeWhenPaused = 0.0f;
 	g_iPauseTick = 0;
 }
@@ -1822,6 +1824,8 @@ void CPortalGameRules::CheckShouldPause( void )
 			PauseEntities();
 			
 			g_flTimeWhenPaused = gpGlobals->curtime;
+			extern float g_flGameCurTime;
+			g_flGameTimeWhenPaused = g_flGameCurTime;
 			g_flServerTimeWhenPaused = engine->GetServerTime();
 			g_iPauseTick = gpGlobals->tickcount;
 

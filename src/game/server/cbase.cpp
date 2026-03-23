@@ -110,7 +110,7 @@ END_DATADESC()
 int CEventAction::s_iNextIDStamp = 0;
 
 #if defined ( TF_DLL ) || defined ( PORTAL )
-#define USE_SERVER_TIME
+//#define USE_SERVER_TIME
 #endif
 
 static float GetCurrentTimeForEventQueue( void )
@@ -132,7 +132,8 @@ static float GetCurrentTimeForEventQueue( void )
 #if defined ( USE_SERVER_TIME )
 	currenttime = engine->GetServerTime();
 #else
-	currenttime = gpGlobals->curtime;
+	extern float g_flGameCurTime;
+	currenttime = g_flGameCurTime;
 #endif
 	return currenttime;
 }
