@@ -1258,7 +1258,13 @@ void CPlayerPickupController::InitController( CBasePlayer *pPlayer, CBaseEntity 
 #ifdef DISABLE_PREDICTED_GRABBING
 	return;
 #endif
-	
+#ifdef GAME_DLL
+	if ( !pPlayer->IsAlive() )
+	{
+		UTIL_Remove( this );
+		return;
+	}
+#endif
 	CGrabController *pGrabController = GetGrabControllerForEntity( pObject );
 	if (pGrabController)
 		pGrabController->DetachEntity(false);
@@ -1503,6 +1509,11 @@ void CPlayerPickupController::Use( CBaseEntity *pActivator, CBaseEntity *pCaller
 #ifndef DISABLE_PREDICTED_GRABBING
 	if ( ToBasePlayer(pActivator) == m_hPlayer )
 	{
+		if ( !pActivator->IsAlive() )
+		{
+			Shutdown();
+			return;
+		}
 #ifdef CLIENT_DLL
 		C_BasePlayer *localplayer = C_BasePlayer::GetLocalPlayer();
 
