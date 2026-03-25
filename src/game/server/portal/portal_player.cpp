@@ -2003,7 +2003,7 @@ void CPortal_Player::ShutdownUseEntity(void)
 
 bool CPortal_Player::WantsToBeObserver()
 {
-	return entindex() > GetRequiredPlayers() && pcoop_spectate_after_past_required_players.GetBool();
+	return !PlayerShouldPlay( entindex() ) && pcoop_spectate_after_past_required_players.GetBool();
 }
 
 void CPortal_Player::Teleport( const Vector* newPosition, const QAngle* newAngles, const Vector* newVelocity )
