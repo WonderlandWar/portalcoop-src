@@ -140,9 +140,9 @@ public:
 		// stationary so that it doesn't change
 		// its target based on its offset
 		
-		Vector vEyePos;
-		vEyePos[2] = 40.0;
-		return GetAbsOrigin() + vEyePos;
+		Vector up;
+		GetVectors( NULL, NULL, &up );
+		return GetAbsOrigin() + (up * 40.0);
 
 		/* 
 		Vector vMuzzlePos;
