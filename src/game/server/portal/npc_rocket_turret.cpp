@@ -1013,48 +1013,7 @@ void CNPC_RocketTurret::HackFindEnemy(void)
 		{
 			SetEnemy( pNearest );
 		}
-#if 0
-		// No enemy still? Then do this hack.
-		if ( GetEnemy() == NULL )
-		{
-			for (int i = 1; i <= gpGlobals->maxClients; ++i)
-			{
-				CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-
-				if (!pPlayer)
-					continue;
-
-				if ((pPlayer->GetFlags() & FL_NOTARGET))
-					continue;
-				
-
-				Vector vecMidEnemy = pPlayer->GetAbsOrigin() + (pPlayer->WorldAlignMins() + pPlayer->WorldAlignMaxs()) * 0.5f;
-				bool bEnemyVisibleInWorld = FVisible(pPlayer);
-
-				// Test portals in our view as possible ways to view the player
-				bool bEnemyVisibleThroughPortal = TestPortalsForLOS( &vecMidEnemy, bEnemyVisibleInWorld );
-
-				bool bEnemyVisible = bEnemyVisibleInWorld || bEnemyVisibleThroughPortal;
-
-				if (bEnemyVisible)
-				{
-					SetEnemy(pPlayer);
-					break;
-				}				
-			}
-		}
-#endif
 	}
-
-	/*
-	{
-		Msg("/ Enemy Info: /\n");
-		if (GetEnemy())
-			Msg("Classname: %s\n", GetEnemy()->GetClassname());
-		else
-			Msg("No info\n");
-	}
-	*/
 }
 
 //-----------------------------------------------------------------------------
