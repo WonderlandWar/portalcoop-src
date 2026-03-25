@@ -48,7 +48,6 @@ END_DATADESC()
 
 IMPLEMENT_SERVERCLASS_ST( CFuncNoPortalVolume, DT_FuncNoPortalVolume)
 	SendPropInt(SENDINFO(m_iListIndex)),
-	SendPropInt(SENDINFO(m_spawnflags)),
 	SendPropBool(SENDINFO(m_bActive)),
 END_SEND_TABLE()
 
@@ -86,7 +85,7 @@ void CFuncNoPortalVolume::Spawn()
 	SetRenderMode( kRenderNone );	// Don't draw
 	SetSolid( SOLID_VPHYSICS );	// we may want slanted walls, so we'll use OBB
 	AddSolidFlags( FSOLID_NOT_SOLID );
-	AddSolidFlags( FSOLID_TRIGGER ); // This is needed to fix the client sided bumping entities check
+	AddEFlags( EFL_USE_PARTITION_WHEN_NOT_SOLID );
 }
 
 void CFuncNoPortalVolume::OnActivate( void )

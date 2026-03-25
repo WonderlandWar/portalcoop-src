@@ -39,7 +39,6 @@ END_DATADESC()
 
 IMPLEMENT_CLIENTCLASS_DT( C_FuncNoPortalVolume, DT_FuncNoPortalVolume, CFuncNoPortalVolume)
 	RecvPropInt(RECVINFO(m_iListIndex)),
-	RecvPropInt(RECVINFO(m_spawnflags)),
 	RecvPropBool(RECVINFO(m_bActive)),
 END_RECV_TABLE()
 
@@ -63,21 +62,12 @@ void C_FuncNoPortalVolume::Spawn()
 {
 	BaseClass::Spawn();
 
-	if ( m_spawnflags & SF_START_INACTIVE )
-	{
-		m_bActive = false;
-	}
-	else
-	{
-		m_bActive = true;
-	}
-
 	// Bind to our model, cause we need the extents for bounds checking
 	SetModel( STRING( GetModelName() ) );
 	SetRenderMode( kRenderNone );	// Don't draw
 	SetSolid( SOLID_VPHYSICS );	// we may want slanted walls, so we'll use OBB
 	AddSolidFlags( FSOLID_NOT_SOLID );
-	AddSolidFlags( FSOLID_TRIGGER ); // This is needed to fix the client sided bumping entities check
+	AddEFlags( EFL_USE_PARTITION_WHEN_NOT_SOLID );
 }
 
 void C_FuncNoPortalVolume::OnActivate( void )

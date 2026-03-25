@@ -22,7 +22,6 @@ END_DATADESC()
 IMPLEMENT_CLIENTCLASS_DT(C_FuncPortalBumper, DT_FuncPortalBumper, CFuncPortalBumper)
 
 	RecvPropBool(RECVINFO(m_bActive)),
-	RecvPropInt(RECVINFO(m_spawnflags)),
 
 END_RECV_TABLE()
 
@@ -37,19 +36,20 @@ void C_FuncPortalBumper::Spawn()
 {
 	BaseClass::Spawn();
 
-	if ( m_spawnflags & SF_START_INACTIVE )
-	{
-		m_bActive = false;
-	}
-	else
-	{
-		m_bActive = true;
-	}
-
 	// Bind to our model, cause we need the extents for bounds checking
 	SetModel( STRING( GetModelName() ) );
 	SetRenderMode( kRenderNone );	// Don't draw
 	SetSolid( SOLID_VPHYSICS );	// we may want slanted walls, so we'll use OBB
 	AddSolidFlags( FSOLID_NOT_SOLID );
-	AddSolidFlags( FSOLID_TRIGGER ); // This is needed to fix the client sided bumping entities check
+	AddEFlags( EFL_USE_PARTITION_WHEN_NOT_SOLID );
+}
+
+void C_FuncPortalBumper::UpdatePartitionListEntry( void )
+{
+	BaseClass::UpdatePartitionListEntry();
+	return;
+	::partition->RemoveAndInsert( 
+		PARTITION_CLIENT_RESPONSIVE_EDICTS | PARTITION_CLIENT_STATIC_PROPS | PARTITION_CLIENT_TRIGGER_ENTITIES | PARTITION_CLIENT_NON_STATIC_EDICTS,  // remove
+		PARTITION_CLIENT_TRIGGER_ENTITIES | PARTITION_CLIENT_SOLID_EDICTS,  // add
+		CollisionProp()->GetPartitionHandle() );
 }

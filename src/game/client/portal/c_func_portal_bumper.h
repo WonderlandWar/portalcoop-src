@@ -29,6 +29,7 @@ public:
 
 	// Overloads from base entity
 	virtual void	Spawn( void );
+	virtual void	UpdatePartitionListEntry( void ) OVERRIDE;
 
 	// misc public methods
 	bool IsActive() { return m_bActive; }	// is this area currently bumping portals

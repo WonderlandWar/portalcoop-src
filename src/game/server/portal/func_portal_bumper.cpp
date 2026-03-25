@@ -30,7 +30,6 @@ END_DATADESC()
 IMPLEMENT_SERVERCLASS_ST(CFuncPortalBumper, DT_FuncPortalBumper)
 
 	SendPropBool(SENDINFO(m_bActive)),
-	SendPropInt(SENDINFO(m_spawnflags)),
 
 END_SEND_TABLE()
 
@@ -61,7 +60,7 @@ void CFuncPortalBumper::Spawn()
 	SetRenderMode( kRenderNone );	// Don't draw
 	SetSolid( SOLID_VPHYSICS );	// we may want slanted walls, so we'll use OBB
 	AddSolidFlags( FSOLID_NOT_SOLID );
-	AddSolidFlags( FSOLID_TRIGGER ); // This is needed to fix the client sided bumping entities check
+	AddEFlags( EFL_USE_PARTITION_WHEN_NOT_SOLID );
 }
 
 void CFuncPortalBumper::InputActivate( inputdata_t &inputdata )
