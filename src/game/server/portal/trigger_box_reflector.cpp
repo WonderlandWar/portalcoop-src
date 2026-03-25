@@ -244,7 +244,6 @@ void CTriggerBoxReflector::DetachBox( CPropBox *pAttachedBox, bool bPush /*= fal
 		Vector forward;
 		pAttachedBox->GetVectors( &forward, NULL, NULL );
 
-		Vector velocity;
 		pAttachedBox->ApplyAbsVelocityImpulse( forward * 100 );
 	}
 
