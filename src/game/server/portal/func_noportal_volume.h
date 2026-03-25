@@ -50,7 +50,6 @@ public:
 
 private:
 
-	CNetworkVar( int, m_spawnflags );
 	CNetworkVar( bool, m_bActive );
 	CNetworkVar(unsigned int, m_iListIndex);	// what is my index into the global noportal_volume list
 
