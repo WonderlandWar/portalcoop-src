@@ -4,6 +4,8 @@
 class CPropBox;
 class CPropCombineBall;
 
+#define CUBE_HOLDER_NUM_BEAMS 5
+
 class CTriggerBoxReflector : public CBaseEntity
 {
 public:
@@ -40,11 +42,7 @@ public:
 
 private:
 
-	string_t m_iszBeamSetName1;
-	string_t m_iszBeamSetName2;
-	string_t m_iszBeamSetName3;
-	string_t m_iszBeamSetName4;
-	string_t m_iszBeamSetName5;
+	string_t m_iszBeamSetName[CUBE_HOLDER_NUM_BEAMS];
 
 	string_t m_iszAttachToEntity;
 

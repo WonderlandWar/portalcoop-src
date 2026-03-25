@@ -22,11 +22,11 @@ BEGIN_DATADESC( CTriggerBoxReflector )
 	
 	DEFINE_KEYFIELD( m_bTemporary, FIELD_BOOLEAN, "temporary" ),
 
-	DEFINE_KEYFIELD( m_iszBeamSetName1, FIELD_STRING, "BeamSetName1" ),
-	DEFINE_KEYFIELD( m_iszBeamSetName2, FIELD_STRING, "BeamSetName2" ),
-	DEFINE_KEYFIELD( m_iszBeamSetName3, FIELD_STRING, "BeamSetName3" ),
-	DEFINE_KEYFIELD( m_iszBeamSetName4, FIELD_STRING, "BeamSetName4" ),
-	DEFINE_KEYFIELD( m_iszBeamSetName5, FIELD_STRING, "BeamSetName5" ),
+	DEFINE_KEYFIELD( m_iszBeamSetName[0], FIELD_STRING, "BeamSetName1"),
+	DEFINE_KEYFIELD( m_iszBeamSetName[1], FIELD_STRING, "BeamSetName2"),
+	DEFINE_KEYFIELD( m_iszBeamSetName[2], FIELD_STRING, "BeamSetName3"),
+	DEFINE_KEYFIELD( m_iszBeamSetName[3], FIELD_STRING, "BeamSetName4"),
+	DEFINE_KEYFIELD( m_iszBeamSetName[4], FIELD_STRING, "BeamSetName5"),
 
 	DEFINE_FIELD( m_hAttachEnt, FIELD_EHANDLE ),
 	DEFINE_FIELD( m_hAttachedBox, FIELD_EHANDLE ),
@@ -274,11 +274,8 @@ void CTriggerBoxReflector::SetSpecificBeamBrightness( const char *pszName, float
 
 void CTriggerBoxReflector::SetBeamBrightness( float flBrightness )
 {
-	SetSpecificBeamBrightness( m_iszBeamSetName1.ToCStr(), flBrightness );
-	SetSpecificBeamBrightness( m_iszBeamSetName2.ToCStr(), flBrightness );
-	SetSpecificBeamBrightness( m_iszBeamSetName3.ToCStr(), flBrightness );
-	SetSpecificBeamBrightness( m_iszBeamSetName4.ToCStr(), flBrightness );
-	SetSpecificBeamBrightness( m_iszBeamSetName5.ToCStr(), flBrightness );
+	for ( int i = 0; i < CUBE_HOLDER_NUM_BEAMS; ++i )
+		SetSpecificBeamBrightness( m_iszBeamSetName[i].ToCStr(), flBrightness );
 }
 
 void CTriggerBoxReflector::TemporaryDetachThink( void )
