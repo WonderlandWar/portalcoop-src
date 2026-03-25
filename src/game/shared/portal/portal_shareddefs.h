@@ -164,10 +164,6 @@ private:
 
 extern CMapInfo g_MapInfo;
 
-extern const char *g_pszAllPcoopMaps[];
-
-int GetPCoopMapCount();
-
 int GetRequiredPlayers();
 
 bool PlayerShouldPlay( int index );
