@@ -22,7 +22,9 @@
 #include "filesystem.h"
 #include "datacache/idatacache.h"
 #include "SoundEmitterSystem/isoundemittersystembase.h"
-
+#ifdef PORTAL
+#include "portal_shareddefs.h"
+#endif
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -809,7 +811,10 @@ void CaptionAsyncLoaderCallback( const FileAsyncRequest_t &request, int numReadB
 DECLARE_HUDELEMENT( CHudCloseCaption );
 
 DECLARE_HUD_MESSAGE( CHudCloseCaption, CloseCaption );
-
+#ifdef PORTAL
+static CHudCloseCaption *g_pHudCloseCaption = NULL;
+CUtlVector<CUtlSymbol> g_CloseCaptionFileNames;
+#endif
 CHudCloseCaption::CHudCloseCaption( const char *pElementName )
 	: CHudElement( pElementName ), 
 	vgui::Panel( NULL, "HudCloseCaption" ),
@@ -817,6 +822,9 @@ CHudCloseCaption::CHudCloseCaption( const char *pElementName )
 	m_CurrentLanguage( UTL_INVAL_SYMBOL ),
 	m_bPaintDebugInfo( false )
 {
+#ifdef PORTAL
+	g_pHudCloseCaption = this;
+#endif
 	vgui::Panel *pParent = g_pClientMode->GetViewport();
 	SetParent( pParent );
 	SetProportional( true );
@@ -840,6 +848,9 @@ CHudCloseCaption::CHudCloseCaption( const char *pElementName )
 	if ( !IsX360() )
 	{
 		g_pVGuiLocalize->AddFile( "resource/closecaption_%language%.txt", "GAME", true );
+#ifdef PORTAL
+		AddCustomCaptionsLocalizationFromMapSets();
+#endif
 	}
 
 	HOOK_HUD_MESSAGE( CHudCloseCaption, CloseCaption );
@@ -860,6 +871,9 @@ CHudCloseCaption::CHudCloseCaption( const char *pElementName )
 	char dbfile [ 512 ];
 	Q_snprintf( dbfile, sizeof( dbfile ), "resource/closecaption_%s.dat", uilanguage );
 	InitCaptionDictionary( dbfile );
+#ifdef PORTAL
+	AddCustomCaptionsFromMapSets();
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -867,6 +881,9 @@ CHudCloseCaption::CHudCloseCaption( const char *pElementName )
 //-----------------------------------------------------------------------------
 CHudCloseCaption::~CHudCloseCaption()
 {
+#ifdef PORTAL
+	g_pHudCloseCaption = NULL;
+#endif
 	m_CloseCaptionRepeats.RemoveAll();
 
 	ClearAsyncWork();
@@ -884,6 +901,18 @@ void CHudCloseCaption::LevelInit( void )
 
 	// Wipe any stale pending work items...
 	ClearAsyncWork();
+}
+
+void CHudCloseCaption::LevelShutdown( void )
+{
+	Reset();
+#ifdef PORTAL
+	FOR_EACH_VEC( g_CloseCaptionFileNames, i )
+	{
+		RemoveCaptionDictionary( g_CloseCaptionFileNames[i] );
+	}
+	g_CloseCaptionFileNames.RemoveAll();
+#endif
 }
 
 static ConVar cc_minvisibleitems( "cc_minvisibleitems", "1", 0, "Minimum number of caption items to show." );
@@ -2643,6 +2672,146 @@ void CHudCloseCaption::InitCaptionDictionary( const char *dbfile )
 	g_AsyncCaptionResourceManager.SetDbInfo( m_AsyncCaptions );
 }
 
+#if 1 //MAPBASE
+void CHudCloseCaption::AddAdditionalCaptionDictionary( const char *dbfile, CUtlVector<CUtlSymbol> &outPathSymbols )
+{
+	g_AsyncCaptionResourceManager.Clear();
+
+	char searchPaths[4096];
+	filesystem->GetSearchPath( "GAME", true, searchPaths, sizeof( searchPaths ) );
+
+	for ( char *path = strtok( searchPaths, ";" ); path; path = strtok( NULL, ";" ) )
+	{
+		if ( IsX360() && ( filesystem->GetDVDMode() == DVDMODE_STRICT ) && !V_stristr( path, ".zip" ) )
+		{
+			// only want zip paths
+			continue;
+		} 
+
+		char fullpath[MAX_PATH];
+		V_ComposeFileName(path, dbfile, fullpath, sizeof(fullpath));
+
+		if ( IsX360() )
+		{
+			char fullpath360[MAX_PATH];
+			UpdateOrCreateCaptionFile( fullpath, fullpath360, sizeof( fullpath360 ) );
+			Q_strncpy( fullpath, fullpath360, sizeof( fullpath ) );
+		}
+
+		// Seach for this dictionary. If it already exists, remove it.
+		for (int i = 0; i < m_AsyncCaptions.Count(); ++i)
+		{
+			if (FStrEq( m_AsyncCaptions[i].m_DataBaseFile.String(), fullpath ))
+			{
+				m_AsyncCaptions.Remove( i );
+				break;
+			}
+		}
+
+        FileHandle_t fh = filesystem->Open( fullpath, "rb" );
+		if ( FILESYSTEM_INVALID_HANDLE != fh )
+		{
+			MEM_ALLOC_CREDIT();
+
+			CUtlBuffer dirbuffer;
+
+			AsyncCaption_t& entry = m_AsyncCaptions[ m_AsyncCaptions.AddToTail() ];
+
+			// Read the header
+			filesystem->Read( &entry.m_Header, sizeof( entry.m_Header ), fh );
+			if ( entry.m_Header.magic != COMPILED_CAPTION_FILEID )
+				Error( "Invalid file id for %s\n", fullpath );
+			if ( entry.m_Header.version != COMPILED_CAPTION_VERSION )
+				Error( "Invalid file version for %s\n", fullpath );
+			if ( entry.m_Header.directorysize < 0 || entry.m_Header.directorysize > 64 * 1024 )
+				Error( "Invalid directory size %d for %s\n", entry.m_Header.directorysize, fullpath );
+			//if ( entry.m_Header.blocksize != MAX_BLOCK_SIZE )
+			//	Error( "Invalid block size %d, expecting %d for %s\n", entry.m_Header.blocksize, MAX_BLOCK_SIZE, fullpath );
+
+			int directoryBytes = entry.m_Header.directorysize * sizeof( CaptionLookup_t );
+			entry.m_CaptionDirectory.EnsureCapacity( entry.m_Header.directorysize );
+			dirbuffer.EnsureCapacity( directoryBytes );
+			
+			filesystem->Read( dirbuffer.Base(), directoryBytes, fh );
+			filesystem->Close( fh );
+
+			entry.m_CaptionDirectory.CopyArray( (const CaptionLookup_t *)dirbuffer.PeekGet(), entry.m_Header.directorysize );
+			entry.m_CaptionDirectory.RedoSort( true );
+
+			entry.m_DataBaseFile = fullpath;
+			outPathSymbols.AddToTail( entry.m_DataBaseFile );
+		}
+	}
+
+	g_AsyncCaptionResourceManager.SetDbInfo( m_AsyncCaptions );
+}
+
+void CHudCloseCaption::AddCustomCaptionFile( char const *file, CUtlVector<CUtlSymbol> &outPathSymbols )
+{
+	// 
+	// 'file' should be something like "maps/mapbase_demo01_closecaption_%language%"
+	//
+
+	char uilanguage[64];
+	engine->GetUILanguage( uilanguage, sizeof( uilanguage ) );
+
+	char dbfile[512];
+	V_StrSubst( file, "%language%", uilanguage, dbfile, sizeof( dbfile ) );
+	V_SetExtension( dbfile, ".dat", sizeof( dbfile ) );
+	if ( g_pFullFileSystem->FileExists( dbfile, "GAME" ) )
+	{
+		AddAdditionalCaptionDictionary( dbfile, outPathSymbols );
+	}
+}
+
+void CHudCloseCaption::RemoveCaptionDictionary( const CUtlSymbol &dbFileSymbol )
+{
+	// 
+	// 'file' should be something like "maps/mapbase_demo01_closecaption_%language%"
+	// 
+	for (int i = 0; i < m_AsyncCaptions.Count(); ++i)
+	{
+		if ( m_AsyncCaptions[i].m_DataBaseFile == dbFileSymbol )
+		{
+			m_AsyncCaptions.Remove( i );
+			break;
+		}
+	}
+}
+#ifdef PORTAL
+static void LoadMapSetCaptionsLocalization( const char *pFileName )
+{
+	const char* captiontemplate = "closecaption_%language%.txt";
+	// Load the sounds
+	char manifestfile[_MAX_PATH];
+	Q_snprintf( manifestfile, sizeof( manifestfile ), "%s/%s", pFileName, captiontemplate );
+	
+	if ( !IsX360() )
+	{	
+		g_pVGuiLocalize->AddFile( manifestfile, "GAME", true );
+	}
+}
+
+static void LoadMapSetCaptionsFile( const char *pFileName )
+{
+	const char* captiontemplate = "closecaption_%language%.txt";
+	// Load the sounds
+	char manifestfile[_MAX_PATH];
+	Q_snprintf( manifestfile, sizeof( manifestfile ), "%s/%s", pFileName, captiontemplate );
+
+	g_pHudCloseCaption->AddCustomCaptionFile( manifestfile, g_CloseCaptionFileNames );
+}
+void CHudCloseCaption::AddCustomCaptionsLocalizationFromMapSets( void )
+{
+	ExecuteLoadingMapSetFunction( LoadMapSetCaptionsLocalization );
+}
+void CHudCloseCaption::AddCustomCaptionsFromMapSets( void )
+{
+	ExecuteLoadingMapSetFunction( LoadMapSetCaptionsFile );
+}
+#endif
+#endif
+
 void CHudCloseCaption::OnFinishAsyncLoad( int nFileIndex, int nBlockNum, AsyncCaptionData_t *pData )
 {
 	// Fill in data for all users of pData->m_nBlockNum
@@ -2765,18 +2934,21 @@ void OnCaptionLanguageChanged( IConVar *pConVar, const char *pOldString, float f
 
 	char fn[ 512 ];
 	Q_snprintf( fn, sizeof( fn ), "resource/closecaption_%s.txt", var.GetString() );
+	
+	CHudCloseCaption *hudCloseCaption = GET_HUDELEMENT( CHudCloseCaption );
 
 	// Re-adding the file, even if it's "english" will overwrite the tokens as needed
 	if ( !IsX360() )
 	{
 		g_pVGuiLocalize->AddFile( "resource/closecaption_%language%.txt", "GAME", true );
+#ifdef PORTAL
+		hudCloseCaption->AddCustomCaptionsLocalizationFromMapSets();
+#endif
 	}
 
 	char uilanguage[ 64 ];
 	uilanguage[0] = 0;
 	engine->GetUILanguage( uilanguage, sizeof( uilanguage ) );
-
-	CHudCloseCaption *hudCloseCaption = GET_HUDELEMENT( CHudCloseCaption );
 
 	// If it's not the default, load the language on top of the user's default language
 	if ( Q_strlen( var.GetString() ) > 0 && Q_stricmp( var.GetString(), uilanguage ) )
@@ -2786,6 +2958,9 @@ void OnCaptionLanguageChanged( IConVar *pConVar, const char *pOldString, float f
 			if ( g_pFullFileSystem->FileExists( fn ) )
 			{
 				g_pVGuiLocalize->AddFile( fn, "GAME", true );
+#ifdef PORTAL
+				hudCloseCaption->AddCustomCaptionsLocalizationFromMapSets();
+#endif
 			}
 			else
 			{
@@ -2813,6 +2988,9 @@ void OnCaptionLanguageChanged( IConVar *pConVar, const char *pOldString, float f
 			hudCloseCaption->InitCaptionDictionary( dbfile );
 		}
 	}
+#ifdef PORTAL
+	hudCloseCaption->AddCustomCaptionsFromMapSets();
+#endif
 	DevMsg( "cc_lang = %s\n", var.GetString() );
 }
 

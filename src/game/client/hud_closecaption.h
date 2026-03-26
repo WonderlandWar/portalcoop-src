@@ -90,10 +90,7 @@ public:
 
 	virtual void	LevelInit( void );
 
-	virtual void	LevelShutdown( void )
-	{
-		Reset();
-	}
+	virtual void	LevelShutdown( void );
 
 	// Painting methods
 	virtual void	Paint();
@@ -111,6 +108,15 @@ public:
 	void			PlayRandomCaption();
 
 	void				InitCaptionDictionary( char const *dbfile );
+#if 1 //MAPBASE
+	void				AddAdditionalCaptionDictionary( char const *dbfile, CUtlVector<CUtlSymbol> &outPathSymbols );
+	void				AddCustomCaptionFile( char const *file, CUtlVector<CUtlSymbol> &outPathSymbols );
+	void				RemoveCaptionDictionary( const CUtlSymbol &dbFileSymbol );
+#ifdef PORTAL
+	void				AddCustomCaptionsLocalizationFromMapSets( void );
+	void				AddCustomCaptionsFromMapSets( void );
+#endif
+#endif
 	void				OnFinishAsyncLoad( int nFileIndex, int nBlockNum, AsyncCaptionData_t *pData );
 
 	void			Flush();
