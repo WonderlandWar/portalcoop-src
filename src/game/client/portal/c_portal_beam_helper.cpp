@@ -70,9 +70,12 @@ public:
 
 		if ( !pEntity || !pEntity->GetBaseAnimating() )
 			return ITERATION_CONTINUE;
+		
+		if ( pEntity->GetSolid() == SOLID_NONE )
+			return ITERATION_CONTINUE;
 
-		if ( m_pEmitter == pEntity )
-			ITERATION_CONTINUE;
+		if ( pEntity->GetSolidFlags() & FSOLID_NOT_SOLID )
+			return ITERATION_CONTINUE;
 
 		AddToList( pEntity );
 
@@ -137,12 +140,6 @@ void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoi
 				extern bool Laser_CanHitReflector( C_BaseEntity* pLaserEntity, IHandleEntity *pReflector );
 				if ( pEntity && Laser_CanHitReflector( pEmitter, pEntity ) )
 				{
-					if ( pEntity->GetSolid() == SOLID_NONE )
-						continue;
-
-					if ( pEntity->GetSolidFlags() & FSOLID_NOT_SOLID )
-						continue;
-
 					trace_t clipTrace;
 					enginetrace->ClipRayToEntity( ray, fMask, pEntity, &clipTrace );
 					
