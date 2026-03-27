@@ -59,9 +59,8 @@ void C_PortalBeamHelper::UpdatePointDirection( C_BaseEntity *pEmitter, Vector &v
 class CBeamEnumerator : public CFlaggedEntitiesEnum
 {
 public:
-	CBeamEnumerator( C_BaseEntity** pList, int listMax, C_BaseEntity *pEmitter ) : CFlaggedEntitiesEnum( pList, listMax, 0 )
+	CBeamEnumerator( C_BaseEntity** pList, int listMax ) : CFlaggedEntitiesEnum( pList, listMax, 0 )
 	{
-		m_pEmitter = pEmitter;
 	}
 	virtual IterationRetval_t EnumElement( IHandleEntity *pHandleEntity )
 	{
@@ -81,8 +80,6 @@ public:
 
 		return ITERATION_CONTINUE;
 	}
-
-	C_BaseEntity *m_pEmitter;
 };
 
 void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoint, Vector &vEndPoint, unsigned int fMask, ITraceFilter *pTraceFilter, trace_t *tr )
@@ -130,7 +127,7 @@ void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoi
 		{
 			float flLastDist = vStart.DistTo( tempTrace.endpos );
 			C_BaseEntity *list[256];
-			CBeamEnumerator rayEnum( list, 256, pEmitter );
+			CBeamEnumerator rayEnum( list, 256 );
 			partition->EnumerateElementsAlongRay( PARTITION_CLIENT_NON_STATIC_EDICTS, ray, false, &rayEnum );
 			
 			int nCount = rayEnum.GetCount();
