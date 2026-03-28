@@ -893,13 +893,13 @@ float CWeaponPortalgun::TraceFirePortal( bool bPortal2, const Vector &vTraceStar
 
 	// Check that the placement succeed
 	VectorAngles( tr.plane.normal, vUp, qFinalAngles );
-	
+
+	vFinalPosition = tr.endpos;
+
 	// Hit any placement helpers at this point
 	*pPlacementHelper = AttemptSnapToPlacementHelper( bPortal2, vTraceStart, vDirection, tr, vFinalPosition, qFinalAngles, iPlacedBy, bTest );
 	if ( *pPlacementHelper )
 		return PORTAL_ANALOG_SUCCESS_NO_BUMP;
-
-	vFinalPosition = tr.endpos;
 
 	return VerifyPortalPlacementAndFizzleBlockingPortals(bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get() , vFinalPosition, qFinalAngles, iPlacedBy, bTest);
 }
@@ -937,6 +937,26 @@ CInfoPlacementHelper *CWeaponPortalgun::AttemptSnapToPlacementHelper( bool bPort
 	// re-hit the area near the center of the placement helper. Very small trace is fine
 	Vector vecDir;
 	pHelper->GetVectors( &vecDir, NULL, NULL );
+
+	if ( sv_portal_placement_debug.GetBool() && !bTest )
+	{
+		Msg("PortalPlacement: Using placement helper angles %f %f %f\n", XYZ(pHelper->GetTargetAngles()));
+	}
+	
+	// See if the portal is behind the helper
+	{
+		Vector vTargetDir = pHelper->GetAbsOrigin() - vFinalPosition;
+		VectorNormalize(vTargetDir);
+
+		if ( DotProduct( vecDir, vTargetDir ) > 0.0f )
+		{
+			if ( sv_portal_placement_debug.GetBool() && !bTest )
+			{
+				Msg("PortalPlacement: Not using placement helper because the portal shot isn't aligned with the helper\n" );
+			}
+			return NULL;
+		}
+	}
 	Vector vecStartPos = vecDir + pHelper->GetAbsOrigin();
 	vecDir = -vecDir;
 	VectorNormalize( vecDir );
@@ -947,11 +967,6 @@ CInfoPlacementHelper *CWeaponPortalgun::AttemptSnapToPlacementHelper( bool bPort
 	// Use the helper angles, if specified
 	QAngle qHelperAngles = ( pHelper->ShouldUseHelperAngles() ) ? ( pHelper->GetTargetAngles() ) : qFinalAngles;
 
-	if ( sv_portal_placement_debug.GetBool() )
-	{
-		Msg("PortalPlacement: Using placement helper angles %f %f %f\n", XYZ(pHelper->GetTargetAngles()));
-	}
-
 	Vector vHelperFinalPos = trHelper.endpos;
 
 	bool bPlacementOnHelperValid = true;
@@ -959,7 +974,7 @@ CInfoPlacementHelper *CWeaponPortalgun::AttemptSnapToPlacementHelper( bool bPort
 	// make sure the normals match
 	if ( VectorsAreEqual( trHelper.plane.normal, tr.plane.normal, FLT_EPSILON ) == false )
 	{
-		if ( sv_portal_placement_debug.GetBool() )
+		if ( sv_portal_placement_debug.GetBool() && !bTest )
 		{
 			Msg("PortalPlacement: Not using placement helper because the surface normal of the portal's resting surface and the placement helper's intended surface do not match\n" );
 		}
@@ -971,7 +986,7 @@ CInfoPlacementHelper *CWeaponPortalgun::AttemptSnapToPlacementHelper( bool bPort
 	float flLenSq = vecHelperToHitPoint.LengthSqr();
 	if ( flLenSq > (pHelper->GetTargetRadius()*pHelper->GetTargetRadius()) )
 	{
-		if ( sv_portal_placement_debug.GetBool() )
+		if ( sv_portal_placement_debug.GetBool() && !bTest )
 		{
 			Msg("PortalPlacement:Not using placement helper because the Portal's final position was outside the helper's radius!\n" );
 		}
@@ -987,7 +1002,7 @@ CInfoPlacementHelper *CWeaponPortalgun::AttemptSnapToPlacementHelper( bool bPort
 		// run normal placement validity checks
 		if ( fPlacementSuccess < 0.5f )
 		{
-			if ( sv_portal_placement_debug.GetBool() )
+			if ( sv_portal_placement_debug.GetBool() && !bTest )
 			{
 				Msg("PortalPlacement: Not using placement helper because portal could not fit in a valid spot at it's origin and angles\n" );
 			}
