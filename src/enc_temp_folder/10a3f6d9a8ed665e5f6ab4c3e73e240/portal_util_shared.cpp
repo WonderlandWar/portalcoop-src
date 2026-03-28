@@ -1338,6 +1338,8 @@ float UTIL_Portal_DistanceThroughPortal( const CProp_Portal *pPortal, const Vect
 	return FastSqrt( UTIL_Portal_DistanceThroughPortalSqr( pPortal, vPoint1, vPoint2 ) );
 }
 
+ConVar sv_use_old_portal_dist_math( "sv_use_old_portal_dist_math", "0", FCVAR_REPLICATED );
+
 float UTIL_Portal_DistanceThroughPortalSqr( const CProp_Portal *pPortal, const Vector &vPoint1, const Vector &vPoint2 )
 {
 	if (!pPortal || !pPortal->IsActive())
@@ -1347,9 +1349,21 @@ float UTIL_Portal_DistanceThroughPortalSqr( const CProp_Portal *pPortal, const V
 	if (!pPortalLinked || !pPortalLinked->IsActive())
 		return -1.0f;
 
+	float flOldCalc = vPoint1.DistToSqr( pPortal->m_ptOrigin ) + ((Vector)pPortalLinked->m_ptOrigin).DistToSqr( vPoint2 );
+	Msg( "flOldCalc %f\n", flOldCalc );
+
 	Vector vecPoint2Translated;
 	UTIL_Portal_PointTransform( pPortalLinked->MatrixThisToLinked(), vPoint2, vecPoint2Translated );
-	return vPoint1.DistToSqr( vecPoint2Translated );	
+#ifdef GAME_DLL
+	Vector extents(4, 4, 4);
+	NDebugOverlay::Box( vecPoint2Translated, -extents, extents, 255, 0, 0, 128, 0.1 );
+#endif
+	float flNewCalc = vPoint1.DistToSqr( vecPoint2Translated );	
+	Msg( "flNewCalc %f\n", flNewCalc );
+	if ( sv_use_old_portal_dist_math.GetBool() )
+		return flOldCalc;
+	else
+		return flNewCalc;
 }
 
 float UTIL_Portal_ShortestDistance( const Vector &vPoint1, const Vector &vPoint2, CProp_Portal **pShortestDistPortal_Out /*= NULL*/, bool bRequireStraightLine /*= false*/ )
