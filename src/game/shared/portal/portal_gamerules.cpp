@@ -2139,11 +2139,11 @@ public:
 	float	TranslateAttenuation( const char *key );
 
 private:
-	CUtlHashtable< CUtlConstString, gender_t, CaselessStringHashFunctor, UTLConstStringCaselessStringEqualFunctor<char> > m_ActorGenders;
+	CUtlVector< int > pad1;
 	CUtlStableHashtable< CSoundEntry*, empty_t, CSoundEntryHashFunctor, CSoundEntryEqualFunctor, uint16, const char* > m_Sounds;
 
 	CUtlVector< CSoundEntry* >			m_SavedOverrides;
-	CUtlVector< FileNameHandle_t >				m_OverrideFiles;
+	CUtlVector< int > pad2;
 
 	struct CSoundScriptFile
 	{
@@ -2152,11 +2152,6 @@ private:
 	};
 
 	CUtlVector< CSoundScriptFile >	m_SoundKeyValues;
-	int					m_nInitCount;
-	unsigned int		m_uManifestPlusScriptChecksum;
-
-	CUtlSymbolTable		m_Waves;
-
 };
 
 //-----------------------------------------------------------------------------
