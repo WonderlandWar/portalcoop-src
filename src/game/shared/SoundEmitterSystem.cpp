@@ -626,7 +626,7 @@ public:
 	{
 		// No close captions in multiplayer...
 		if (
-#ifndef PORTAL
+#if !defined ( PORTAL ) || 1 // PCOOP: This check should be removed eventually, but the captions don't get delayed enough!
 			gpGlobals->maxClients > 1 || (gpGlobals->maxClients==1 &&
 #else
 				(
@@ -743,7 +743,7 @@ public:
 	{
 		// No close captions in multiplayer...
 		if ( 
-#ifndef PORTAL
+#if !defined ( PORTAL ) || 1 // PCOOP: This check should be removed eventually, but the captions don't get delayed enough!
 			gpGlobals->maxClients > 1 || (gpGlobals->maxClients==1 &&
 #else
 				(
