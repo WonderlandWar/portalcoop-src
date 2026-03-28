@@ -1778,7 +1778,9 @@ void CSceneEntity::DispatchStartSpeak( CChoreoScene *scene, CBaseFlex *actor, CC
 	if ( actor )
 	{
 		CPASAttenuationFilter filter( actor );
-
+#ifdef PORTAL
+		filter.AddAllPlayers();
+#endif
 		if ( m_pRecipientFilter )
 		{
 			int filterCount = filter.GetRecipientCount();
