@@ -906,13 +906,6 @@ void CHudCloseCaption::LevelInit( void )
 void CHudCloseCaption::LevelShutdown( void )
 {
 	Reset();
-#ifdef PORTAL
-	FOR_EACH_VEC( g_CloseCaptionFileNames, i )
-	{
-		RemoveCaptionDictionary( g_CloseCaptionFileNames[i] );
-	}
-	g_CloseCaptionFileNames.RemoveAll();
-#endif
 }
 
 static ConVar cc_minvisibleitems( "cc_minvisibleitems", "1", 0, "Minimum number of caption items to show." );
