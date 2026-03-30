@@ -3,6 +3,7 @@
 #include "c_portal_beam_helper.h"
 #include "vgui_controls/TreeView.h"
 #include "beam_shared.h"
+#include "debugoverlay_shared.h"
 
 extern void BeamHelper_Laser_OnTrace( CBaseEntity *pEntity );
 C_PortalBeamHelper::C_PortalBeamHelper( void )
@@ -125,10 +126,12 @@ void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoi
 
 		// Clip the trace against translucent model based entities
 		{
+			Ray_t clipRay;
+			clipRay.Init( vStart, tempTrace.endpos );
 			float flLastDist = vStart.DistTo( tempTrace.endpos );
 			C_BaseEntity *list[256];
 			CBeamEnumerator rayEnum( list, 256 );
-			partition->EnumerateElementsAlongRay( PARTITION_CLIENT_NON_STATIC_EDICTS, ray, false, &rayEnum );
+			partition->EnumerateElementsAlongRay( PARTITION_CLIENT_NON_STATIC_EDICTS, clipRay, false, &rayEnum );
 			
 			int nCount = rayEnum.GetCount();
 			for ( int j = 0; j < nCount; ++j )
@@ -138,7 +141,7 @@ void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoi
 				if ( pEntity && Laser_CanHitReflector( pEmitter, pEntity ) )
 				{
 					trace_t clipTrace;
-					enginetrace->ClipRayToEntity( ray, fMask, pEntity, &clipTrace );
+					enginetrace->ClipRayToEntity( clipRay, fMask, pEntity, &clipTrace );
 					
 					//clipTrace.endpos = vStart + ( clipTrace.fraction * ray.m_Delta );
 					if ( !clipTrace.DidHit() )
