@@ -37,8 +37,11 @@ BEGIN_DATADESC( CInfoPlacementHelper ) // Completely restored (Line 23)
     DEFINE_OUTPUT( m_ObjectPlacedSize, "OnObjectPlacedSize" ) // TODO: Used maybe with OnObjectPlaced( CBaseEntity * ) (L38 BP)
 END_DATADESC() // (L39 BP)
 
+extern void SendProxy_Angles( const SendProp *pProp, const void *pStruct, const void *pData, DVariant *pOut, int iElement, int objectID );
 
 IMPLEMENT_SERVERCLASS_ST( CInfoPlacementHelper, DT_InfoPlacementHelper ) // Completely restored (Line 42)
+    SendPropExclude( "DT_BaseEntity", "m_angRotation" ),
+
     SendPropString( SENDINFO( m_strTargetProxy ) ), // (L49 BP)
     SendPropString( SENDINFO( m_strTargetEntity ) ),
     SendPropFloat( SENDINFO( m_flRadius ) ),
@@ -47,6 +50,8 @@ IMPLEMENT_SERVERCLASS_ST( CInfoPlacementHelper, DT_InfoPlacementHelper ) // Comp
     SendPropBool( SENDINFO( m_bDisabled ) ),
     SendPropFloat( SENDINFO( m_flDisableTime ) ),
     SendPropBool( SENDINFO( m_bDeferringToPortal ) ),
+    SendPropQAngles( SENDINFO( m_angRotation ) ),
+	SendPropVector	(SENDINFO(m_angRotation), -1, SPROP_NOSCALE|SPROP_CHANGES_OFTEN, 0, HIGH_DEFAULT, SendProxy_Angles ),
 END_SEND_TABLE() // (L57 BP)
 
 // TODO: Oddly not used in this file; What is it actually used for? Junk ConVar?
@@ -91,12 +96,9 @@ CInfoPlacementHelper *CInfoPlacementManager::FindPlacementHelper( const Vector &
     if ( !pPlayer ) // Line 98
         return NULL; // Line 99
 
-    Vector vecEyeDir = pPlayer->EyeDirection3D(); // Line 101
-    Vector vecEyePos = pPlayer->EyePosition(); // Line 102
-
     // Try to find the best helper according to the positional data
     CInfoPlacementHelper *pBestHelper = NULL; // Line 105
-    float flBestDist = 9.9999998e17; // 10677D30: using guessed type const float FLOAT_9_9999998e17; prob a max value for vector tracing in a #define idk (Line 106)
+    float flBestDist = FLT_MAX; // 10677D30: using guessed type const float FLOAT_9_9999998e17; prob a max value for vector tracing in a #define idk (Line 106)
 
     for ( int i = 0; i < g_PlacementManager.m_PlacementHelpers.Count(); i++ ) // Line 108
     {
@@ -109,23 +111,21 @@ CInfoPlacementHelper *CInfoPlacementManager::FindPlacementHelper( const Vector &
         // See if it is in a useable state
         if ( !pHelper->IsEnabled() ) // Line 117
             continue;
-
-        Vector vecTargetDir = pHelper->GetAbsOrigin() - vecEyePos; // Line 120
-        float flTargetDist = VectorNormalize( vecTargetDir ); // Line 121
-
-        float BLAH1 = DotProduct( vecEyeDir, vecTargetDir ); // Line 123 (optimized var name)
-        BLAH1 = acos( BLAH1 ); // __libm_sse2_acosf runs on line 124 (This means acos() runs)
+        
+        float flTargetDist = pHelper->GetAbsOrigin().DistTo( vecOrigin );
+        if ( flTargetDist > pHelper->GetTargetRadius() )
+            continue;
 
         // Get the angle using the radius and see if this helper has better distancing than the previous
-        if ( BLAH1 <= atan2( pHelper->GetTargetRadius(), flTargetDist ) && flTargetDist <= flBestDist ) // __libm_sse2_atan2 runs on line 127 (This means atan2() runs)
+        if ( flTargetDist < flBestDist )
         {
 
             // Narrow down the best helper
-            pBestHelper = pHelper; // Line 131
+            pBestHelper = pHelper;
 
 
             // Narrow down the best distance
-            flBestDist = flTargetDist; // Located somewhere in between here
+            flBestDist = flTargetDist;
 
 
             if ( sv_portal_placement_debug.GetBool() ) // Line 138

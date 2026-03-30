@@ -21,6 +21,7 @@ IMPLEMENT_CLIENTCLASS_DT( C_InfoPlacementHelper, DT_InfoPlacementHelper, CInfoPl
     RecvPropBool( RECVINFO( m_bDisabled ) ),
     RecvPropFloat( RECVINFO( m_flDisableTime ) ),
     RecvPropBool( RECVINFO( m_bDeferringToPortal ) ),
+	RecvPropVector( RECVINFO_NAME( m_angNetworkAngles, m_angRotation ) ),
 END_RECV_TABLE()
 
 CUtlVector<C_InfoPlacementHelper *> s_PlacementHelpers; // TODO: Find line placements for the below functions
@@ -87,12 +88,9 @@ C_InfoPlacementHelper *UTIL_FindPlacementHelper( const Vector &vecEndPoint, C_Ba
     if ( !pPlayer )
         return NULL;
 
-	Vector vecEyeDir, vecEyePos;
-	pPlayer->EyePositionAndVectors( &vecEyePos, &vecEyeDir, NULL, NULL );
-
     // Try to find the best helper according to the positional data
     C_InfoPlacementHelper *pBestHelper = NULL;
-    float flBestDist = 9.9999998e17; // 10677D30: using guessed type const float FLOAT_9_9999998e17; prob a max value for vector tracing in a #define idk
+    float flBestDist = FLT_MAX; // 10677D30: using guessed type const float FLOAT_9_9999998e17; prob a max value for vector tracing in a #define idk
 
     for ( int i = 0; i < s_PlacementHelpers.Count(); i++ )
     {
@@ -105,15 +103,13 @@ C_InfoPlacementHelper *UTIL_FindPlacementHelper( const Vector &vecEndPoint, C_Ba
         // See if it is in a useable state
         if ( !pHelper->IsEnabled() )
             continue;
-
-        Vector vecTargetDir = pHelper->GetAbsOrigin() - vecEyePos;
-        float flTargetDist = VectorNormalize( vecTargetDir );
-
-        float BLAH1 = DotProduct( vecEyeDir, vecTargetDir );
-        BLAH1 = acos( BLAH1 );
+        
+        float flTargetDist = pHelper->GetAbsOrigin().DistTo( vecEndPoint );
+        if ( flTargetDist > pHelper->GetTargetRadius() )
+            continue;
 
         // Get the angle using the radius and see if this helper has better distancing than the previous
-        if ( BLAH1 <= atan2( pHelper->GetTargetRadius(), flTargetDist ) && flTargetDist <= flBestDist )
+        if ( flTargetDist < flBestDist )
         {
 
             // Narrow down the best helper
