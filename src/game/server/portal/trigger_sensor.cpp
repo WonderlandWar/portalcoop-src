@@ -88,7 +88,8 @@ void CTriggerSensor::StartTouch( CBaseEntity *pOther )
 	
 	for ( int i = 0; i < m_SensorEntities.Count(); ++i )
 	{
-		if ( pOther == m_SensorEntities[i].hEntity )
+		if ( pOther == m_SensorEntities[i].hEntity 
+			|| !m_SensorEntities[i].hEntity ) // If the entity was deleted, remove it from the list
 		{
 			m_SensorEntities.Remove( i );
 			i = 0;
