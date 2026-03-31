@@ -15,6 +15,16 @@
 
 static IPredictionSystem g_RecipientFilterPredictionSystem;
 
+bool ShouldUseProperFiltering( void )
+{
+#ifdef PORTAL // PCOOP
+	return false;
+#endif
+
+	// In singleplayer, always add the lone player.
+	return gpGlobals->maxClients != 1;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -233,7 +243,7 @@ void CRecipientFilter::RemovePlayersFromBitMask( CBitVec< ABSOLUTE_PLAYER_LIMIT 
 
 void CRecipientFilter::AddRecipientsByPVS( const Vector& origin )
 {
-	if ( gpGlobals->maxClients == 1 )
+	if ( !ShouldUseProperFiltering() )
 	{
 		AddAllPlayers();
 	}
@@ -247,7 +257,7 @@ void CRecipientFilter::AddRecipientsByPVS( const Vector& origin )
 
 void CRecipientFilter::RemoveRecipientsByPVS( const Vector& origin )
 {
-	if ( gpGlobals->maxClients == 1 )
+	if ( !ShouldUseProperFiltering() )
 	{
 		m_Recipients.RemoveAll();
 	}
@@ -263,7 +273,7 @@ void CRecipientFilter::RemoveRecipientsByPVS( const Vector& origin )
 
 void CRecipientFilter::AddRecipientsByPAS( const Vector& origin )
 {
-	if ( gpGlobals->maxClients == 1 )
+	if ( !ShouldUseProperFiltering() )
 	{
 		AddAllPlayers();
 	}
@@ -367,7 +377,7 @@ CTeamRecipientFilter::CTeamRecipientFilter( int team, bool isReliable )
 void CPASAttenuationFilter::Filter( const Vector& origin, float attenuation /*= ATTN_NORM*/ )
 {
 	// Don't crop for attenuation in single player
-	if ( gpGlobals->maxClients == 1 )
+	if ( !ShouldUseProperFiltering() )
 		return;
 
 	// CPASFilter adds them by pure PVS in constructor
