@@ -943,29 +943,6 @@ CInfoPlacementHelper *CWeaponPortalgun::AttemptSnapToPlacementHelper( bool bPort
 		Msg("PortalPlacement: Using placement helper angles %f %f %f\n", XYZ(pHelper->GetTargetAngles()));
 	}
 	
-	// See if the portal is behind the helper
-	{
-		Vector vecTestOrg = (-vecDir * 0.1) + pHelper->GetAbsOrigin();
-#ifdef GAME_DLL
-		//Vector extents(4, 4, 4);
-		//Msg("vecDir %f %f %f\n", vecDir.x, vecDir.y, vecDir.z);
-		//NDebugOverlay::Box( vecTestOrg, -extents, extents, 255, 0, 0, 128, 1 );
-#endif
-		Vector vTargetDir = vecTestOrg - vFinalPosition;
-		VectorNormalize(vTargetDir);
-
-		float dot = DotProduct( vecDir, vTargetDir );
-		//Msg( "dot %f\n", dot );
-		if ( dot > 0.0f )
-		{
-			if ( sv_portal_placement_debug.GetBool() && !bTest )
-			{
-				Msg("PortalPlacement: Not using placement helper because the portal shot is behind the helper\n" );
-				//Msg("vecDir %f %f %f\nvTargetDir %f %f %f\n", vecDir.x, vecDir.y, vecDir.z, vTargetDir.x, vTargetDir.y , vTargetDir.z);
-			}
-			return NULL;
-		}
-	}
 	Vector vecStartPos = vecDir + pHelper->GetAbsOrigin();
 	vecDir = -vecDir;
 	VectorNormalize( vecDir );

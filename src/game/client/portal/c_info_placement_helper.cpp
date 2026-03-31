@@ -107,6 +107,29 @@ C_InfoPlacementHelper *UTIL_FindPlacementHelper( const Vector &vecEndPoint, C_Ba
         float flTargetDist = pHelper->GetAbsOrigin().DistTo( vecEndPoint );
         if ( flTargetDist > pHelper->GetTargetRadius() )
             continue;
+        
+	    // See if the portal is behind the helper
+	    {
+	        // re-hit the area near the center of the placement helper. Very small trace is fine
+	        Vector vecDir;
+	        pHelper->GetVectors( &vecDir, NULL, NULL );
+
+		    Vector vecTestOrg = (-vecDir * 0.1) + pHelper->GetAbsOrigin();
+    #ifdef GAME_DLL
+		    //Vector extents(4, 4, 4);
+		    //Msg("vecDir %f %f %f\n", vecDir.x, vecDir.y, vecDir.z);
+		    //NDebugOverlay::Box( vecTestOrg, -extents, extents, 255, 0, 0, 128, 1 );
+    #endif
+		    Vector vTargetDir = vecTestOrg - vecEndPoint;
+		    VectorNormalize(vTargetDir);
+
+		    float dot = DotProduct( vecDir, vTargetDir );
+		    //Msg( "dot %f\n", dot );
+		    if ( dot > 0.0f )
+		    {
+			    continue;
+		    }
+	    }
 
         // Get the angle using the radius and see if this helper has better distancing than the previous
         if ( flTargetDist < flBestDist )
