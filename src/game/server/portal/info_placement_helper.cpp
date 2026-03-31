@@ -50,7 +50,6 @@ IMPLEMENT_SERVERCLASS_ST( CInfoPlacementHelper, DT_InfoPlacementHelper ) // Comp
     SendPropBool( SENDINFO( m_bDisabled ) ),
     SendPropFloat( SENDINFO( m_flDisableTime ) ),
     SendPropBool( SENDINFO( m_bDeferringToPortal ) ),
-    SendPropQAngles( SENDINFO( m_angRotation ) ),
 	SendPropVector	(SENDINFO(m_angRotation), -1, SPROP_NOSCALE|SPROP_CHANGES_OFTEN, 0, HIGH_DEFAULT, SendProxy_Angles ),
 END_SEND_TABLE() // (L57 BP)
 
