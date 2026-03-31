@@ -60,16 +60,6 @@ public:
 	virtual bool IsPredicted( void ) { return false; }
 	CBaseTrigger();
 #ifdef GAME_DLL
-	virtual int UpdateTransmitState( void ) OVERRIDE
-	{
-		if ( IsPredicted() )
-		{
-			return SetTransmitState( FL_EDICT_PVSCHECK );
-		}
-		
-		return SetTransmitState( FL_EDICT_DONTSEND );
-	}
-
 	void Activate( void );
 	virtual void PostClientActive( void );
 	void InitTrigger( void );
@@ -161,16 +151,6 @@ public:
 	virtual bool IsPredicted(void) { return false; }
 	
 #ifdef GAME_DLL
-	virtual int UpdateTransmitState( void ) OVERRIDE
-	{
-		if ( IsPredicted() )
-		{
-			return SetTransmitState( FL_EDICT_PVSCHECK );
-		}
-		
-		return SetTransmitState( FL_EDICT_DONTSEND );
-	}
-
 	DECLARE_DATADESC();
 	virtual void Activate( void );
 
