@@ -1115,10 +1115,6 @@ bool CWeaponPortalgun::PortalTraceClippedByBlockers(bool bPortal2, const Vector 
 
 			tr.plane.normal = -vDirection;
 
-#if defined( GAME_DLL )
-//			pHitFizzler->SetPortalShot();
-#endif
-
 			CProp_Portal *pPortal = bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get();//CProp_Portal::FindPortal( m_iPortalLinkageGroupID, bIsSecondPortal, true );
 			if( pPortal && !bTest )
 			{
