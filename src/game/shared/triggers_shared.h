@@ -60,6 +60,11 @@ public:
 	virtual bool IsPredicted( void ) { return false; }
 	CBaseTrigger();
 #ifdef GAME_DLL
+	virtual int UpdateTransmitState( void ) OVERRIDE
+	{
+		return SetTransmitState( FL_EDICT_PVSCHECK );
+	}
+
 	void Activate( void );
 	virtual void PostClientActive( void );
 	void InitTrigger( void );
@@ -148,9 +153,14 @@ class CBaseVPhysicsTrigger : public CBaseEntity
 public:
 
 	// By default, triggers aren't predicted, not really an accurate name
-	virtual bool IsPredicted(void) { return false; }
+	virtual bool IsPredicted( void ) { return false; }
 	
 #ifdef GAME_DLL
+	virtual int UpdateTransmitState( void ) OVERRIDE
+	{
+		return SetTransmitState( FL_EDICT_PVSCHECK );
+	}
+
 	DECLARE_DATADESC();
 	virtual void Activate( void );
 
