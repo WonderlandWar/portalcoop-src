@@ -45,9 +45,7 @@ LINK_ENTITY_TO_CLASS( trigger_portal_cleanser, CTriggerPortalCleanser );
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTriggerPortalCleanser::Spawn( void )
-{	
-	SetTransmitState( FL_EDICT_PVSCHECK );
-
+{
 	BaseClass::Spawn();
 	
 	InitTrigger();
