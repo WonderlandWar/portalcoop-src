@@ -115,7 +115,8 @@ void CTriggerSensor::EndTouch( CBaseEntity *pOther )
 		return;
 
 	TouchingEntities_t *touching = NULL;
-	for ( int i = 0; i < m_SensorEntities.Count(); ++i )
+	int i;
+	for ( i = 0; i < m_SensorEntities.Count(); ++i )
 	{
 		if ( pOther == m_SensorEntities[i].hEntity )
 		{
@@ -149,15 +150,8 @@ void CTriggerSensor::EndTouch( CBaseEntity *pOther )
 			m_OnDeactivate.FireOutput( pOther, pOther );
 		}
 	}
-	
-	for ( int i = 0; i < m_SensorEntities.Count(); ++i )
-	{
-		if ( pOther == m_SensorEntities[i].hEntity )
-		{
-			m_SensorEntities.Remove( i );
-			break;
-		}
-	}
+
+	m_SensorEntities.Remove( i );
 }
 
 void CTriggerSensor::InputActivate( inputdata_t &inputdata )
