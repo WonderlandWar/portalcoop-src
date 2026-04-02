@@ -41,6 +41,9 @@ private:
 	COutputEvent m_OnActivate;
 	COutputEvent m_OnDeactivate;
 
+	COutputEvent m_OnPassForward;
+	COutputEvent m_OnPassBackward;
+
 	CUtlVector< TouchingEntities_t > m_SensorEntities;
 };
 
@@ -53,6 +56,8 @@ BEGIN_DATADESC( CTriggerSensor )
 
 	DEFINE_OUTPUT( m_OnActivate, "OnActivate" ),
 	DEFINE_OUTPUT( m_OnDeactivate, "OnDeactivate" ),
+	DEFINE_OUTPUT( m_OnPassForward, "OnPassForward" ),
+	DEFINE_OUTPUT( m_OnPassBackward, "OnPassBackward" ),
 
 	DEFINE_INPUTFUNC( FIELD_VOID, "Activate", InputActivate ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Deactivate", InputDeactivate ),
@@ -140,14 +145,22 @@ void CTriggerSensor::EndTouch( CBaseEntity *pOther )
 
 	if ( bToggleState )
 	{
-		m_bActivated = !m_bActivated;
-		if ( m_bActivated )
+		if ( touching->bBehind )
 		{
-			m_OnActivate.FireOutput( pOther, pOther );
+			m_OnPassForward.FireOutput( pOther, this );
 		}
 		else
 		{
-			m_OnDeactivate.FireOutput( pOther, pOther );
+			m_OnPassBackward.FireOutput( pOther, this );
+		}
+		m_bActivated = !m_bActivated;
+		if ( m_bActivated )
+		{
+			m_OnActivate.FireOutput( pOther, this );
+		}
+		else
+		{
+			m_OnDeactivate.FireOutput( pOther, this );
 		}
 	}
 
