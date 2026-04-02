@@ -70,7 +70,7 @@ public:
 	void InitTrigger( void );
 
 	void Enable( void );
-	void Disable( void );
+	virtual void Disable( void );
 	void Spawn( void );
 	void UpdateOnRemove( void );
 	void TouchTest(  void );

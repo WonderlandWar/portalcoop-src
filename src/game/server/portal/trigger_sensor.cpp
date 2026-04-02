@@ -23,6 +23,7 @@ public:
 	CTriggerSensor();
 
 	void Spawn( void );
+	virtual void Disable( void );
 
 	void StartTouch( CBaseEntity *pOther );
 	void EndTouch( CBaseEntity *pOther );
@@ -67,6 +68,12 @@ void CTriggerSensor::Spawn( void )
 {
 	InitTrigger();
 	BaseClass::Spawn();
+}
+
+void CTriggerSensor::Disable( void )
+{
+	m_SensorEntities.Purge();
+	BaseClass::Disable();
 }
 
 bool CTriggerSensor::IsBehindTrigger( CBaseEntity *pOther )
