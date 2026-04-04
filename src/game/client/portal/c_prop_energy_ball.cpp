@@ -11,6 +11,7 @@
 #include "cbase.h"							// precompiled headers
 #include "c_prop_combine_ball.h"			// Our parent class
 #include "clienteffectprecachesystem.h"		// To precache our new material
+#include "portal_shareddefs.h"
 
 ConVar cl_energy_ball_start_fade_time ( "cl_energy_ball_start_fade_time", "8", FCVAR_CHEAT );
 
@@ -39,6 +40,7 @@ protected:
 // precache our different materials for the infinite life energy balls
 CLIENTEFFECT_REGISTER_BEGIN( PrecacheEffectEnergyBall )
 
+	CLIENTEFFECT_MATERIAL( "effects/eball_infinite_life_rex" )
 	CLIENTEFFECT_MATERIAL( "effects/eball_infinite_life" )
 	CLIENTEFFECT_MATERIAL( "effects/eball_finite_life" )
 
@@ -111,7 +113,14 @@ bool C_PropEnergyBall::InitMaterials()
 	IMaterial* pBodyMat;
 	if ( m_bIsInfiniteLife )
 	{
-		pBodyMat = materials->FindMaterial( "effects/eball_infinite_life", NULL, false );
+		if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA )
+		{
+			pBodyMat = materials->FindMaterial( "effects/eball_infinite_life_rex", NULL, false );
+		}
+		else
+		{
+			pBodyMat = materials->FindMaterial( "effects/eball_infinite_life", NULL, false );
+		}
 	}
 	else
 	{
