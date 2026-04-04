@@ -689,11 +689,12 @@ CBaseEntity *CPortalLaser::TraceLaser( bool bIsFirstTrace, Vector &vecStart, Vec
 		enginetrace->TraceRay( ray, MASK_PORTAL_LASER, &traceFilter, &tr );
 
 		UpdateSoundPosition( tr.startpos, tr.endpos );
-
-		CProp_Portal *pFirstPortal = NULL;
-		if (!UTIL_DidTraceTouchPortals(ray, tr, &pFirstPortal, NULL)
-			|| !pFirstPortal
-			|| !pFirstPortal->IsActivedAndLinked())
+		
+		float flMustBeCloserThan = 2.0;
+		Ray_t portalTestRay;
+		portalTestRay.Init( tr.startpos, tr.endpos );
+		CProp_Portal *pFirstPortal = UTIL_Portal_FirstAlongRay( portalTestRay, flMustBeCloserThan );
+		if ( !pFirstPortal )
 		{
 			break;
 		}

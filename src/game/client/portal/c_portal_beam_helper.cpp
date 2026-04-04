@@ -164,10 +164,11 @@ void C_PortalBeamHelper::UpdatePoints( C_BaseEntity *pEmitter, Vector &vStartPoi
 		}
 		BeamHelper_Laser_OnTrace( pEmitter );
 		
-		C_Prop_Portal *pPortal;
-		if ( UTIL_DidTraceTouchPortals( ray, tempTrace, &pPortal, 0 )
-		  && pPortal
-		  && pPortal->IsActivedAndLinked() )
+		float flMustBeCloserThan = 2.0;
+		Ray_t portalTestRay;
+		portalTestRay.Init( tempTrace.startpos, tempTrace.endpos );
+		C_Prop_Portal *pPortal = UTIL_Portal_FirstAlongRay( portalTestRay, flMustBeCloserThan );
+		if ( pPortal )
 		{
 
 			m_beams[i]->PointsInit( vStart, tempTrace.endpos);
