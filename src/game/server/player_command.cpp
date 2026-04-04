@@ -430,14 +430,6 @@ void CPlayerMove::RunCommand ( CBasePlayer *player, CUserCmd *ucmd, IMoveHelper 
 		VPROF( "g_pGameMovement->ProcessMovement()" );
 		Assert( g_pGameMovement );
 		g_pGameMovement->ProcessMovement( player, g_pMoveData );
-#ifdef PORTAL
-		CPortal_Player *pPortalPlayer = static_cast<CPortal_Player*>( player );		
-		CBaseEntity *ground = pPortalPlayer->GetGroundEntity();
-		if ( ground )
-		{
-			pPortalPlayer->m_vecAnimStateBaseVelocity = ground->GetAbsVelocity();
-		}
-#endif
 	}
 	else
 	{

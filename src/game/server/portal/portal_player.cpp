@@ -1469,6 +1469,12 @@ void CPortal_Player::PreThink(void)
 	m_vecTotalBulletForce = vec3_origin;
 
 	SetLocalAngles(vOldAngles);
+	
+	CBaseEntity *ground = GetGroundEntity();
+	if ( ground )
+	{
+		m_vecAnimStateBaseVelocity = ground->GetAbsVelocity();
+	}
 }
 
 void CPortal_Player::PostThink(void)
@@ -1527,6 +1533,12 @@ void CPortal_Player::PostThink(void)
 		Vector vNewPos = GetAbsOrigin() + vForward * gpGlobals->frametime * -1000.0f;
 		Teleport(&vNewPos, NULL, &vForward);
 		m_bStuckOnPortalCollisionObject = false;
+	}
+	
+	CBaseEntity *ground = GetGroundEntity();
+	if ( ground )
+	{
+		m_vecAnimStateBaseVelocity = ground->GetAbsVelocity();
 	}
 }
 
