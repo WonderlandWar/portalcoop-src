@@ -776,7 +776,7 @@ LABEL_25:
 		vAutoAimOffset = *pVecAutoAimOffset;
 		for ( int i = 0; i < portalList.Count(); ++i )
 		{
-			UTIL_Portal_VectorTransform( portalList[i++]->m_matrixThisToLinked, vAutoAimOffset, vAutoAimOffset );
+			UTIL_Portal_VectorTransform( portalList[i]->m_matrixThisToLinked, vAutoAimOffset, vAutoAimOffset );
 		}
 		*pVecAutoAimOffset = vAutoAimOffset;
 	}
