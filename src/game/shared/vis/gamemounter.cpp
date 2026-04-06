@@ -40,13 +40,13 @@ bool ValidateCheckFiles( KeyValues *mapsets )
 
 	for ( KeyValues *file = pCheckFiles->GetFirstSubKey(); file; file = file->GetNextKey() )
 	{
-		if ( g_pFullFileSystem->FileExists( file->GetString() ) )
+		if ( !g_pFullFileSystem->FileExists( file->GetString() ) )
 		{
-			return true;
+			return false;
 		}
 	}
 
-	return false;
+	return true;
 }
 #endif
 // brute forces our search paths, reads the users steam configs
@@ -139,7 +139,13 @@ void MountSourceMod( KeyValues* pGame )
 	const char* szGameName = pGame->GetName();
 
 	const char *defaultpath = NULL;
-	const char *szPath = CommandLine()->ParmValue( "-game", defaultpath );
+	const char *pszGamePath = CommandLine()->ParmValue("-game", defaultpath );
+	if ( !pszGamePath || !pszGamePath[0] )
+		return;
+
+	char szPath[MAX_PATH];
+	V_strcpy( szPath, pszGamePath );
+	V_StripLastDir( szPath, sizeof( szPath ) );
 
 	if ( szPath )
 	{
@@ -152,7 +158,7 @@ void MountSourceMod( KeyValues* pGame )
 		for ( KeyValues *folder = pPaths->GetFirstSubKey(); folder; folder = folder->GetNextKey() )
 		{
 			char szTempPath[ MAX_PATH * 2 ];
-			Q_snprintf( szTempPath, sizeof( szTempPath ), "%s/../%s", szPath, folder->GetString() );
+			Q_snprintf( szTempPath, sizeof( szTempPath ), "%s%s", szPath, folder->GetString() );
 			
 			V_AppendSlash( szTempPath, ARRAYSIZE( szTempPath ) );
 
