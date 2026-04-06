@@ -195,22 +195,19 @@ void SetupCheckCodes( const char *pFilename )
 		if ( !checkcode )
 			continue;
 
-		if ( V_strlen( checkcode ) > MAPSET_ID_LENGTH )
+		if ( V_strlen( checkcode ) != MAPSET_ID_LENGTH )
 			continue;
 
 		// If multiple map sets have the same check code, don't add it to the list again
 		if ( V_strstr( szCheckCodeList, checkcode ) )
 			continue;
 
-		if ( szCheckCodeList && szCheckCodeList[0] )
+		if ( szCheckCodeList && szCheckCodeList[0] ) // Only add the delimiter if a checkcode was already added
 		{
 			V_strncat( szCheckCodeList, MAPSET_ID_DELIMITER_CONST, sizeof( szCheckCodeList ), 1 );
-			V_strncat( szCheckCodeList, checkcode, sizeof( szCheckCodeList ), 2 );
 		}
-		else // If it's the first custom mapset being added, don't add the comma.
-		{
-			V_strncat( szCheckCodeList, checkcode, sizeof( szCheckCodeList ), 2 );
-		}
+
+		V_strncat( szCheckCodeList, checkcode, sizeof( szCheckCodeList ), 2 );
 	}
 
 	mapsets_cv.SetValue( szCheckCodeList );
