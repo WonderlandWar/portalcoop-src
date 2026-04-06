@@ -42,7 +42,7 @@ extern ConVar cl_forwardspeed;
 extern ConVar cl_backspeed;
 extern ConVar cl_sidespeed;
 
-ConVar mapsets_cv( "mapsets", "", FCVAR_USERINFO );
+ConVar mapsets_cv( "mapsets", "", FCVAR_USERINFO | FCVAR_DEVELOPMENTONLY );
 
 // Don't alias here
 #if defined( CPortal_Player )
