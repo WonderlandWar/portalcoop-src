@@ -115,6 +115,17 @@ enum PortalColorSet_t
 #define PORTAL_COLOR_GREEN Color(0,255,0,255)
 #define PORTAL_COLOR_PINK Color(255,0,255,255)
 
+#define MAX_MAPSET_LENGTH 16
+#define MAX_MAPSET_TITLE_LENGTH 32
+
+#define MAX_USER_CONVAR_LENGTH 255
+#define MAPSET_ID_LENGTH 2
+#define MAPSET_ID_DELIMITER ','
+#define MAPSET_ID_DELIMITER_CONST ","
+
+// ConVar Length divided by the ID and delimiter
+#define MAX_NETWORKED_MAPSETS MAX_USER_CONVAR_LENGTH / (MAPSET_ID_LENGTH+1)
+
 PortalColorSet_t ConvertLinkageIDToColorSet( int iPortalLinkageID );
 PortalColorSet_t GetColorSetForPlayer( int iPlayer );
 
@@ -149,12 +160,14 @@ public:
 	void Reset();
 
 	int GetRequiredPlayers() { return m_iRequiredPlayers; }
+	const char* GetAssociatedMapSet( void ) { return m_szAssociatedMapSet; }
 #ifdef CLIENT_DLL
 	const char *GetCreditsFile( void ) { return m_szCreditsFile; }
 #endif
 
 private:
 	int m_iRequiredPlayers;
+	char m_szAssociatedMapSet[MAX_MAPSET_LENGTH];
 #ifdef CLIENT_DLL
 	char m_szCreditsFile[32];
 #endif
@@ -181,8 +194,11 @@ inline bool Map_IsRexaura( const char *pMapName )
 	return V_stristr( pMapName, "rex2c_" ) || V_stristr( pMapName, "rex3c_" ) || V_stristr( pMapName, "rex_" );
 }
 
-typedef void (MapSetFunc)(const char *pDirectory );
+typedef void (MapSetFunc)(const char *pDirectory, void *pData );
 
-void ExecuteLoadingMapSetFunction( MapSetFunc func );
+void GetTitleForMapSet( char *szTitle, const char *mapset );
+
+bool MapSetIsOfficial( const char *mapsetname );
+void ExecuteLoadingMapSetFunction( MapSetFunc func, void *pData = NULL );
 
 #endif // PORTAL_SHAREDDEFS_H

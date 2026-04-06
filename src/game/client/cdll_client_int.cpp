@@ -1618,33 +1618,12 @@ void CHLClient::View_Fade( ScreenFade_t *pSF )
 	if ( pSF != NULL )
 		vieweffects->Fade( *pSF );
 }
-#ifdef PORTAL
-static CDllDemandLoader g_GameUI("GameUI");
-extern ConVar sv_require_game_install_necessary_for_map;
-#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: Per level init
 //-----------------------------------------------------------------------------
 void CHLClient::LevelInitPreEntity( char const* pMapName )
 {
-#ifdef PORTAL
-	if ( sv_require_game_install_necessary_for_map.GetBool() )
-	{
-		char szMissingFolder[32];
-		if ( RestrictedMapPrefix( pMapName, szMissingFolder ) )
-		{
-			CreateInterfaceFn gameUIFactory = g_GameUI.GetFactory();
-			IGameUI *pGameUI = (IGameUI *) gameUIFactory(GAMEUI_INTERFACE_VERSION, NULL );
-
-			engine->DisconnectInternal();
-		
-			char szDisconnectMessage[128];
-			V_snprintf( szDisconnectMessage, sizeof( szDisconnectMessage ), "Couldn't mount %s", szMissingFolder );
-
-			pGameUI->OnLevelLoadingFinished( true, szDisconnectMessage, "Failed to mount content" );
-		}
-	}
-#endif
 	ReloadParticleEffects();
 
 	// HACK: Bogus, but the logic is too complicated in the engine

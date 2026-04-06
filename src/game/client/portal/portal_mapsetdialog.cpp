@@ -256,17 +256,15 @@ CMapSetDialog::~CMapSetDialog()
 	m_pMapSetList->DeleteAllItems();
 }
 
-void ParseCustomMapSet( const char *pFilename )
+void ParseCustomMapSet( const char *pFilename, void *pData )
 {
-	if ( !g_pMapSetDialog )
-		return;
-		
+	CMapSetDialog *pDialog = (CMapSetDialog *)pData;
 	char szFullDirectory[_MAX_PATH];
 	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/mapsets.txt", pFilename );
 
 	KeyValues *mapsets = new KeyValues( "mapsets" );
 	mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory );
-	g_pMapSetDialog->ParseMapSetKeyValues( mapsets, szFullDirectory );
+	pDialog->ParseMapSetKeyValues( mapsets, szFullDirectory );
 	mapsets->deleteThis();
 }
 
@@ -279,7 +277,7 @@ void CMapSetDialog::SetupMapSetList( void )
 	ParseMapSetKeyValues( mapsets, official_filename );
 	mapsets->deleteThis();
 
-	ExecuteLoadingMapSetFunction( ParseCustomMapSet );
+	ExecuteLoadingMapSetFunction( ParseCustomMapSet, this );
 }
 
 void CMapSetDialog::SetupMapList( CMapSetItemPanelMapSet *pMapPanel )
@@ -408,7 +406,6 @@ void CMapSetDialog::OnCommand( const char *command )
 
 void CMapSetDialog::ParseMapSetKeyValues( KeyValues *mapsets, const char *filename )
 {
-	// add chapters to combobox
 	for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
 	{
 		char szImage[32];

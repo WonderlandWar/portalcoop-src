@@ -128,8 +128,9 @@ void CSoundscapeSystem::PrintDebugInfo()
 	Msg( "----------------------------------\n\n" );
 }
 #ifdef PORTAL
-void LoadMapSetSoundscapes( const char *pFileName )
+void LoadMapSetSoundscapes( const char *pFileName, void *pData )
 {
+	CSoundscapeSystem *pSoundscapeSystem = (CSoundscapeSystem *)pData;
 	// Load the sounds
 	char manifestfile[_MAX_PATH];
 	Q_snprintf( manifestfile, sizeof( manifestfile ), "%s/soundscapes_manifest.txt", pFileName );
@@ -145,7 +146,7 @@ void LoadMapSetSoundscapes( const char *pFileName )
 			if ( !Q_stricmp( sub->GetName(), "file" ) )
 			{
 				// Add
-				g_SoundscapeSystem.AddSoundscapeFile( sub->GetString() );
+				pSoundscapeSystem->AddSoundscapeFile( sub->GetString() );
 				continue;
 			}
 
@@ -200,7 +201,7 @@ bool CSoundscapeSystem::Init()
 	}
 	manifest->deleteThis();
 #ifdef PORTAL
-	ExecuteLoadingMapSetFunction( LoadMapSetSoundscapes );
+	ExecuteLoadingMapSetFunction( LoadMapSetSoundscapes, this );
 #endif
 	m_activeIndex = 0;
 

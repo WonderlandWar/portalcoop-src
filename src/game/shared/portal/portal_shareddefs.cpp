@@ -69,6 +69,7 @@ CMapInfo::CMapInfo()
 void CMapInfo::Reset( void )
 {
 	m_iRequiredPlayers = -1;
+	memset( m_szAssociatedMapSet, 0, sizeof( m_szAssociatedMapSet ) );
 #ifdef CLIENT_DLL
 	V_strcpy( m_szCreditsFile, "scripts/credits.txt" );
 #endif
@@ -169,6 +170,15 @@ void CMapDataLoader::LevelInitPreEntity()
 	Msg("Map loaded: %s\n", pszMapName);
 
 	g_MapInfo.m_iRequiredPlayers = pMapData->GetInt( "required_players", -1 );
+	const char *associated_mapset = pMapData->GetString( "associated_mapset", NULL );
+	if ( associated_mapset )
+	{
+		V_strcpy( g_MapInfo.m_szAssociatedMapSet, associated_mapset );
+	}
+	else
+	{
+		memset( g_MapInfo.m_szAssociatedMapSet, 0, sizeof( g_MapInfo.m_szAssociatedMapSet ) );
+	}
 #ifdef CLIENT_DLL
 	V_strcpy( g_MapInfo.m_szCreditsFile, pMapData->GetString( "credits_file", "scripts/credits.txt" ) );
 #endif
@@ -176,7 +186,29 @@ void CMapDataLoader::LevelInitPreEntity()
 	pMapData->deleteThis();
 }
 
-void ExecuteLoadingMapSetFunction( MapSetFunc func )
+bool MapSetIsOfficial( const char *mapsetname )
+{
+	KeyValues *mapsets_official = new KeyValues( "mapsets" );
+	if ( !mapsets_official->LoadFromFile( g_pFullFileSystem, "scripts/mapsets/mapsets_official.txt", "GAME" ) )
+	{
+		mapsets_official->deleteThis();
+		return false;
+	}
+	
+	for ( KeyValues *mapset = mapsets_official->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
+	{
+		if ( !V_stricmp( mapset->GetName(), mapsetname ) )
+		{
+			mapsets_official->deleteThis();
+			return true;
+		}
+	}
+
+	mapsets_official->deleteThis();
+	return false;
+}
+
+void ExecuteLoadingMapSetFunction( MapSetFunc func, void *pData )
 {
 	// Check the soundscripts
 	const char* pCurrentPath = "scripts/mapsets/";
@@ -200,8 +232,45 @@ void ExecuteLoadingMapSetFunction( MapSetFunc func )
 
 		char szFullDirectory[_MAX_PATH];
 		Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "scripts/mapsets/%s", pDirFileName );
-		func( szFullDirectory );
+		func( szFullDirectory, pData );
 
 		pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
 	}
+}
+
+static void GetMapSetTitle( const char *pFilename, void *pData )
+{
+	char szFullDirectory[_MAX_PATH];
+	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/mapsets.txt", pFilename );
+
+	KeyValues *mapsets = new KeyValues( "mapsets" );
+	if ( !mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory, "GAME" ) )
+	{
+		mapsets->deleteThis();
+		return;
+	}
+	
+	void **array = (void**)pData;
+	char *pszName = (char*)array[0];
+	char *pszTitle = (char*)array[1];
+	
+	for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
+	{
+		if ( !V_stricmp( mapset->GetName(), pszName ) )
+		{
+			V_strcpy( pszTitle, mapset->GetString( "name" ) );
+		}
+	}
+
+	mapsets->deleteThis();
+}
+
+void GetTitleForMapSet( char *szTitle, const char *mapset )
+{
+	void *array[2] = 
+	{
+		(void*)mapset,
+		szTitle
+	};
+	ExecuteLoadingMapSetFunction( GetMapSetTitle, array );
 }

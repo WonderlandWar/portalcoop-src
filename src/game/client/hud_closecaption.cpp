@@ -2772,7 +2772,7 @@ void CHudCloseCaption::RemoveCaptionDictionary( const CUtlSymbol &dbFileSymbol )
 	}
 }
 #ifdef PORTAL
-static void LoadMapSetCaptionsLocalization( const char *pFileName )
+static void LoadMapSetCaptionsLocalization( const char *pFileName, void *pData )
 {
 	const char* captiontemplate = "closecaption_%language%.txt";
 	// Load the sounds
@@ -2785,7 +2785,7 @@ static void LoadMapSetCaptionsLocalization( const char *pFileName )
 	}
 }
 
-static void LoadMapSetCaptionsFile( const char *pFileName )
+static void LoadMapSetCaptionsFile( const char *pFileName, void *pData )
 {
 	const char* captiontemplate = "closecaption_%language%.txt";
 	// Load the sounds

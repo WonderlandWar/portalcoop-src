@@ -30,66 +30,23 @@ bool EvaluateExtraConditionals( const char* str )
 	return false;
 }
 
-#ifdef PORTAL
-struct FailedMount
+#if defined ( PORTAL ) && defined ( CLIENT_DLL )
+bool ValidateCheckFiles( KeyValues *mapsets )
 {
-	FailedMount( const char *pszModFolder, const char *pszPrefix )
-	{
-		V_strcpy( m_szModFolder, pszModFolder );
-		V_strcpy( m_szPrefix, pszPrefix );
-	}
-	char m_szModFolder[16];
-	char m_szPrefix[16];
-};
+	// Add the check files
+	KeyValues *pCheckFiles = mapsets->FindKey( "checkfiles" );
+	if ( !pCheckFiles )
+		return true; // No check files means that there's no checks necessary
 
-CUtlVector<FailedMount> g_FailedMountChecks;
-
-bool RestrictedMapPrefix( const char *pszPrefix, char *pszMissingMod, const char *pszCheckMod )
-{
-	for ( int i = 0; i < g_FailedMountChecks.Count(); ++i )
+	for ( KeyValues *file = pCheckFiles->GetFirstSubKey(); file; file = file->GetNextKey() )
 	{
-		if ( V_stristr( pszPrefix, g_FailedMountChecks[i].m_szPrefix ) &&
-			// It's possible to have multiple map sets using the same prefix while also having different mods
-			( !pszCheckMod || !V_stricmp( pszCheckMod, g_FailedMountChecks[i].m_szModFolder ) )
-			)
+		if ( g_pFullFileSystem->FileExists( file->GetString() ) )
 		{
-			if ( pszMissingMod )
-			{
-				V_strcpy( pszMissingMod, g_FailedMountChecks[i].m_szModFolder );
-			}
 			return true;
 		}
 	}
 
 	return false;
-}
-
-void AddCheckFiles( KeyValues *pGame, KeyValues *pPaths, const char *pModFolder )
-{
-	// Add the check files
-	KeyValues *pCheckFiles = pGame->FindKey( "checkfiles" );
-	if ( !pCheckFiles )
-		return;
-
-	for ( KeyValues *file = pCheckFiles->GetFirstSubKey(); file; file = file->GetNextKey() )
-	{
-		if ( !g_pFullFileSystem->FileExists( file->GetString() ) )
-		{
-			KeyValues *pMapPrefixes = pGame->FindKey( "map_prefixes" );
-			if ( !pMapPrefixes )
-				return;
-
-			for ( KeyValues *prefix = pMapPrefixes->GetFirstSubKey(); prefix; prefix = prefix->GetNextKey() )
-			{
-				// No need to add a restricted map prefix if it was already added
-				if ( !RestrictedMapPrefix( prefix->GetName(), NULL, pModFolder ) )
-				{
-					FailedMount failedmount( pModFolder, prefix->GetString() );
-					g_FailedMountChecks.AddToTail( failedmount );
-				}
-			}
-		}
-	}
 }
 #endif
 // brute forces our search paths, reads the users steam configs
@@ -131,9 +88,7 @@ void MountPathLocal( KeyValues* pGame )
 			V_strncat( szTempPath, pPath->GetString(), ARRAYSIZE( szTempPath ) );
 
 			g_pFullFileSystem->AddSearchPath( szTempPath, "GAME" );
-#ifdef PORTAL
-			AddCheckFiles( pGame, pPaths, pPath->GetString() );
-#endif
+
 			ConColorMsg( Color( 144, 238, 144, 255 ), "\tAdding path: %s\n", pPath->GetString() );
 		}
 	}
@@ -170,9 +125,7 @@ void MountPathDedicated( KeyValues* pGame )
 		V_FixSlashes( gamedir );
 
 		g_pFullFileSystem->AddSearchPath( gamedir, "GAME" );
-#ifdef PORTAL
-		AddCheckFiles( pGame, pPaths, pPath->GetString() );
-#endif
+
 		ConColorMsg( Color( 90, 240, 90, 255 ), "\tAdding path: %s\n", gamedir );
 	}
 }
@@ -204,15 +157,63 @@ void MountSourceMod( KeyValues* pGame )
 			V_AppendSlash( szTempPath, ARRAYSIZE( szTempPath ) );
 
 			g_pFullFileSystem->AddSearchPath( szTempPath, "GAME" );
-#ifdef PORTAL
-			AddCheckFiles( pGame, pPaths, folder->GetString() );
-#endif
+
 			ConColorMsg( Color( 90, 240, 90, 255 ), "\tAdding sourcemod path: %s\n", szTempPath );
 		}
 	}
 }
 #ifdef PORTAL
-void MountGamesForMapSets( const char *pFilename )
+void SetupCheckCodes( const char *pFilename )
+{
+#ifdef CLIENT_DLL
+	char szFullDirectory[_MAX_PATH];
+	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/mapsets.txt", pFilename );
+
+	KeyValues *mapsets = new KeyValues( "mapsets" );
+	if ( !mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory, "GAME" ) )
+	{
+		mapsets->deleteThis();
+		return;
+	}
+
+	extern ConVar mapsets_cv;
+	char szCheckCodeList[MAX_USER_CONVAR_LENGTH];
+	V_strcpy( szCheckCodeList, mapsets_cv.GetString() );
+
+	for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
+	{
+		if ( !ValidateCheckFiles( mapset ) )
+			continue;
+
+		const char *checkcode = mapset->GetString( "checkcode", NULL );
+		if ( !checkcode )
+			continue;
+
+		if ( V_strlen( checkcode ) > MAPSET_ID_LENGTH )
+			continue;
+
+		// If multiple map sets have the same check code, don't add it to the list again
+		if ( V_strstr( szCheckCodeList, checkcode ) )
+			continue;
+
+		if ( szCheckCodeList && szCheckCodeList[0] )
+		{
+			V_strncat( szCheckCodeList, MAPSET_ID_DELIMITER_CONST, sizeof( szCheckCodeList ), 1 );
+			V_strncat( szCheckCodeList, checkcode, sizeof( szCheckCodeList ), 2 );
+		}
+		else // If it's the first custom mapset being added, don't add the comma.
+		{
+			V_strncat( szCheckCodeList, checkcode, sizeof( szCheckCodeList ), 2 );
+		}
+	}
+
+	mapsets_cv.SetValue( szCheckCodeList );
+
+	mapsets->deleteThis();
+#endif
+}
+
+void MountGamesForMapSets( const char *pFilename, void *pData )
 {
 	KeyValues *pMountFile = new KeyValues( "gamemounting.txt" );
 	char szFileName[MAX_PATH];
@@ -247,6 +248,8 @@ void MountGamesForMapSets( const char *pFilename )
 	}
 
 	pMountModFile->deleteThis();
+
+	SetupCheckCodes( pFilename );
 }
 
 #endif

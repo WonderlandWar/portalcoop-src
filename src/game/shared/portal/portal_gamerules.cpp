@@ -1586,6 +1586,44 @@ bool CPortalGameRules::ShouldUseRobustRadiusDamage(CBaseEntity *pEntity)
 
 ConVar sv_require_game_install_necessary_for_map( "sv_require_game_install_necessary_for_map", "1", FCVAR_REPLICATED, "Forces clients to have the maps' game to be mounted to play the server" );
 #ifndef CLIENT_DLL
+static void VerifyCheckCodes( const char *pFilename, void *pData )
+{	
+	char szFullDirectory[_MAX_PATH];
+	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/mapsets.txt", pFilename );
+
+	KeyValues *mapsets = new KeyValues( "mapsets" );
+	if ( !mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory, "GAME" ) )
+	{
+		mapsets->deleteThis();
+		return;
+	}
+
+	void **array = (void**)pData;
+	char *pszClientMapSets = (char*)array[0];
+	bool *bReject = (bool*)array[1];
+	
+	char szToken[MAPSET_ID_LENGTH+1];
+	const char *psz = pszClientMapSets;
+	for ( int i = 0; i < MAX_NETWORKED_MAPSETS; ++i )
+	{
+		psz = nexttoken(szToken, psz, MAPSET_ID_DELIMITER );
+		if (szToken[0] == '\0')
+			break;
+		
+		for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
+		{
+			const char *checkcode = mapset->GetString( "checkcode", NULL );
+			if ( checkcode && !V_strcmp( checkcode, szToken ) )
+			{
+				*bReject = false;
+				break;
+			}
+		}
+	}
+	
+	mapsets->deleteThis();
+}
+
 //=========================================================
 //=========================================================
 bool CPortalGameRules::ClientConnected( edict_t *pEntity, const char *pszName, const char *pszAddress, char *reject, int maxrejectlen )
@@ -1595,6 +1633,31 @@ bool CPortalGameRules::ClientConnected( edict_t *pEntity, const char *pszName, c
 	if ( !engine->IsDedicatedServer() )
 	{
 		bIsHost = index == 1;
+	}
+	
+	// Check if the client has the mapset
+	const char *mapsetname = g_MapInfo.GetAssociatedMapSet();
+	if ( mapsetname && mapsetname[0] != 0 && !MapSetIsOfficial( mapsetname ) )
+	{
+		bool bReject = true;
+		const char *pszClientMapSets = engine->GetClientConVarValue( ENTINDEX( pEntity ), "mapsets" );
+		if ( pszClientMapSets && pszClientMapSets[0] )
+		{
+			void *array[2] = 
+			{
+				(void*)pszClientMapSets,
+				&bReject
+			};
+			ExecuteLoadingMapSetFunction( VerifyCheckCodes, array );
+		}
+		
+		if ( bReject )
+		{
+			char szTitle[MAX_MAPSET_TITLE_LENGTH] = "";
+			GetTitleForMapSet( szTitle, mapsetname );
+			Q_strncpy( reject, UTIL_VarArgs( "The Map Set \"%s\" is either missing or not setup correctly", szTitle ), maxrejectlen );
+			return false;
+		}
 	}
 
 	if ( pcoop_require_all_players.GetBool() )
@@ -2456,7 +2519,7 @@ static void LoadMapSetSounds( const char *pszPath )
 	}
 }
 
-void OnMapSetDirectoryLoaded( const char *pDirectory )
+void OnMapSetDirectoryLoaded( const char *pDirectory, void *pData )
 {
 	LoadMapSetSounds( pDirectory );
 }

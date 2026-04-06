@@ -61,9 +61,9 @@ int GetAttachTypeFromString( const char *pszString )
 	return -1;
 }
 #ifdef PORTAL
-static CUtlVector<CUtlString> *g_pParticleList = NULL;
-void GetParticleManifestFromMapSets( const char *pFilename )
+void GetParticleManifestFromMapSets( const char *pFilename, void *pData )
 {
+	CUtlVector<CUtlString> *list = (CUtlVector<CUtlString>*)pData;
 	char szFullDirectory[_MAX_PATH];
 	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/particles_manifest.txt", pFilename );
 
@@ -77,7 +77,7 @@ void GetParticleManifestFromMapSets( const char *pFilename )
 		{
 			if ( !Q_stricmp( sub->GetName(), "file" ) )
 			{
-				g_pParticleList->AddToTail( sub->GetString() );
+				list->AddToTail( sub->GetString() );
 				continue;
 			}
 
@@ -120,9 +120,7 @@ void GetParticleManifest( CUtlVector<CUtlString>& list )
 
 	manifest->deleteThis();
 #ifdef PORTAL
-	g_pParticleList = &list;
-	ExecuteLoadingMapSetFunction( GetParticleManifestFromMapSets );
-	g_pParticleList = NULL;
+	ExecuteLoadingMapSetFunction( GetParticleManifestFromMapSets, &list );
 #endif
 }
 
