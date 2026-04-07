@@ -129,6 +129,21 @@ C_InfoPlacementHelper *UTIL_FindPlacementHelper( const Vector &vecEndPoint, C_Ba
 		    {
 			    continue;
 		    }
+            
+		    vecTestOrg = (vecDir * 0.1) + pHelper->GetAbsOrigin();
+    #ifdef GAME_DLL
+		    //Vector extents(4, 4, 4);
+		    //Msg("vecDir %f %f %f\n", vecDir.x, vecDir.y, vecDir.z);
+		    //NDebugOverlay::Box( vecTestOrg, -extents, extents, 0, 255, 0, 128, 1 );
+    #endif
+		    vTargetDir = vecTestOrg - vecEndPoint;
+		    VectorNormalize(vTargetDir);
+            dot = DotProduct( -vecDir, vTargetDir );
+		    //Msg( "dot %f\n", dot );
+		    if ( dot > 0.0f )
+		    {
+			    continue;
+		    }
 	    }
 
         // Get the angle using the radius and see if this helper has better distancing than the previous
