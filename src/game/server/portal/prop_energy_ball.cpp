@@ -274,7 +274,14 @@ void CPropEnergyBall::VPhysicsCollision( int index, gamevcollisionevent_t *pEven
 				data.m_flRadius = 16;
 				data.m_vNormal	= tr.plane.normal;
 				data.m_vOrigin	= tr.endpos + tr.plane.normal * 1.0f;
-				DispatchEffect( "cball_bounce", data );
+				if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA && m_bIsInfiniteLife )
+				{
+					DispatchEffect( "cball_bounce_inf", data );
+				}
+				else
+				{
+					DispatchEffect( "cball_bounce", data );
+				}
 				UTIL_DecalTrace( &tr, "EnergyBall.Impact" );
 			}
 		}

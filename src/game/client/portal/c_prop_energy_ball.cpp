@@ -12,6 +12,9 @@
 #include "c_prop_combine_ball.h"			// Our parent class
 #include "clienteffectprecachesystem.h"		// To precache our new material
 #include "portal_shareddefs.h"
+#include "c_te_effect_dispatch.h"
+#include "fx_quad.h"
+#include "fx.h"
 
 ConVar cl_energy_ball_start_fade_time ( "cl_energy_ball_start_fade_time", "8", FCVAR_CHEAT );
 
@@ -140,3 +143,47 @@ bool C_PropEnergyBall::InitMaterials()
 
 	return bRetVal;
 }
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  : &data - 
+//-----------------------------------------------------------------------------
+void InfiniteEnergyBallImpactCallback( const CEffectData &data )
+{
+	// Quick flash
+	FX_AddQuad( data.m_vOrigin,
+				data.m_vNormal,
+				data.m_flRadius * 10.0f,
+				0,
+				0.75f, 
+				1.0f,
+				0.0f,
+				0.4f,
+				random->RandomInt( 0, 360 ), 
+				0,
+				Vector( 0.7f, 1.0f, 0.7f ), 
+				0.25f, 
+				"effects/combinemuzzle1_nocull",
+				(FXQUAD_BIAS_SCALE|FXQUAD_BIAS_ALPHA) );
+
+	// Lingering burn
+	FX_AddQuad( data.m_vOrigin,
+				data.m_vNormal, 
+				data.m_flRadius * 2.0f,
+				data.m_flRadius * 4.0f,
+				0.75f, 
+				1.0f,
+				0.0f,
+				0.4f,
+				random->RandomInt( 0, 360 ), 
+				0,
+				Vector( 0.6f, 1.0f, 0.6f ), 
+				0.5f, 
+				"effects/combinemuzzle2_nocull",
+				(FXQUAD_BIAS_SCALE|FXQUAD_BIAS_ALPHA) );
+
+	// Throw sparks
+	FX_ElectricSpark( data.m_vOrigin, 2, 1, &data.m_vNormal );
+}
+
+DECLARE_CLIENT_EFFECT( "cball_bounce_inf", InfiniteEnergyBallImpactCallback );
