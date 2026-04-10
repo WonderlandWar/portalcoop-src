@@ -680,7 +680,7 @@ void CEnergyBallLauncher::InputExplodeAllBalls( inputdata_t &inputdata )
 		CPropCombineBall *pBall = m_AllBalls[i];
 		if ( pBall && pBall->GetNextThink( "RemoveContext" ) == TICK_NEVER_THINK )
 		{
-			pBall->SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );;
+			pBall->SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
 		}
 	}
 
