@@ -66,8 +66,6 @@ public:
 	CNetworkVar( bool, m_bIsInfiniteLife );
 	CNetworkVar( float, m_fTimeTillDeath );
 
-	CHandle<CEnergyBallLauncher> m_hLauncher;
-
 	CSoundPatch		*m_pAmbientSound;
 
 };
@@ -467,10 +465,10 @@ void CPropEnergyBall::ExplodeThink( )
 	SetContextThink( &CPropCombineBall::SUB_Remove, gpGlobals->curtime + 0.5f, "RemoveContext" );
 	StopLoopingSounds();
 
-	CEnergyBallLauncher *pLauncher = m_hLauncher;
+	CFuncCombineBallSpawner *pLauncher = m_hSpawner.Get();
 	if ( pLauncher )
 	{
-		extern void Launcher_RemoveBall( CEnergyBallLauncher *pLauncher, CPropEnergyBall *pBall );
+		extern void Launcher_RemoveBall( CFuncCombineBallSpawner *pLauncher, CPropEnergyBall *pBall );
 		Launcher_RemoveBall( pLauncher, this );
 	}
 }
@@ -678,7 +676,7 @@ void CEnergyBallLauncher::InputExplodeAllBalls( inputdata_t &inputdata )
 	for ( int i = 0; i < m_AllBalls.Count(); ++i )
 	{
 		CPropCombineBall *pBall = m_AllBalls[i];
-		if ( pBall && pBall->GetNextThink( "RemoveContext" ) == TICK_NEVER_THINK )
+		if ( pBall )
 		{
 			pBall->SetContextThink( &CPropEnergyBall::ExplodeThink, gpGlobals->curtime, "ExplodeTimerContext" );
 		}
@@ -687,9 +685,13 @@ void CEnergyBallLauncher::InputExplodeAllBalls( inputdata_t &inputdata )
 	m_AllBalls.Purge();
 }
 
-void Launcher_RemoveBall( CEnergyBallLauncher *pLauncher, CPropEnergyBall *pBall )
+void Launcher_RemoveBall( CFuncCombineBallSpawner *pLauncher, CPropEnergyBall *pBall )
 {
-	pLauncher->m_AllBalls.FindAndRemove( pBall );
+	CEnergyBallLauncher *pEnergyLauncher = dynamic_cast<CEnergyBallLauncher *>( pLauncher );
+	if ( pEnergyLauncher )
+	{
+		pEnergyLauncher->m_AllBalls.FindAndRemove( pBall );
+	}
 }
 
 
