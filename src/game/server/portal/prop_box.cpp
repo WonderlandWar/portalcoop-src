@@ -298,7 +298,7 @@ bool UTIL_IsValidCubeHolderAttachment( CBaseEntity *pEntity )
 	{
 		// Only allow normal shaped cubes
 		CPropWeightedCube *pWeightedCube = static_cast<CPropWeightedCube*>( pEntity );
-		if ( pWeightedCube->GetCubeType() == CUBE_COMPANION || pWeightedCube->GetCubeType() == CUBE_STANDARD )
+		if ( pWeightedCube->GetCubeType() == CUBE_COMPANION || pWeightedCube->GetCubeType() == CUBE_STANDARD || pWeightedCube->GetCubeType() == CUBE_REFLECTIVE )
 		{
 			return true;
 		}
