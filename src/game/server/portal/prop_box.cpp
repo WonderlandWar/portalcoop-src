@@ -90,26 +90,6 @@ void CPropBox::InputDissolve( inputdata_t &inputdata )
 	CTriggerPortalCleanser::FizzleBaseAnimating( this, NULL );
 }
 
-bool CPropBox::ShouldCollide( int collisionGroup, int contentsMask ) const
-{
-	IPhysicsObject *pObj = VPhysicsGetObject();
-	if ( pObj && ( pObj->GetGameFlags() & FVPHYSICS_PLAYER_HELD ) )
-	{
-		if ( collisionGroup == COLLISION_GROUP_PLAYER || collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT )
-		{
-			extern bool HeldObjectShouldHitPlayer( CPortal_Player *pPlayer, CBaseEntity *pHeld );
-			CPortal_Player *pPlayer = (CPortal_Player *)GetPlayerHoldingEntity( (CBaseEntity*)this );
-			if ( pPlayer && !HeldObjectShouldHitPlayer( pPlayer, (CBaseEntity*)this ) )
-			{
-				// Held objects shouldn't collide with players 
-				return false;
-			}
-		}
-	}
-
-	return BaseClass::ShouldCollide( collisionGroup, contentsMask );
-}
-
 // CPropWeightedCube
 
 BEGIN_DATADESC( CPropWeightedCube )
@@ -160,6 +140,26 @@ void CPropWeightedCube::Precache( void )
 		PrecacheModel( BOX_SPHERE_MODEL );
 		break;
 	}
+}
+
+bool CPropWeightedCube::ShouldCollide( int collisionGroup, int contentsMask ) const
+{
+	IPhysicsObject *pObj = VPhysicsGetObject();
+	if ( pObj && ( pObj->GetGameFlags() & FVPHYSICS_PLAYER_HELD ) )
+	{
+		if ( collisionGroup == COLLISION_GROUP_PLAYER || collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT )
+		{
+			extern bool HeldObjectShouldHitPlayer( CPortal_Player *pPlayer, CBaseEntity *pHeld );
+			CPortal_Player *pPlayer = (CPortal_Player *)GetPlayerHoldingEntity( (CBaseEntity*)this );
+			if ( pPlayer && !HeldObjectShouldHitPlayer( pPlayer, (CBaseEntity*)this ) )
+			{
+				// Held objects shouldn't collide with players 
+				return false;
+			}
+		}
+	}
+
+	return BaseClass::ShouldCollide( collisionGroup, contentsMask );
 }
 
 //-----------------------------------------------------------------------------
