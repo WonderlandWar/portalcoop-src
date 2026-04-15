@@ -244,7 +244,13 @@ void CTriggerBoxReflector::DetachBox( CPropBox *pAttachedBox, bool bPush /*= fal
 		Vector forward;
 		pAttachedBox->GetVectors( &forward, NULL, NULL );
 
-		pAttachedBox->ApplyAbsVelocityImpulse( forward * 100 );
+		float flForce = 100.0;
+		if ( UTIL_IsReflectiveCube( pAttachedBox ) )
+		{
+			// This fixes reflector cubes constantly attaching & detaching
+			flForce = 150.0;
+		}
+		pAttachedBox->ApplyAbsVelocityImpulse( forward * flForce );
 	}
 
 	m_hAttachedBox = NULL;
