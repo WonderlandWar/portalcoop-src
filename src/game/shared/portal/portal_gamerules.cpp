@@ -1584,10 +1584,10 @@ bool CPortalGameRules::ShouldUseRobustRadiusDamage(CBaseEntity *pEntity)
 	return true;
 }
 
-ConVar sv_require_game_install_necessary_for_map( "sv_require_game_install_necessary_for_map", "1", FCVAR_REPLICATED, "Forces clients to have the maps' game to be mounted to play the server" );
 #ifndef CLIENT_DLL
+ConVar sv_require_game_install_necessary_for_map( "sv_require_game_install_necessary_for_map", "1", FCVAR_GAMEDLL, "Forces clients to have the maps' game to be mounted to play the server" );
 static void VerifyCheckCodes( const char *pFilename, void *pData )
-{	
+{
 	char szFullDirectory[_MAX_PATH];
 	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/mapsets.txt", pFilename );
 
@@ -1637,7 +1637,7 @@ bool CPortalGameRules::ClientConnected( edict_t *pEntity, const char *pszName, c
 	
 	// Check if the client has the mapset
 	const char *mapsetname = g_MapInfo.GetAssociatedMapSet();
-	if ( mapsetname && mapsetname[0] != 0 && !MapSetIsOfficial( mapsetname ) )
+	if ( mapsetname && mapsetname[0] != 0 && !MapSetIsOfficial( mapsetname ) && sv_require_game_install_necessary_for_map.GetBool() )
 	{
 		bool bReject = true;
 		const char *pszClientMapSets = engine->GetClientConVarValue( ENTINDEX( pEntity ), "mapsets" );
