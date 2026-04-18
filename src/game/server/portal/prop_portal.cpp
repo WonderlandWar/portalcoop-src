@@ -1482,8 +1482,7 @@ void CProp_Portal::UpdatePortalTeleportMatrix( void )
 
 void CProp_Portal::CreatePortalMicAndSpeakers( void )
 {
-	// Don't use microphones in Rexaura! Many of the button sounds, timers, etc... are louder so both players can hear them, but they're way too loud for Rexaura
-	// Also disable in 3 player, certain things can be LOUD
+	// Disable in 3 player, certain things can be LOUD
 	bool bSmallEnoughPlayers = false;
 	if ( pcoop_require_all_players.GetBool() )
 	{
@@ -1493,7 +1492,7 @@ void CProp_Portal::CreatePortalMicAndSpeakers( void )
 	{
 		bSmallEnoughPlayers = gpGlobals->maxClients <= 2;
 	}
-	bool bUseMicrophones = sv_portal_game.GetInt() != PORTAL_GAME_REXAURA && ( bSmallEnoughPlayers );
+	bool bUseMicrophones = ( bSmallEnoughPlayers );
 
 	if ( !bUseMicrophones )
 		return;
@@ -1526,7 +1525,6 @@ void CProp_Portal::CreatePortalMicAndSpeakers( void )
 		pMicrophone->SetOwnerEntity( this );
 		pMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
 		pMicrophone->AddSpawnFlags( SF_MICROPHONE_SOUND_COMBAT | SF_MICROPHONE_SOUND_WORLD | SF_MICROPHONE_SOUND_PLAYER | SF_MICROPHONE_SOUND_BULLET_IMPACT | SF_MICROPHONE_SOUND_EXPLOSION );
-	//	pMicrophone->KeyValue("ListenFilter", "weapon_portalgun_filter_disallow_in_code");
 		DispatchSpawn( pMicrophone );
 
 		m_hSpeaker = CreateEntityByName( "env_speaker" );
@@ -1559,7 +1557,6 @@ void CProp_Portal::CreatePortalMicAndSpeakers( void )
 		pLinkedMicrophone->SetOwnerEntity( m_hLinkedPortal );
 		pLinkedMicrophone->AddSpawnFlags( SF_MICROPHONE_IGNORE_NONATTENUATED );
 		pLinkedMicrophone->AddSpawnFlags( SF_MICROPHONE_SOUND_COMBAT | SF_MICROPHONE_SOUND_WORLD | SF_MICROPHONE_SOUND_PLAYER | SF_MICROPHONE_SOUND_BULLET_IMPACT | SF_MICROPHONE_SOUND_EXPLOSION );
-	//	pLinkedMicrophone->KeyValue("ListenFilter", "weapon_portalgun_filter_disallow_in_code");
 		DispatchSpawn( pLinkedMicrophone );
 
 		m_hLinkedPortal->m_hSpeaker = CreateEntityByName( "env_speaker" );
