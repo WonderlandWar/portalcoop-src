@@ -1601,6 +1601,7 @@ static void VerifyCheckCodes( const char *pFilename, void *pData )
 	void **array = (void**)pData;
 	char *pszClientMapSets = (char*)array[0];
 	bool *bReject = (bool*)array[1];
+	const char *mapsetname = (const char*)array[2];
 	
 	char szToken[MAPSET_ID_LENGTH+1];
 	const char *psz = pszClientMapSets;
@@ -1612,6 +1613,11 @@ static void VerifyCheckCodes( const char *pFilename, void *pData )
 		
 		for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
 		{
+			if ( V_strcmp( mapset->GetName(), mapsetname ) )
+			{
+				continue;
+			}
+
 			const char *checkcode = mapset->GetString( "checkcode", NULL );
 			if ( checkcode && !V_strcmp( checkcode, szToken ) )
 			{
@@ -1643,10 +1649,11 @@ bool CPortalGameRules::ClientConnected( edict_t *pEntity, const char *pszName, c
 		const char *pszClientMapSets = engine->GetClientConVarValue( ENTINDEX( pEntity ), "mapsets" );
 		if ( pszClientMapSets && pszClientMapSets[0] )
 		{
-			void *array[2] = 
+			void *array[3] = 
 			{
 				(void*)pszClientMapSets,
-				&bReject
+				&bReject,
+				(void*)mapsetname,
 			};
 			ExecuteLoadingMapSetFunction( VerifyCheckCodes, array );
 		}

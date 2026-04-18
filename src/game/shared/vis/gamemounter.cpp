@@ -169,6 +169,29 @@ void MountSourceMod( KeyValues* pGame )
 	}
 }
 #ifdef PORTAL
+#ifdef CLIENT_DLL
+CUtlVector<const char *> g_FailedCheckCodes;
+
+static bool IsFailedCheckCode( const char *checkcode )
+{
+	for ( int i = 0; i < g_FailedCheckCodes.Count(); ++i )
+	{
+		if ( !V_strcmp( g_FailedCheckCodes[i], checkcode ) )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+static void AddFailedCheckCode( const char *checkcode )
+{	
+	if ( !IsFailedCheckCode( checkcode ) ) // Only add it once
+	{
+		g_FailedCheckCodes.AddToTail( AllocPooledString( checkcode ) );
+	}
+}
+#endif
 void SetupCheckCodes( const char *pFilename )
 {
 #ifdef CLIENT_DLL
@@ -188,11 +211,18 @@ void SetupCheckCodes( const char *pFilename )
 
 	for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
 	{
-		if ( !ValidateCheckFiles( mapset ) )
-			continue;
-
 		const char *checkcode = mapset->GetString( "checkcode", NULL );
 		if ( !checkcode )
+			continue;
+		
+		if ( !ValidateCheckFiles( mapset ) )
+		{
+			AddFailedCheckCode( checkcode );
+			continue;
+		}
+
+		// For checkcodes shared between mapsets
+		if ( IsFailedCheckCode( checkcode ) )
 			continue;
 
 		if ( V_strlen( checkcode ) != MAPSET_ID_LENGTH )
