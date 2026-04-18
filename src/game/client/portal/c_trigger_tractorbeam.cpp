@@ -148,7 +148,7 @@ void C_Trigger_TractorBeam::UpdateOnRemove( void )
 
 	if (m_hCoreEffect)
 	{
-		ParticleProp()->StopEmission( m_hCoreEffect );
+		ParticleProp()->StopEmissionAndDestroyImmediately( m_hCoreEffect );
 	}
 
 	for ( int i = 1; i <= MAX_PLAYERS; ++i)
@@ -414,7 +414,7 @@ void C_Trigger_TractorBeam::CreateParticles( void )
 {
 	if (m_hCoreEffect)
 	{
-		ParticleProp()->StopEmission( m_hCoreEffect );
+		ParticleProp()->StopEmissionAndDestroyImmediately( m_hCoreEffect );
 		m_hCoreEffect = NULL;
 	}
 	m_hCoreEffect = ParticleProp()->Create( "tractor_beam_core", PATTACH_CUSTOMORIGIN );
@@ -422,9 +422,9 @@ void C_Trigger_TractorBeam::CreateParticles( void )
 
 	if (m_hCoreEffect)
 	{
-		ParticleProp()->AddControlPoint( m_hCoreEffect, 1, this, PATTACH_CUSTOMORIGIN, NULL, vec3_origin );
-		ParticleProp()->AddControlPoint( m_hCoreEffect, 2, this, PATTACH_CUSTOMORIGIN, NULL, vec3_origin );
-		ParticleProp()->AddControlPoint( m_hCoreEffect, 3, this, PATTACH_CUSTOMORIGIN, NULL, vec3_origin );
+		ParticleProp()->AddControlPoint( m_hCoreEffect, 1, this, PATTACH_CUSTOMORIGIN );
+		ParticleProp()->AddControlPoint( m_hCoreEffect, 2, this, PATTACH_CUSTOMORIGIN );
+		ParticleProp()->AddControlPoint( m_hCoreEffect, 3, this, PATTACH_CUSTOMORIGIN );
 
 		Vector vDir;
 		vDir = m_vEnd - m_vStart;
