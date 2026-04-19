@@ -111,13 +111,15 @@ IMPLEMENT_AUTO_LIST( ITriggerTractorBeamAutoList )
 C_Trigger_TractorBeam::C_Trigger_TractorBeam()
 {
 	m_hProxyEntity = NULL;
-	m_hCoreEffect = NULL;
 	m_bDisabled = false;
+	m_pMaterial1 = NULL;
+	m_pPanelMaterial = NULL;
+	m_flPanelSpinStartTime = 0.0f;
 }
 
 C_Trigger_TractorBeam::~C_Trigger_TractorBeam()
 {
-	m_hCoreEffect();
+
 }
 
 void C_Trigger_TractorBeam::Spawn( void )
@@ -125,6 +127,9 @@ void C_Trigger_TractorBeam::Spawn( void )
 	BaseClass::Spawn();
 	if (!m_pMaterial1)
 		m_pMaterial1 = materials->FindMaterial( "effects/tractor_beam", NULL, false );
+	
+	if (!m_pPanelMaterial)
+		m_pPanelMaterial = materials->FindMaterial("particle/particle_ring_pulled_add_oriented", NULL, false);
 
 	SetNextClientThink( CLIENT_THINK_ALWAYS );
 }
@@ -144,11 +149,6 @@ void C_Trigger_TractorBeam::UpdateOnRemove( void )
 
 		physenv->DestroyMotionController( m_pController );
 		m_pController = NULL;
-	}
-
-	if (m_hCoreEffect)
-	{
-		ParticleProp()->StopEmissionAndDestroyImmediately( m_hCoreEffect );
 	}
 
 	for ( int i = 1; i <= MAX_PLAYERS; ++i)
@@ -232,7 +232,98 @@ int C_Trigger_TractorBeam::DrawModel( int flags )
 	//if (bDrawOuterColumn)
 	//	C_Trigger_TractorBeam::DrawColumn( m_pMaterial2, m_vStart, vDir, flLength, xAxis, yAxis, TRACTOR_BEAM_RADIUS_OUTER, 1.0, m_bFromPortal, m_bToPortal, 0.0 );
 
+	Vector vDirReversed = -vDir;
+	DrawRotatingPanels( m_vStart, vDirReversed );
+	DrawRotatingPanels( m_vEnd, vDir );
+
 	return 1;
+}
+
+void C_Trigger_TractorBeam::DrawRotatingPanels( const Vector &vImpact, const Vector &vNormal )
+{
+	if (!m_pPanelMaterial)
+		return;
+
+	Vector vPanelNormal = vNormal;
+	if (VectorNormalize(vPanelNormal) <= 0.0f)
+		return;
+
+	Vector vReference = (fabsf(vPanelNormal.z) < 0.999f) ? Vector(0.0f, 0.0f, 1.0f) : Vector(0.0f, 1.0f, 0.0f);
+	Vector vPlaneRight;
+	CrossProduct(vReference, vPanelNormal, vPlaneRight);
+	if (VectorNormalize(vPlaneRight) <= 0.0f)
+		return;
+
+	Vector vPlaneUp;
+	CrossProduct(vPanelNormal, vPlaneRight, vPlaneUp);
+	VectorNormalize(vPlaneUp);
+
+	const float flSpinSpeedDegrees = 180.0f;
+	const float flElapsed = gpGlobals->curtime - m_flPanelSpinStartTime;
+	const float flClockwise = DEG2RAD(flElapsed * flSpinSpeedDegrees);
+	const float flCounterClockwise = -flClockwise;
+	const float flPi = 3.14159265f;
+	const float flHalfPi = flPi * 0.5f;
+
+	const float flHalfPanelWidth = TRACTOR_BEAM_RADIUS_INNER * 1.25f;
+	const float flHalfPanelLength = TRACTOR_BEAM_RADIUS_INNER * 1.25f;
+	const float flAngles[4] = {
+		flClockwise,
+		flClockwise + flPi,
+		flCounterClockwise + flHalfPi,
+		flCounterClockwise + (flHalfPi * 3.0f),
+	};
+
+	const int nColorR = m_bReversed ? 255 : 0;
+	const int nColorG = m_bReversed ? 56 : 120;
+	const int nColorB = m_bReversed ? 8 : 189;
+	const int nColorA = 90;
+
+	CMatRenderContextPtr pRenderContext(materials);
+	pRenderContext->Bind(m_pPanelMaterial, GetClientRenderable());
+	IMesh *pMesh = pRenderContext->GetDynamicMesh(false, NULL, NULL, m_pPanelMaterial);
+
+	CMeshBuilder meshBuilder;
+	meshBuilder.Begin(pMesh, MATERIAL_QUADS, 4);
+
+	Vector vOrigin = vImpact - vNormal;
+
+	for (int i = 0; i < ARRAYSIZE(flAngles); ++i)
+	{
+		const float flCos = cosf(flAngles[i]);
+		const float flSin = sinf(flAngles[i]);
+		const Vector vPanelRight = (vPlaneRight * flCos) + (vPlaneUp * flSin);
+		Vector vPanelUp = CrossProduct(vPanelNormal, vPanelRight);
+		VectorNormalize(vPanelUp);
+
+		const Vector vStartA = (vOrigin - (vPanelUp * flHalfPanelLength)) - (vPanelRight * flHalfPanelWidth);
+		const Vector vStartB = (vOrigin - (vPanelUp * flHalfPanelLength)) + (vPanelRight * flHalfPanelWidth);
+		const Vector vEndA = (vOrigin + (vPanelUp * flHalfPanelLength)) - (vPanelRight * flHalfPanelWidth);
+		const Vector vEndB = (vOrigin + (vPanelUp * flHalfPanelLength)) + (vPanelRight * flHalfPanelWidth);
+
+		meshBuilder.Color4ub(nColorR, nColorG, nColorB, nColorA);
+		meshBuilder.TexCoord2f(0, 0.0f, 0.0f);
+		meshBuilder.Position3fv(vStartA.Base());
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Color4ub(nColorR, nColorG, nColorB, nColorA);
+		meshBuilder.TexCoord2f(0, 1.0f, 0.0f);
+		meshBuilder.Position3fv(vStartB.Base());
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Color4ub(nColorR, nColorG, nColorB, nColorA);
+		meshBuilder.TexCoord2f(0, 1.0f, 1.0f);
+		meshBuilder.Position3fv(vEndB.Base());
+		meshBuilder.AdvanceVertex();
+
+		meshBuilder.Color4ub(nColorR, nColorG, nColorB, nColorA);
+		meshBuilder.TexCoord2f(0, 0.0f, 1.0f);
+		meshBuilder.Position3fv(vEndA.Base());
+		meshBuilder.AdvanceVertex();
+	}
+
+	meshBuilder.End();
+	pMesh->Draw();
 }
 
 void C_Trigger_TractorBeam::DrawColumn( IMaterial *pMaterial, Vector &vecStart, Vector vDir, float flLength,
@@ -411,62 +502,8 @@ bool C_Trigger_TractorBeam::GetSoundSpatialization( SpatializationInfo_t& info )
 }
 
 void C_Trigger_TractorBeam::CreateParticles( void )
-{
-	if (m_hCoreEffect)
-	{
-		ParticleProp()->StopEmissionAndDestroyImmediately( m_hCoreEffect );
-		m_hCoreEffect = NULL;
-	}
-	m_hCoreEffect = ParticleProp()->Create( "tractor_beam_core", PATTACH_CUSTOMORIGIN );
-
-
-	if (m_hCoreEffect)
-	{
-		ParticleProp()->AddControlPoint( m_hCoreEffect, 1, this, PATTACH_CUSTOMORIGIN );
-		ParticleProp()->AddControlPoint( m_hCoreEffect, 2, this, PATTACH_CUSTOMORIGIN );
-		ParticleProp()->AddControlPoint( m_hCoreEffect, 3, this, PATTACH_CUSTOMORIGIN );
-
-		Vector vDir;
-		vDir = m_vEnd - m_vStart;
-		VectorNormalize( vDir );
-
-		Vector vRight;
-		Vector vUp;
-		VectorVectors( vDir, vRight, vUp );
-
-		m_hCoreEffect->SetControlPoint( 0, m_vStart );
-		m_hCoreEffect->SetControlPointOrientation( 0, vDir, vRight, vUp );
-		m_hCoreEffect->SetControlPoint( 1, m_vEnd );
-
-		Vector forward;
-		forward = -vDir;
-
-		m_hCoreEffect->SetControlPointOrientation( 1, forward, vRight, vUp );
-
-		matrix3x4_t matWorldTransform = EntityToWorldTransform();
-
-		Vector vVelocity;
-		vVelocity.x = matWorldTransform.m_flMatVal[0][0] * m_linearForce;
-		vVelocity.y = matWorldTransform.m_flMatVal[1][0] * m_linearForce;
-		vVelocity.z = matWorldTransform.m_flMatVal[2][0] * m_linearForce;
-		
-		m_hCoreEffect->SetControlPoint( 2, vVelocity );
-
-		Vector color;
-		if (m_bReversed)
-		{
-			color.x = 255;
-			color.y = 56;
-			color.z = 8;
-		}
-		else
-		{
-			color.x = 0.0;
-			color.y = 120;
-			color.z = 189;
-		}
-		m_hCoreEffect->SetControlPoint( 3, color );
-	}
+{	
+	m_flPanelSpinStartTime = gpGlobals->curtime;
 }
 
 void C_Trigger_TractorBeam::PhysicsSimulate( void )

@@ -233,7 +233,7 @@ void C_PropTractorBeamProjector::CreateEffect( void )
 		{
 			if (m_hEmitterEffect[i])
 			{
-				ParticleProp()->StopEmission( m_hEmitterEffect[i] );
+				ParticleProp()->StopEmissionAndDestroyImmediately( m_hEmitterEffect[i] );
 				m_hEmitterEffect[i] = NULL;
 			}
 
@@ -265,26 +265,9 @@ void C_PropTractorBeamProjector::CreateEffect( void )
 
 void C_PropTractorBeamProjector::UpdateEffect( void )
 {
-	for ( int i = 0; i < NUM_EMITTER_PARTICLES; ++i)
-	{
-		if (m_hEmitterEffect[i])
-		{
-			Vector color;
-			color = g_vTractorBeamColorForward;
-			if ( m_flLinearForce < 0.0 )
-				color = g_vTractorBeamColorReverse;
-
-			m_hEmitterEffect[i]->SetControlPoint( 1, color );
-			
-			matrix3x4_t matWorldSpace = EntityToWorldTransform();
-			
-			Vector vVelocity;
-			vVelocity.x = matWorldSpace.m_flMatVal[0][0] * m_flLinearForce;
-			vVelocity.y = matWorldSpace.m_flMatVal[1][0] * m_flLinearForce;
-			vVelocity.z = matWorldSpace.m_flMatVal[2][0] * m_flLinearForce;
-			m_hEmitterEffect[i]->SetControlPoint( 2, vVelocity );
-		}
-	}
+	// Instead of changing the colors, delete them and make new ones.
+	// This is necessary because the color CP function is an initializer instead of an operator.
+	CreateEffect();
 }
 
 void C_PropTractorBeamProjector::StopEffect( void )
@@ -293,7 +276,7 @@ void C_PropTractorBeamProjector::StopEffect( void )
 	{
 		if (m_hEmitterEffect[i])
 		{
-			ParticleProp()->StopEmission(m_hEmitterEffect[i]);
+			ParticleProp()->StopEmissionAndDestroyImmediately(m_hEmitterEffect[i]);
 		}
 	}
 

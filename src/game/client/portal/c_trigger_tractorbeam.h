@@ -54,7 +54,7 @@ public:
 
 	virtual void	Spawn( void );
 	virtual void	OnNewParticleEffect( const char *pszParticleName, CNewParticleEffect *pNewParticleEffect );
-	
+
 	virtual int		DrawModel( int flags );
 
 	virtual bool	ShouldDraw( void );
@@ -122,7 +122,7 @@ protected:
 	
 	void DrawColumnSegment( CMeshBuilder &meshBuilder, Vector &vecStart, Vector &vDir, float flLength, Vector &vecXAxis,
 										Vector &vecYAxis, float flRadius, float flAlpha, float flTextureOffset, VertexFormat_t vertexFormat );
-	
+	void DrawRotatingPanels( const Vector &vImpact, const Vector &vNormal );
 	Vector m_vStart;
 	Vector m_vEnd;
 
@@ -133,10 +133,10 @@ protected:
 	bool m_bToPortal;
 	bool m_bDisablePlayerMove;
 	IMaterial *m_pMaterial1;
+	IMaterial *m_pPanelMaterial;
 	bool m_bRecreateParticles;
 
 	CHandle<C_ProjectedTractorBeamEntity> m_hProxyEntity;
-	CUtlReference<CNewParticleEffect> m_hCoreEffect;
 	IPhysicsMotionController *m_pController;
 
 	float m_gravityScale;
@@ -150,6 +150,8 @@ protected:
     float m_angularLimit;
 	float m_angularScale;
 	QAngle m_linearForceAngles;
+
+	float m_flPanelSpinStartTime;
 
 private:
 	
