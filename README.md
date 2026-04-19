@@ -1,6 +1,6 @@
 ## Info
 
-This is the source code for Portal: Cooperatives's game dll's. You can find the mod at: https://www.moddb.com/mods/portal-cooperative
+This is the source code for Portal: Cooperatives's game dll files. You can find the mod at: https://www.moddb.com/mods/portal-cooperative
 
 ## Credits
 
