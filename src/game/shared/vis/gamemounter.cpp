@@ -246,7 +246,7 @@ void SetupCheckCodes( const char *pFilename )
 #endif
 }
 
-void MountGamesForMapSets( const char *pFilename, void *pData )
+bool MountGamesForMapSets( const char *pFilename, void *pData )
 {
 	KeyValues *pMountFile = new KeyValues( "gamemounting.txt" );
 	char szFileName[MAX_PATH];
@@ -283,6 +283,8 @@ void MountGamesForMapSets( const char *pFilename, void *pData )
 	pMountModFile->deleteThis();
 
 	SetupCheckCodes( pFilename );
+
+	return false;
 }
 
 #endif

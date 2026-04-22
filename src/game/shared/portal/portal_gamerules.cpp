@@ -1586,7 +1586,7 @@ bool CPortalGameRules::ShouldUseRobustRadiusDamage(CBaseEntity *pEntity)
 
 #ifndef CLIENT_DLL
 ConVar sv_require_game_install_necessary_for_map( "sv_require_game_install_necessary_for_map", "1", FCVAR_GAMEDLL, "Forces clients to have the maps' game to be mounted to play the server" );
-static void VerifyCheckCodes( const char *pFilename, void *pData )
+static bool VerifyCheckCodes( const char *pFilename, void *pData )
 {
 	char szFullDirectory[_MAX_PATH];
 	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/mapsets.txt", pFilename );
@@ -1595,7 +1595,7 @@ static void VerifyCheckCodes( const char *pFilename, void *pData )
 	if ( !mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory, "GAME" ) )
 	{
 		mapsets->deleteThis();
-		return;
+		return false;
 	}
 
 	void **array = (void**)pData;
@@ -1605,6 +1605,8 @@ static void VerifyCheckCodes( const char *pFilename, void *pData )
 	
 	char szToken[MAPSET_ID_LENGTH+1];
 	const char *psz = pszClientMapSets;
+	bool bClientHasCheckCode = false;
+	bool bMapSetHasCheckCode = false;
 	for ( int i = 0; i < MAX_NETWORKED_MAPSETS; ++i )
 	{
 		psz = nexttoken(szToken, psz, MAPSET_ID_DELIMITER );
@@ -1613,21 +1615,34 @@ static void VerifyCheckCodes( const char *pFilename, void *pData )
 		
 		for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
 		{
+			bMapSetHasCheckCode = false;
 			if ( V_strcmp( mapset->GetName(), mapsetname ) )
 			{
 				continue;
 			}
 
 			const char *checkcode = mapset->GetString( "checkcode", NULL );
-			if ( checkcode && !V_strcmp( checkcode, szToken ) )
+			if ( checkcode )
 			{
-				*bReject = false;
-				break;
+				bMapSetHasCheckCode = true;
+				if ( !V_strcmp( checkcode, szToken ) )
+				{
+					bClientHasCheckCode = true;
+					break;
+				}
 			}
 		}
 	}
-	
+
 	mapsets->deleteThis();
+
+	if ( bMapSetHasCheckCode && !bClientHasCheckCode )
+	{
+		*bReject = true;
+		return true;
+	}
+
+	return false;
 }
 
 //=========================================================
@@ -1645,7 +1660,7 @@ bool CPortalGameRules::ClientConnected( edict_t *pEntity, const char *pszName, c
 	const char *mapsetname = g_MapInfo.GetAssociatedMapSet();
 	if ( mapsetname && mapsetname[0] != 0 && !MapSetIsOfficial( mapsetname ) && sv_require_game_install_necessary_for_map.GetBool() )
 	{
-		bool bReject = true;
+		bool bReject = false;
 		const char *pszClientMapSets = engine->GetClientConVarValue( ENTINDEX( pEntity ), "mapsets" );
 		if ( pszClientMapSets && pszClientMapSets[0] )
 		{
@@ -2526,9 +2541,10 @@ static void LoadMapSetSounds( const char *pszPath )
 	}
 }
 
-void OnMapSetDirectoryLoaded( const char *pDirectory, void *pData )
+static bool OnMapSetDirectoryLoaded( const char *pDirectory, void *pData )
 {
 	LoadMapSetSounds( pDirectory );
+	return false;
 }
 
 void CPortalGameRules::MountMapSetContent( void )

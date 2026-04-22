@@ -61,14 +61,14 @@ int GetAttachTypeFromString( const char *pszString )
 	return -1;
 }
 #ifdef PORTAL
-void GetParticleManifestFromMapSets( const char *pFilename, void *pData )
+static bool GetParticleManifestFromMapSets( const char *pFilename, void *pData )
 {
 	CUtlVector<CUtlString> *list = (CUtlVector<CUtlString>*)pData;
 	char szFullDirectory[_MAX_PATH];
 	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/particles_manifest.txt", pFilename );
 
 	if ( !g_pFullFileSystem->FileExists( szFullDirectory, "GAME" ) )
-		return;
+		return false;
 
 	KeyValues *manifest = new KeyValues( szFullDirectory );
 	if ( manifest->LoadFromFile( filesystem, szFullDirectory, "GAME" ) )
@@ -90,6 +90,8 @@ void GetParticleManifestFromMapSets( const char *pFilename, void *pData )
 	}
 
 	manifest->deleteThis();
+
+	return false;
 }
 #endif
 //-----------------------------------------------------------------------------

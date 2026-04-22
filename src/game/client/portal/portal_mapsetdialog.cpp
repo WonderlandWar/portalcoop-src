@@ -256,7 +256,7 @@ CMapSetDialog::~CMapSetDialog()
 	m_pMapSetList->DeleteAllItems();
 }
 
-void ParseCustomMapSet( const char *pFilename, void *pData )
+static bool ParseCustomMapSet( const char *pFilename, void *pData )
 {
 	CMapSetDialog *pDialog = (CMapSetDialog *)pData;
 	char szFullDirectory[_MAX_PATH];
@@ -266,6 +266,8 @@ void ParseCustomMapSet( const char *pFilename, void *pData )
 	mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory );
 	pDialog->ParseMapSetKeyValues( mapsets, szFullDirectory );
 	mapsets->deleteThis();
+
+	return false;
 }
 
 void CMapSetDialog::SetupMapSetList( void )

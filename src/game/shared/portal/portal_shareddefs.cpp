@@ -232,13 +232,16 @@ void ExecuteLoadingMapSetFunction( MapSetFunc func, void *pData )
 
 		char szFullDirectory[_MAX_PATH];
 		Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "scripts/mapsets/%s", pDirFileName );
-		func( szFullDirectory, pData );
+		if ( func( szFullDirectory, pData ) )
+		{
+			break;
+		}
 
 		pDirFileName = g_pFullFileSystem->FindNext( dirHandle );
 	}
 }
 
-static void GetMapSetTitle( const char *pFilename, void *pData )
+static bool GetMapSetTitle( const char *pFilename, void *pData )
 {
 	char szFullDirectory[_MAX_PATH];
 	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/mapsets.txt", pFilename );
@@ -247,22 +250,27 @@ static void GetMapSetTitle( const char *pFilename, void *pData )
 	if ( !mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory, "GAME" ) )
 	{
 		mapsets->deleteThis();
-		return;
+		return false;
 	}
 	
 	void **array = (void**)pData;
 	char *pszName = (char*)array[0];
 	char *pszTitle = (char*)array[1];
 	
+	bool bFound = false;
+
 	for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
 	{
 		if ( !V_stricmp( mapset->GetName(), pszName ) )
 		{
 			V_strcpy( pszTitle, mapset->GetString( "name" ) );
+			bFound = true;
 		}
 	}
 
 	mapsets->deleteThis();
+
+	return bFound;
 }
 
 void GetTitleForMapSet( char *szTitle, const char *mapset )

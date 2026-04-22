@@ -169,7 +169,7 @@ private:
 	int m_iRequiredPlayers;
 	char m_szAssociatedMapSet[MAX_MAPSET_LENGTH];
 #ifdef CLIENT_DLL
-	char m_szCreditsFile[32];
+	char m_szCreditsFile[64];
 #endif
 
 	friend class CMapDataLoader;
@@ -194,11 +194,13 @@ inline bool Map_IsRexaura( const char *pMapName )
 	return V_stristr( pMapName, "rex2c_" ) || V_stristr( pMapName, "rex3c_" ) || V_stristr( pMapName, "rex_" );
 }
 
-typedef void (MapSetFunc)(const char *pDirectory, void *pData );
+typedef bool (MapSetFunc)(const char *pDirectory, void *pData );
 
 void GetTitleForMapSet( char *szTitle, const char *mapset );
 
 bool MapSetIsOfficial( const char *mapsetname );
+
+// If the MapSetFunc returns true, then the game will stop the search
 void ExecuteLoadingMapSetFunction( MapSetFunc func, void *pData = NULL );
 
 #endif // PORTAL_SHAREDDEFS_H

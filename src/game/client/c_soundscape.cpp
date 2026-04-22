@@ -300,7 +300,7 @@ void C_SoundscapeSystem::AddSoundScapeFile( const char *filename )
 	}
 }
 #ifdef PORTAL
-void LoadMapSetSoundscapes( const char *pFileName, void *pData )
+static bool LoadMapSetSoundscapes( const char *pFileName, void *pData )
 {
 	C_SoundscapeSystem *pSoundscapeSystem = (C_SoundscapeSystem *)pData;
 	// Load the sounds
@@ -308,7 +308,7 @@ void LoadMapSetSoundscapes( const char *pFileName, void *pData )
 	Q_snprintf( manifestfile, sizeof( manifestfile ), "%s/soundscapes_manifest.txt", pFileName );
 	
 	if ( !g_pFullFileSystem->FileExists( manifestfile, "GAME" ) )
-		return;
+		return false;
 	
 	KeyValues *manifest = new KeyValues( SOUNDSCAPE_MANIFEST_FILE );
 	if ( filesystem->LoadKeyValues( *manifest, IFileSystem::TYPE_SOUNDSCAPE, manifestfile, "GAME" ) )
@@ -327,6 +327,8 @@ void LoadMapSetSoundscapes( const char *pFileName, void *pData )
 		}
 	}
 	manifest->deleteThis();
+
+	return false;
 }
 #endif
 // parse the script file, setup index table
