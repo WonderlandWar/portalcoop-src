@@ -216,21 +216,12 @@ void CCredits::OnRestore()
 }
 
 void CCredits::RollOutroCredits()
-{
-	//sv_unlockedchapters.SetValue( "15" );
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-		if (pPlayer)
-		{
-			CSingleUserRecipientFilter user( pPlayer );
-			user.MakeReliable();
+{	
+	CReliableBroadcastRecipientFilter user;
 
-			UserMessageBegin( user, "CreditsMsg" );
-				WRITE_BYTE( 3 );
-			MessageEnd();
-		}
-	}
+	UserMessageBegin( user, "CreditsMsg" );
+		WRITE_BYTE( 3 );
+	MessageEnd();
 }
 
 void CCredits::InputRollOutroCredits( inputdata_t &inputdata )
@@ -245,27 +236,19 @@ void CCredits::InputRollOutroCredits( inputdata_t &inputdata )
 
 void CCredits::InputShowLogo( inputdata_t &inputdata )
 {
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-		if ( pPlayer )
-		{
-			CSingleUserRecipientFilter user( pPlayer );
-			user.MakeReliable();
+	CReliableBroadcastRecipientFilter user;
 
-			if ( m_flLogoLength )
-			{
-				UserMessageBegin( user, "LogoTimeMsg" );
-					WRITE_FLOAT( m_flLogoLength );
-				MessageEnd();
-			}
-			else
-			{
-				UserMessageBegin( user, "CreditsMsg" );
-					WRITE_BYTE( 1 );
-				MessageEnd();
-			}
-		}
+	if ( m_flLogoLength )
+	{
+		UserMessageBegin( user, "LogoTimeMsg" );
+			WRITE_FLOAT( m_flLogoLength );
+		MessageEnd();
+	}
+	else
+	{
+		UserMessageBegin( user, "CreditsMsg" );
+			WRITE_BYTE( 1 );
+		MessageEnd();
 	}
 }
 
@@ -276,17 +259,9 @@ void CCredits::InputSetLogoLength( inputdata_t &inputdata )
 
 void CCredits::InputRollCredits( inputdata_t &inputdata )
 {
-	for (int i = 1; i <= gpGlobals->maxClients; ++i)
-	{
-		CBasePlayer *pPlayer = UTIL_PlayerByIndex(i);
-		if (pPlayer)
-		{
-			CSingleUserRecipientFilter user( pPlayer );
-			user.MakeReliable();
+	CReliableBroadcastRecipientFilter user;
 
-			UserMessageBegin( user, "CreditsMsg" );
-				WRITE_BYTE( 2 );
-			MessageEnd();
-		}
-	}
+	UserMessageBegin( user, "CreditsMsg" );
+		WRITE_BYTE( 2 );
+	MessageEnd();
 }

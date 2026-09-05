@@ -103,8 +103,7 @@ void CPortalCredits::RollOutroCredits()
 	
 	CBasePlayer *pPlayer = UTIL_GetLocalPlayer();
 
-	CSingleUserRecipientFilter user( pPlayer );
-	user.MakeReliable();
+	CReliableBroadcastRecipientFilter user;
 
 	UserMessageBegin( user, "CreditsPortalMsg" );
 		WRITE_BYTE( 3 );
@@ -125,10 +124,7 @@ void CPortalCredits::RollPortalOutroCredits()
 {
 	sv_unlockedchapters.SetValue( "15" );
 	
-	CBasePlayer *pPlayer = UTIL_GetLocalPlayer();
-
-	CSingleUserRecipientFilter user( pPlayer );
-	user.MakeReliable();
+	CReliableBroadcastRecipientFilter user;
 
 	UserMessageBegin( user, "CreditsPortalMsg" );
 		WRITE_BYTE( 4 );
@@ -150,8 +146,7 @@ void CPortalCredits::InputShowLogo( inputdata_t &inputdata )
 {
 	CBasePlayer *pPlayer = UTIL_GetLocalPlayer();
 
-	CSingleUserRecipientFilter user( pPlayer );
-	user.MakeReliable();
+	CReliableBroadcastRecipientFilter user;
 
 	if ( m_flLogoLength )
 	{
@@ -177,8 +172,7 @@ void CPortalCredits::InputRollCredits( inputdata_t &inputdata )
 {
 	CBasePlayer *pPlayer = UTIL_GetLocalPlayer();
 
-	CSingleUserRecipientFilter user( pPlayer );
-	user.MakeReliable();
+	CReliableBroadcastRecipientFilter user;
 
 	UserMessageBegin( user, "CreditsPortalMsg" );
 		WRITE_BYTE( 2 );

@@ -17,6 +17,7 @@
 #include <vgui/ILocalize.h>
 #include "KeyValues.h"
 #include "filesystem.h"
+#include "portal_shareddefs.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -40,8 +41,8 @@ struct portalcreditname_t
 	int iSlot;
 };
 
-#define CREDITS_FILE "scripts/credits.txt"
-#define CREDITS_FILE_PORTAL "scripts/credits.txt"
+//#define CREDITS_FILE "scripts/credits.txt"
+//#define CREDITS_FILE_PORTAL "scripts/credits.txt"
 
 enum
 {
@@ -190,25 +191,33 @@ void CHudPortalCredits::PrepareCredits( const char *pKeyName )
 	Clear();
 
 	KeyValues *pKV= new KeyValues( "CreditsFile" );
+	
+	const char *pszCreditsFile = g_MapInfo.GetCreditsFile();
 
 	if (m_iCreditsType == CREDITS_OUTRO_PORTAL)
 	{
-		if ( !pKV->LoadFromFile( filesystem, CREDITS_FILE_PORTAL, "MOD" ) )
+		if ( !pKV->LoadFromFile( filesystem, pszCreditsFile, "MOD" ) )
 		{
-			pKV->deleteThis();
+			if ( !pKV->LoadFromFile( filesystem, pszCreditsFile, "GAME" ) )
+			{
+				pKV->deleteThis();
 	
-			Assert( !"env_portal_credits couldn't be initialized!" );
-			return;
+				Assert( !"env_portal_credits couldn't be initialized!" );
+				return;
+			}
 		}
 	}
 	else
 	{
-		if ( !pKV->LoadFromFile( filesystem, CREDITS_FILE, "MOD" ) )
+		if ( !pKV->LoadFromFile( filesystem, pszCreditsFile, "MOD" ) )
 		{
-			pKV->deleteThis();
+			if ( !pKV->LoadFromFile( filesystem, pszCreditsFile, "GAME" ) )
+			{
+				pKV->deleteThis();
 	
-			Assert( !"env_portal_credits couldn't be initialized!" );
-			return;
+				Assert( !"env_portal_credits couldn't be initialized!" );
+				return;
+			}
 		}
 	}
 
