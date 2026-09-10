@@ -44,10 +44,8 @@ ConVar sv_player_trace_through_portals("sv_player_trace_through_portals", "1", F
 ConVar sv_player_funnel_gimme_dot("sv_player_funnel_gimme_dot", "0.9", FCVAR_REPLICATED);
 
 ConVar portal_player_interaction_quadtest_epsilon( "portal_player_interaction_quadtest_epsilon", "-0.03125", FCVAR_REPLICATED | FCVAR_CHEAT );
-ConVar pcoop_avoidplayers( "pcoop_avoidplayers", "1", FCVAR_REPLICATED ); 
-ConVar pcoop_avoidplayers_infinifling( "pcoop_avoidplayers_infinifling", "1", FCVAR_REPLICATED ); 
-
-ConVar sv_portal_new_player_trace( "sv_portal_new_player_trace", "1", FCVAR_REPLICATED | FCVAR_CHEAT );
+ConVar pcoop_avoidplayers( "pcoop_avoidplayers", "1", FCVAR_REPLICATED | FCVAR_CHEAT ); 
+ConVar pcoop_avoidplayers_infinifling( "pcoop_avoidplayers_infinifling", "1", FCVAR_REPLICATED | FCVAR_CHEAT ); 
 
 #if defined( CLIENT_DLL )
 ConVar cl_vertical_elevator_fix( "cl_vertical_elevator_fix", "1" );
