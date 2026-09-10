@@ -1185,6 +1185,7 @@ void C_Portal_Player::Simulate( void )
 
 
 extern ConVar pcoop_avoidplayers;
+extern ConVar pcoop_avoidplayers_infinifling;
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -1464,7 +1465,12 @@ void C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 	// Don't test if the player doesn't exist or is dead.
 	if ( IsAlive() == false )
 		return;
-	
+
+	float flPushStrength = 0.0;
+	bool bOverrideMove = false;
+	bool bIsInterectingPortal = false;
+	Vector vecIntersectingPortal;
+
 	// Up vector.
 	static Vector vecUp( 0.0f, 0.0f, 1.0f );
 
@@ -1476,9 +1482,7 @@ void C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 	VectorAdd( vecTFPlayerMin, vecTFPlayerCenter, vecTFPlayerMin );
 	VectorAdd( vecTFPlayerMax, vecTFPlayerCenter, vecTFPlayerMax );
 
-	// Find an intersecting player or object.
-	int nAvoidPlayerCount = 0;
-	C_Portal_Player *pAvoidPlayerList[MAX_PLAYERS];
+	// Find an intersecting player.
 
 	C_Portal_Player *pIntersectPlayer = NULL;
 	float flAvoidRadius = 0.0f;
@@ -1494,10 +1498,6 @@ void C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 		// Is the avoid player me?
 		if ( pAvoidPlayer == this )
 			continue;
-
-		// Save as list to check against for objects.
-		pAvoidPlayerList[nAvoidPlayerCount] = pAvoidPlayer;
-		++nAvoidPlayerCount;
 
 		// Check to see if the avoid player is dormant.
 		if ( pAvoidPlayer->IsDormant() )
@@ -1536,7 +1536,93 @@ void C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 		VectorAdd( vecAvoidMin, vecAvoidCenter, vecAvoidMin );
 		VectorAdd( vecAvoidMax, vecAvoidCenter, vecAvoidMax );
 
-		if ( IsBoxIntersectingBox( vecTFPlayerMin, vecTFPlayerMax, vecAvoidMin, vecAvoidMax ) )
+		bool bIsIntersecting = false;
+		if ( pcoop_avoidplayers_infinifling.GetBool() )
+		{
+			const float fling_test_speed = 200.0;
+			// Check for infinifling players, starting with velocity
+			const Vector &vecPlayerVelocity = GetAbsVelocity();
+			const Vector &vecAvoidVelocity = pAvoidPlayer->GetAbsVelocity();
+			if ( vecPlayerVelocity.z < -fling_test_speed && vecAvoidVelocity.z < -fling_test_speed )
+			{
+				// Allow this behavior if they're far enough from each other
+				if ( fabs( vecTFPlayerCenter.x - vecAvoidCenter.x ) < 80.0 &&
+					fabs( vecTFPlayerCenter.y - vecAvoidCenter.y ) < 80.0 &&
+					fabs( vecTFPlayerCenter.z - vecAvoidCenter.z ) < 320.0 )
+				{
+					for ( int i = 0; i < CProp_Portal_Shared::AllPortals.Count(); ++i )
+					{
+						C_Prop_Portal *pPortal = CProp_Portal_Shared::AllPortals[i];
+
+						// Don't run the exact same checks again (for perf)
+						if ( pPortal->m_bIsPortal2 )
+							continue;
+
+						if ( !pPortal->IsActivedAndLinked() )
+							continue;
+								
+						C_Prop_Portal *pLinked = pPortal->GetLinkedPortal();
+				
+						if ( (!pPortal->IsFloorPortal() || !pLinked->IsCeilingPortal()) &&
+							(!pPortal->IsCeilingPortal() || !pLinked->IsFloorPortal()) )
+						{
+							// Can't fling with wall portals.
+							continue;
+						}
+
+						// Next, see if they're facing each other.
+						Vector vToLinked = pPortal->m_ptOrigin - pLinked->m_ptOrigin;
+
+						/* Probably not a needed check, the floor & ceiling portal checks should do this already
+						Vector vToLinkedDir = vToLinked;
+						VectorNormalize(vToLinkedDir);
+						if ( DotProduct( pPortal->m_vForward, vToLinkedDir ) > 0 || DotProduct( pLinked->m_vForward, -vToLinkedDir ) > 0 )
+						{
+							// The portals must be facing each other
+							continue;
+						}
+						*/
+
+						float distToLinked = vToLinked.Length();
+						if ( distToLinked > 320.0 ) // If they're separated enough, allow it
+						{
+							continue;
+						}
+
+						const float portal_max_test_dist_sqr = 64 * 64;
+
+						Vector vecEndPoint = pPortal->m_ptOrigin + (pPortal->m_vForward * distToLinked);
+
+						float flDistToLinked = CalcDistanceToLineSegment( pLinked->m_ptOrigin, pPortal->m_ptOrigin, vecEndPoint );
+						if ( flDistToLinked > portal_max_test_dist_sqr )
+						{
+							// Too far from the linked portal
+							continue;
+						}
+				
+						CalcClosestPointOnLine( vecTFPlayerCenter, pPortal->m_ptOrigin, pLinked->m_ptOrigin, vecIntersectingPortal );
+						float flDistToPortalLine = vecIntersectingPortal.DistTo( vecTFPlayerCenter );
+						if ( flDistToPortalLine > portal_max_test_dist_sqr )
+						{
+							// Too far from the portal line
+							continue;
+						}
+
+						bIsInterectingPortal = true;
+						bOverrideMove = true;
+						bIsIntersecting = true;
+						flPushStrength = tf_max_separation_force.GetFloat(); // Push em back hard
+					}
+				}
+			}
+		}
+
+		if ( !bIsIntersecting && IsBoxIntersectingBox( vecTFPlayerMin, vecTFPlayerMax, vecAvoidMin, vecAvoidMax ) )
+		{
+			bIsIntersecting = true;
+		}
+		
+		if ( bIsIntersecting )
 		{
 			// Need to avoid this player.
 			if ( !pIntersectPlayer )
@@ -1556,18 +1642,24 @@ void C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 	// Calculate the push strength and direction.
 	Vector vecDelta;
 
-	// Avoid a player - they have precedence.
-	if ( pIntersectPlayer )
+	if ( bIsInterectingPortal )
+	{
+		VectorSubtract( vecIntersectingPortal, vecTFPlayerCenter, vecDelta );
+	}
+	else // Avoid a player.
 	{
 		VectorSubtract( pIntersectPlayer->WorldSpaceCenter(), vecTFPlayerCenter, vecDelta );
-
-		Vector vRad = pIntersectPlayer->WorldAlignMaxs() - pIntersectPlayer->WorldAlignMins();
-		vRad.z = 0;
-
-		flAvoidRadius = vRad.Length();
 	}
 
-	float flPushStrength = RemapValClamped( vecDelta.Length(), flAvoidRadius, 0, 0, tf_max_separation_force.GetInt() ); //flPushScale;
+	Vector vRad = pIntersectPlayer->WorldAlignMaxs() - pIntersectPlayer->WorldAlignMins();
+	vRad.z = 0;
+
+	flAvoidRadius = vRad.Length();
+
+	if ( flPushStrength == 0.0 )
+	{
+		flPushStrength = RemapValClamped( vecDelta.Length(), flAvoidRadius, 0, 0, tf_max_separation_force.GetInt() ); // flPushScale
+	}
 
 	//Msg( "PushScale = %f\n", flPushStrength );
 
@@ -1638,8 +1730,16 @@ void C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 
 	//Msg( "fwd: %f - rt: %f - forward: %f - side: %f\n", fwd, rt, forward, side );
 
-	pCmd->forwardmove	+= forward;
-	pCmd->sidemove		+= side;
+	if ( bOverrideMove )
+	{
+		pCmd->forwardmove = forward;
+		pCmd->sidemove = side;
+	}
+	else
+	{
+		pCmd->forwardmove += forward;
+		pCmd->sidemove += side;
+	}
 
 	// Clamp the move to within legal limits, preserving direction. This is a little
 	// complicated because we have different limits for forward, back, and side
