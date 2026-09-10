@@ -5,6 +5,7 @@
 //=============================================================================//
 #include "cbase.h"
 #include "hl_gamemovement.h"
+#include "portal_gamemovement.h"
 #include "in_buttons.h"
 #include "utlrbtree.h"
 #include "movevars_shared.h"
@@ -128,9 +129,9 @@ public:
 // Overrides
 	virtual void ProcessMovement( CBasePlayer *pPlayer, CMoveData *pMove );
 	virtual bool CheckJumpButton( void );
-
+#ifndef USE_CMD_FOR_PORTAL_FUNNEL
 	void FunnelIntoPortal( CProp_Portal *pPortal, Vector &wishdir );
-
+#endif
 	virtual void AirAccelerate( Vector& wishdir, float wishspeed, float accel );
 	virtual void AirMove( void );
 
@@ -357,7 +358,7 @@ bool CPortalGameMovement::CheckJumpButton()
 
 	return false;
 }
-
+#ifndef USE_CMD_FOR_PORTAL_FUNNEL
 void CPortalGameMovement::FunnelIntoPortal( CProp_Portal *pPortal, Vector &wishdir )
 {
 	// Make sure there's a portal
@@ -415,7 +416,7 @@ void CPortalGameMovement::FunnelIntoPortal( CProp_Portal *pPortal, Vector &wishd
 		wishdir[ 1 ] += fFunnelY;
 	}
 }
-
+#endif
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : wishdir - 
@@ -515,7 +516,7 @@ void CPortalGameMovement::AirMove( void )
 	wishvel[2] = 0;             // Zero out z part of velocity
 
 	VectorCopy (wishvel, wishdir);   // Determine maginitude of speed of move
-
+#ifndef USE_CMD_FOR_PORTAL_FUNNEL
 	//
 	// Don't let the player screw their fling because of adjusting into a floor portal
 	//
@@ -540,7 +541,7 @@ void CPortalGameMovement::AirMove( void )
 #else
 	else if ( cl_player_funnel_into_portals.GetBool() )
 #endif
-	{
+	{		
 		int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
 		if( iPortalCount != 0 )
 		{
@@ -555,7 +556,7 @@ void CPortalGameMovement::AirMove( void )
 			}
 		}
 	}
-
+#endif
 	wishspeed = VectorNormalize(wishdir);
 
 	//

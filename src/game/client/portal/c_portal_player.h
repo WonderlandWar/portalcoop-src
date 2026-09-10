@@ -18,6 +18,7 @@
 #include "colorcorrectionmgr.h"
 #include "in_buttons.h"
 #include "c_trigger_tractorbeam.h"
+#include "portal_gamemovement.h"
 
 class C_EntityPortalledNetworkMessage : public CMemZeroOnNew
 {
@@ -149,7 +150,13 @@ public:
 	CBaseEntity *GetTargetIDEnt() const;
 	void	UpdateIDTarget( void );
 	bool	ShouldCollide( int collisionGroup, int contentsMask ) const;
-	void	AvoidPlayers( CUserCmd *pCmd );
+
+	void	HandleMoveMods( CUserCmd *pCmd );
+#ifdef USE_CMD_FOR_PORTAL_FUNNEL
+	void	FunnelIntoPortals( CUserCmd *pCmd );
+	void	FunnelIntoPortal( C_Prop_Portal *pPortal, const Vector &vPlayerForward, const Vector &vecVelocity, Vector &wishdir );
+#endif
+	bool	AvoidPlayers( CUserCmd *pCmd );
 
 	bool m_bHasSprintDevice;
 	bool m_bSprintEnabled;
