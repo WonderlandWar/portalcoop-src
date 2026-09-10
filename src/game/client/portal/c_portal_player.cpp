@@ -1611,7 +1611,9 @@ bool C_Portal_Player::AvoidPlayers( CUserCmd *pCmd )
 			// Check for infinifling players, starting with velocity
 			const Vector &vecPlayerVelocity = GetAbsVelocity();
 			const Vector &vecAvoidVelocity = pAvoidPlayer->GetAbsVelocity();
-			if ( vecPlayerVelocity.z < -fling_test_speed && vecAvoidVelocity.z < -fling_test_speed )
+			if ( vecPlayerVelocity.z < -fling_test_speed && vecAvoidVelocity.z < -fling_test_speed // Must be falling at a fast enough speed
+				&& vecPlayerVelocity.z >= vecAvoidVelocity.z // The slower player gets pushed, but if they're equal, push em' both (doing >= because of negative velocity)
+				)
 			{
 				// Allow this behavior if they're far enough from each other
 				if ( fabs( vecTFPlayerCenter.x - vecAvoidCenter.x ) < 80.0 &&
