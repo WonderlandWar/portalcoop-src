@@ -30,6 +30,9 @@ private:
 	CNetworkVar( unsigned int, m_iTotalChambers );
 	CNetworkArray( bool, m_bIconActive, NUM_HAZARD_ICONS );
 	CNetworkVar( bool, m_bLegacyTotalChambers );
+	
+	CNetworkVar( string_t, m_iszAWEMaterial );
+	CNetworkVar( string_t, m_iszAWEGreyMaterial );
 };
 
 IMPLEMENT_SERVERCLASS_ST( CPropTestchamberSign, DT_PropTestchamberSign )
@@ -38,11 +41,17 @@ IMPLEMENT_SERVERCLASS_ST( CPropTestchamberSign, DT_PropTestchamberSign )
 	
 	SendPropArray3( SENDINFO_ARRAY3(m_bIconActive), SendPropInt( SENDINFO_ARRAY(m_bIconActive), 1, SPROP_UNSIGNED ) ),
 	SendPropBool( SENDINFO( m_bLegacyTotalChambers ) ),
+	
+	SendPropStringT( SENDINFO( m_iszAWEMaterial ) ),
+	SendPropStringT( SENDINFO( m_iszAWEGreyMaterial ) ),
 END_SEND_TABLE()
 
 BEGIN_DATADESC( CPropTestchamberSign )
 	DEFINE_KEYFIELD( m_iChamberNumber, FIELD_INTEGER, "chamber_number" ),
 	DEFINE_KEYFIELD( m_iTotalChambers, FIELD_INTEGER, "total_chambers" ),
+	
+	DEFINE_KEYFIELD( m_iszAWEMaterial, FIELD_STRING, "awe_material" ),
+	DEFINE_KEYFIELD( m_iszAWEGreyMaterial, FIELD_STRING, "awe_grey_material" ),
 
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "SetChamberNumber", InputSetChamberNumber ),
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "SetTotalChambers", InputSetTotalChambers ),

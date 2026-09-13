@@ -105,6 +105,9 @@ private:
 	unsigned int m_iOldChamberNumber;
 	unsigned int m_iOldTotalChambers;
 
+	char m_iszAWEMaterial[AWE_MATERIAL_MAX_LEN];
+	char m_iszAWEGreyMaterial[AWE_MATERIAL_MAX_LEN];
+
 	// Model info
 	int m_iAttachmentApertureLogo;
 	int m_iAttachmentHazardIcons[NUM_HAZARD_ICONS];
@@ -129,12 +132,36 @@ private:
 	uint8 m_iTotalDigits[NUM_DIGITS];
 };
 
+void RecvProxy_AWEMaterials( const CRecvProxyData *pData, void *pStruct, void *pOut )
+{
+	char *pStrOut = (char*)pOut;
+	if ( pData->m_pRecvProp->m_StringBufferSize <= 0 )
+	{
+		return;
+	}
+
+	for ( int i=0; i < pData->m_pRecvProp->m_StringBufferSize; i++ )
+	{
+		pStrOut[i] = pData->m_Value.m_pString[i];
+		if ( pStrOut[i] == 0 )
+			break;
+	}
+	
+	pStrOut[pData->m_pRecvProp->m_StringBufferSize-1] = 0;
+
+	C_PropTestchamberSign *pSign = (C_PropTestchamberSign*)pStruct;
+	pSign->InitializeMaterials();
+}
+
 IMPLEMENT_CLIENTCLASS_DT( C_PropTestchamberSign, DT_PropTestchamberSign, CPropTestchamberSign )
 	RecvPropInt( RECVINFO( m_iChamberNumber ) ),
 	RecvPropInt( RECVINFO( m_iTotalChambers ) ),
 	
 	RecvPropArray3( RECVINFO_ARRAY(m_bIconActive), RecvPropInt( RECVINFO(m_bIconActive[0]))),
 	RecvPropBool( RECVINFO( m_bLegacyTotalChambers ) ),
+
+	RecvPropString( RECVINFO( m_iszAWEMaterial ), 0, RecvProxy_AWEMaterials ),
+	RecvPropString( RECVINFO( m_iszAWEGreyMaterial ), 0, RecvProxy_AWEMaterials ),
 END_RECV_TABLE()
 
 //-----------------------------------------------------------------------------
@@ -146,6 +173,9 @@ C_PropTestchamberSign::C_PropTestchamberSign()
 
 	m_iChamberNumber = m_iOldChamberNumber = 0;
 	m_iTotalChambers = m_iOldTotalChambers = 0;
+
+	strcpy( m_iszAWEMaterial, DEFAULT_AWE_MATERIAL );
+	strcpy( m_iszAWEGreyMaterial, DEFAULT_AWE_GREY_MATERIAL );
 
 	CalcCurrentDigits();
 	CalcTotalDigits();
@@ -305,8 +335,8 @@ void C_PropTestchamberSign::CalcTotalDigits()
 
 void C_PropTestchamberSign::InitializeMaterials()
 {
-	m_pMaterialAWETotal = materials->FindMaterial( "models/props_animsigns/awe_total", TEXTURE_GROUP_MODEL );
-	m_pMaterialAWETotalGrey = materials->FindMaterial( "models/props_animsigns/awe_total_grey", TEXTURE_GROUP_MODEL );
+	m_pMaterialAWETotal = materials->FindMaterial( m_iszAWEMaterial, TEXTURE_GROUP_MODEL );
+	m_pMaterialAWETotalGrey = materials->FindMaterial( m_iszAWEGreyMaterial, TEXTURE_GROUP_MODEL );
 	m_pMaterialAWEBlank = materials->FindMaterial( "models/props_animsigns/awe_blank", TEXTURE_GROUP_MODEL );
 }
 
