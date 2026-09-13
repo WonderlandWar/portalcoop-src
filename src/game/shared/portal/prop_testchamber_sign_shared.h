@@ -1,0 +1,11 @@
+#ifndef _PROP_TESTCHAMBER_SIGN_SHARED_H_
+#define _PROP_TESTCHAMBER_SIGN_SHARED_H_
+#ifdef _WIN32
+#pragma once
+#endif
+
+#define MAX_CHAMBER_NUMBER 99
+#define NUM_HAZARD_ICONS 10
+
+
+#endif // _PROP_TESTCHAMBER_SIGN_SHARED_H_
