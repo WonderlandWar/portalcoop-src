@@ -20,7 +20,7 @@
 
 // This would be great to have. It solves the problem of player pushing fighting the portal funnel.
 // It also reduces prediction errors, but unfortunately certain behaviors can't be translated to cmd code.
-#define USE_CMD_FOR_PORTAL_FUNNEL
+//#define USE_CMD_FOR_PORTAL_FUNNEL
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
