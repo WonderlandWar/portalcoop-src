@@ -76,7 +76,7 @@ public:
 
 	void DrawAWE();
 	void DrawApertureLogo( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up );
-	void DrawHazardIcon( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, int iAttachment, int iconIndex );
+	void DrawHazardIcon( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &center, int iconIndex );
 	void DrawSeparatorBar( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &start );
 	void DrawSeparatorBarEdge( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &start, bool bSwapUVs );
 	void DrawSeparatorBarCenter( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &start );
@@ -423,7 +423,8 @@ void C_PropTestchamberSign::DrawAWE()
 	// Hazard Icons
 	for ( i = 0; i != NUM_HAZARD_ICONS; ++i )
 	{
-		DrawHazardIcon( pRenderContext, meshBuilder, right, up, m_iAttachmentHazardIcons[i], i );
+		GetAttachment( m_iAttachmentHazardIcons[i], temp );
+		DrawHazardIcon( pRenderContext, meshBuilder, right, up, temp, i );
 	}
 
 	// Separator Bars
@@ -520,12 +521,11 @@ void C_PropTestchamberSign::DrawApertureLogo( IMatRenderContext *pRenderContext,
 //-----------------------------------------------------------------------------
 // Purpose: Draw a hazard icon at a specified location
 //-----------------------------------------------------------------------------
-void C_PropTestchamberSign::DrawHazardIcon( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, int iAttachment, int iconIndex )
+void C_PropTestchamberSign::DrawHazardIcon( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &center, int iconIndex )
 {
 	pRenderContext->Bind( GetAWEMaterialForSkinSet( m_bIconActive[iconIndex] ? TESTSIGN_SKINSET_AWE_TOTAL : TESTSIGN_SKINSET_AWE_TOTAL_GREY ) );
 
-	Vector center, temp;
-	GetAttachment( iAttachment, center );
+	Vector temp;
 	
 	IMesh* pMesh = pRenderContext->GetDynamicMesh();
 
