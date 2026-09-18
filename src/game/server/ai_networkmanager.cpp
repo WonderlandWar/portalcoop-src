@@ -528,7 +528,7 @@ void CAI_NetworkManager::LoadNetworkGraph( void )
 	
 
 
-	if ( !bHaveAIN && !filesystem->ReadFile( szNrpFilename, "game", buf ) )
+	if ( !bHaveAIN && !filesystem->ReadFile( szNrpFilename, "game", buf ) && !filesystem->ReadFile( szNrpFilename, "mod", buf ) )
 	{
 		DevWarning( 2, "Couldn't read %s!\n", szNrpFilename );
 		return;
