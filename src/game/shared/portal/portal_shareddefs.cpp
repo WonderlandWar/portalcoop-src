@@ -165,22 +165,29 @@ void CMapDataLoader::LevelInitPreEntity()
 		return;
 	}
 
-	Msg("Map loaded: %s\n", pszMapName);
+	Msg("Map Data loaded: %s\n", pszMapName);
 
 	g_MapInfo.m_iRequiredPlayers = pMapData->GetInt( "required_players", -1 );
 	const char *associated_mapset = pMapData->GetString( "associated_mapset", NULL );
-	if ( associated_mapset )
+	if ( *associated_mapset )
 	{
 		V_strcpy( g_MapInfo.m_szAssociatedMapSet, associated_mapset );
+#ifndef CLIENT_DLL
+		extern uint8 GetCamerasForMapset( const char *mapset );
+		g_MapInfo.m_iNumKnockdownCameras = GetCamerasForMapset( associated_mapset );
+#endif
 	}
 	else
 	{
 		memset( g_MapInfo.m_szAssociatedMapSet, 0, sizeof( g_MapInfo.m_szAssociatedMapSet ) );
+#ifndef CLIENT_DLL
+		g_MapInfo.m_iNumKnockdownCameras = SECURITY_CAMERA_TOTAL_TO_KNOCK_DOWN;
+#endif
 	}
 #ifdef CLIENT_DLL
 	V_strcpy( g_MapInfo.m_szCreditsFile, pMapData->GetString( "credits_file", "scripts/credits.txt" ) );
 #endif
-
+	
 	pMapData->deleteThis();
 }
 
@@ -195,7 +202,8 @@ bool MapSetIsOfficial( const char *mapsetname )
 	
 	for ( KeyValues *mapset = mapsets_official->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
 	{
-		if ( !V_stricmp( mapset->GetName(), mapsetname ) )
+		Assert( V_stricmp( mapset->GetName(), mapsetname ) == V_strcmp( mapset->GetName(), mapsetname ) );
+		if ( !V_strcmp( mapset->GetName(), mapsetname ) )
 		{
 			mapsets_official->deleteThis();
 			return true;
@@ -208,7 +216,6 @@ bool MapSetIsOfficial( const char *mapsetname )
 
 void ExecuteLoadingMapSetFunction( MapSetFunc func, void *pData )
 {
-	// Check the soundscripts
 	const char* pCurrentPath = "scripts/mapsets/";
 	
 	char szDirectory[_MAX_PATH];
@@ -263,6 +270,7 @@ static bool GetMapSetTitle( const char *pFilename, void *pData )
 		{
 			V_strcpy( pszTitle, mapset->GetString( "name" ) );
 			bFound = true;
+			break;
 		}
 	}
 
@@ -280,3 +288,74 @@ void GetTitleForMapSet( char *szTitle, const char *mapset )
 	};
 	ExecuteLoadingMapSetFunction( GetMapSetTitle, array );
 }
+#ifndef CLIENT_DLL
+static bool GetMapSetCameras( const char *pFilename, void *pData )
+{
+	char szFullDirectory[_MAX_PATH];
+	Q_snprintf( szFullDirectory, sizeof( szFullDirectory ), "%s/mapsets.txt", pFilename );
+
+	KeyValues *mapsets = new KeyValues( "mapsets" );
+	if ( !mapsets->LoadFromFile( g_pFullFileSystem, szFullDirectory, "GAME" ) )
+	{
+		mapsets->deleteThis();
+		return false;
+	}
+	
+	void **array = (void**)pData;
+	char *pszMapset = (char*)array[0];
+	uint8 *piNumCameras = (uint8*)array[1];
+	
+	bool bFound = false;
+
+	for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
+	{
+		if ( !V_stricmp( mapset->GetName(), pszMapset ) )
+		{
+			*piNumCameras = mapset->GetInt( "NumKnockdownCameras" );
+			bFound = true;
+			break;
+		}
+	}
+
+	mapsets->deleteThis();
+
+	return bFound;
+}
+
+uint8 GetCamerasForMapset( const char *pszMapset )
+{
+	uint8 iNumCameras = SECURITY_CAMERA_TOTAL_TO_KNOCK_DOWN;
+	void *array[2] = 
+	{
+		(void*)pszMapset,
+		(void*)iNumCameras
+	};
+
+	if ( MapSetIsOfficial( pszMapset ) )
+	{
+		KeyValues *mapsets = new KeyValues( "mapsets" );
+		if ( !mapsets->LoadFromFile( g_pFullFileSystem, "scripts/mapsets/mapsets_official.txt", "GAME") )
+		{
+			mapsets->deleteThis();
+			return iNumCameras;
+		}
+
+		for ( KeyValues *mapset = mapsets->GetFirstSubKey(); mapset != NULL; mapset = mapset->GetNextKey() )
+		{
+			if ( !V_strcmp( mapset->GetName(), pszMapset ) )
+			{
+				iNumCameras = mapset->GetInt( "NumKnockdownCameras" );
+				break;
+			}
+		}
+
+		mapsets->deleteThis();
+	}
+	else
+	{
+		ExecuteLoadingMapSetFunction( GetMapSetCameras, array );
+	}
+
+	return iNumCameras;
+}
+#endif

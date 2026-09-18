@@ -30,7 +30,9 @@
 #define MIN_FLING_SPEED 300
 
 #define PORTAL_HIDE_PLAYER_RAGDOLL 1
-
+#ifndef CLIENT_DLL
+#define SECURITY_CAMERA_TOTAL_TO_KNOCK_DOWN 33
+#endif
 enum PortalFizzleType_t
 {
 	PORTAL_FIZZLE_SUCCESS = 0,			// Placed fine (no fizzle)
@@ -159,17 +161,21 @@ public:
 	CMapInfo();
 	void Reset();
 
-	int GetRequiredPlayers() { return m_iRequiredPlayers; }
+	int8 GetRequiredPlayers() { return m_iRequiredPlayers; }
 	const char* GetAssociatedMapSet( void ) { return m_szAssociatedMapSet; }
 #ifdef CLIENT_DLL
 	const char *GetCreditsFile( void ) { return m_szCreditsFile; }
+#else
+	uint8 GetNumKnockdownCameras( void ) { return m_iNumKnockdownCameras; }
 #endif
 
 private:
-	int m_iRequiredPlayers;
+	int8 m_iRequiredPlayers;
 	char m_szAssociatedMapSet[MAX_MAPSET_LENGTH];
 #ifdef CLIENT_DLL
 	char m_szCreditsFile[64];
+#else
+	uint8 m_iNumKnockdownCameras; //SECURITY_CAMERA_TOTAL_TO_KNOCK_DOWN
 #endif
 
 	friend class CMapDataLoader;

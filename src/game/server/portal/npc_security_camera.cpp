@@ -63,8 +63,6 @@
 //Heights
 #define	SECURITY_CAMERA_YAW_SPEED	7.0f
 
-#define SECURITY_CAMERA_TOTAL_TO_KNOCK_DOWN 33
-
 //Turret states
 enum turretState_e
 {
@@ -1125,7 +1123,7 @@ bool CNPC_SecurityCamera::CanBeAnEnemyOf( CBaseEntity *pEnemy )
 	return BaseClass::CanBeAnEnemyOf( pEnemy );
 }
 
-int g_iNumCamerasDetatched;
+int g_iNumCamerasDetatched = 0;
 
 void IncNumCamerasDetatched()
 {
@@ -1173,7 +1171,7 @@ void PlayDismountSounds( void )
 	int iNumCamerasDetatched = GetNumCamerasDetatched();
 
 	// If they've knocked down every one possible, play special '1' sound.
-	if ( iNumCamerasDetatched == SECURITY_CAMERA_TOTAL_TO_KNOCK_DOWN )
+	if ( iNumCamerasDetatched == g_MapInfo.GetNumKnockdownCameras() )
 	{
 		InstancedScriptedScene( pGlaDOS, CAMERA_DESTROYED_SCENE_1 );
 	}
