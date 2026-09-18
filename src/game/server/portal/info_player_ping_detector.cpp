@@ -146,7 +146,7 @@ void CInfo_Player_Ping_Detector::FireGameEvent( IGameEvent *event ) // Line 109
 					pTank->AimAtTargetPosition( m_vecPingLocation );
 				}
 			}
-			m_OnPingDetected.FireOutput( NULL, NULL );
+			m_OnPingDetected.FireOutput( this, this );
 		}
 	}
 }
