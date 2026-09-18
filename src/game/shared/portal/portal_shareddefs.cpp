@@ -50,12 +50,10 @@ PortalColorSet_t GetColorSetForPlayer( int iPlayer )
 
 KeyValues *LoadRadioData()
 {	
-	KeyValues *radios = new KeyValues( "radios.txt" );
-	if ( !radios->LoadFromFile( g_pFullFileSystem, RADIO_DATA_FILE, "MOD" ) )
+	KeyValues *radios = new KeyValues( "radios" );
+	if ( !radios->LoadFromFile( g_pFullFileSystem, RADIO_DATA_FILE, "GAME" ) )
 	{
-		AssertMsg( false, "Failed to load radio data" );
-		radios->deleteThis();
-		return NULL;
+		radios->SaveToFile( g_pFullFileSystem, RADIO_DATA_FILE, "GAME" );
 	}
 
 	return radios;

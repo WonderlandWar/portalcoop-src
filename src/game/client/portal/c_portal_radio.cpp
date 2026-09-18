@@ -104,18 +104,18 @@ void C_Portal_Dinosaur::OnDataChanged( DataUpdateType_t updatetype )
 		if ( m_hDinosaur_Signal != m_hOldDinosaur_Signal && m_hDinosaur_Signal != NULL )
 		{
 			m_hOldDinosaur_Signal = m_hDinosaur_Signal;
-			for ( KeyValues *radio = radios->GetFirstSubKey(); radio != NULL; radio = radio->GetNextKey() )
+			
+			const char *pszMapSet = g_MapInfo.GetAssociatedMapSet();
+			if ( *pszMapSet )
 			{
-				int id = radio->GetInt("id");
-				bool found = radio->GetBool("found");
-
-				if ( id == m_hDinosaur_Signal.Get()->m_nSignalID )
+				KeyValues *mapset = radios->FindKey( pszMapSet );
+				if ( mapset )
 				{
-					if ( found )
+					bool bFound = mapset->GetBool( VarArgs( "%i", m_hDinosaur_Signal.Get()->m_nSignalID ) );
+					if ( bFound )
 					{
 						m_bAlreadyDiscovered = true;
 					}
-					break;
 				}
 			}
 		}
@@ -293,22 +293,20 @@ void C_Portal_Dinosaur::ScanForSounds()
 			KeyValues *radios = LoadRadioData();
 			if ( radios )
 			{
-				KeyValues *radiokey = NULL;
-				for ( radiokey = radios->GetFirstSubKey(); radiokey != NULL; radiokey = radiokey->GetNextKey() )
+				const char *pszMapSet = g_MapInfo.GetAssociatedMapSet();
+				if ( *pszMapSet )
 				{
-					int tempid = radiokey->GetInt("id");
-					if ( tempid == id )
-					{					
-						break; // Found our radio data
+					KeyValues *mapset = radios->FindKey( pszMapSet, true );
+					if ( mapset )
+					{
+						const char *pszID = VarArgs( "%i", id );
+						KeyValues *radioid = mapset->FindKey( pszID, true );
+						radioid->SetStringValue( "1" );
+						radios->SaveToFile( g_pFullFileSystem, RADIO_DATA_FILE, "GAME" );
 					}
-				}
 
-				if ( radiokey )
-				{
-					radiokey->SetBool("found", true);
-					radios->SaveToFile( g_pFullFileSystem, RADIO_DATA_FILE, "MOD" );
+					radios->deleteThis();
 				}
-				radios->deleteThis();
 			}
 		}
 
