@@ -781,7 +781,7 @@ void CNPC_Portal_FloorTurret::ActiveThink( void )
 
 		ClearEnemyMemory();
 		SetEnemy( NULL );
-		SetThink( &CNPC_FloorTurret::SuppressThink );
+		SetThink( &CNPC_FloorTurret::ActiveThink );
 
 		return;
 	}
