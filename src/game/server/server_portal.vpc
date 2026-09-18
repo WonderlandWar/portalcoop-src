@@ -366,6 +366,7 @@ $Project "Server (Portal)"
 			$File	"portal\prop_box.h"
 			$File	"portal\func_switch.cpp"
 			$File	"portal\prop_testchamber_sign.cpp"
+			$File 	"portal\info_player_ping_detector.cpp"
 			
 			// Portal 2 stuff
 			$File	"portal\env_portal_laser.cpp"
