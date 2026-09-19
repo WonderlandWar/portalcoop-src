@@ -19,13 +19,21 @@ public:
 	virtual void Activate();
 	virtual bool KeyValue( const char *szKeyName, const char *szValue );
 
-	void ClampTestchamberValues();
-
 private:
 
 	void InputSetChamberNumber( inputdata_t &inputdata );
 	void InputSetTotalChambers( inputdata_t &inputdata );
-	
+	void InputSetIcon1Active( inputdata_t &inputdata );
+	void InputSetIcon2Active( inputdata_t &inputdata );
+	void InputSetIcon3Active( inputdata_t &inputdata );
+	void InputSetIcon4Active( inputdata_t &inputdata );
+	void InputSetIcon5Active( inputdata_t &inputdata );
+	void InputSetIcon6Active( inputdata_t &inputdata );
+	void InputSetIcon7Active( inputdata_t &inputdata );
+	void InputSetIcon8Active( inputdata_t &inputdata );
+	void InputSetIcon9Active( inputdata_t &inputdata );
+	void InputSetIcon10Active( inputdata_t &inputdata );
+
 	CNetworkVar( unsigned int, m_iChamberNumber );
 	CNetworkVar( unsigned int, m_iTotalChambers );
 	CNetworkArray( bool, m_bIconActive, NUM_HAZARD_ICONS );
@@ -55,6 +63,16 @@ BEGIN_DATADESC( CPropTestchamberSign )
 
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "SetChamberNumber", InputSetChamberNumber ),
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "SetTotalChambers", InputSetTotalChambers ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon1Active", InputSetIcon1Active ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon2Active", InputSetIcon2Active ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon3Active", InputSetIcon3Active ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon4Active", InputSetIcon4Active ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon5Active", InputSetIcon5Active ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon6Active", InputSetIcon6Active ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon7Active", InputSetIcon7Active ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon8Active", InputSetIcon8Active ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon9Active", InputSetIcon9Active ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetIcon10Active", InputSetIcon10Active ),
 
 	DEFINE_KEYFIELD( m_bLegacyTotalChambers, FIELD_BOOLEAN, "LegacyTotalChambers" ),
 	DEFINE_KEYFIELD( m_bIconActive[0], FIELD_BOOLEAN, "icon1active" ),
@@ -126,4 +144,54 @@ void CPropTestchamberSign::InputSetChamberNumber( inputdata_t &inputdata )
 void CPropTestchamberSign::InputSetTotalChambers( inputdata_t &inputdata )
 {
 	m_iTotalChambers = inputdata.value.Int();
+}
+
+void CPropTestchamberSign::InputSetIcon1Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 0, inputdata.value.Bool() );
+}
+
+void CPropTestchamberSign::InputSetIcon2Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 1, inputdata.value.Bool() );
+}
+
+void CPropTestchamberSign::InputSetIcon3Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 2, inputdata.value.Bool() );
+}
+
+void CPropTestchamberSign::InputSetIcon4Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 3, inputdata.value.Bool() );
+}
+
+void CPropTestchamberSign::InputSetIcon5Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 4, inputdata.value.Bool() );
+}
+
+void CPropTestchamberSign::InputSetIcon6Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 5, inputdata.value.Bool() );
+}
+
+void CPropTestchamberSign::InputSetIcon7Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 6, inputdata.value.Bool() );
+}
+
+void CPropTestchamberSign::InputSetIcon8Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 7, inputdata.value.Bool() );
+}
+
+void CPropTestchamberSign::InputSetIcon9Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 8, inputdata.value.Bool() );
+}
+
+void CPropTestchamberSign::InputSetIcon10Active( inputdata_t &inputdata )
+{
+	m_bIconActive.Set( 9, inputdata.value.Bool() );
 }
