@@ -657,6 +657,14 @@ void CNPC_Portal_FloorTurret::Deploy( void )
 {
 	LaserOn();
 	RopesOn();
+	
+	IPhysicsObject *pTurretPhys = VPhysicsGetObject();
+	if ( (pTurretPhys->GetGameFlags() & FVPHYSICS_PLAYER_HELD) )
+	{
+		SetThink( &CNPC_Portal_FloorTurret::HeldThink );
+		SetNextThink( gpGlobals->curtime );
+		return;
+	}
 
 	BaseClass::Deploy();
 }
