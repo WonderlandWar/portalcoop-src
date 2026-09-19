@@ -794,6 +794,9 @@ void CPhysicsPushedEntities::RotateRootEntity( CBaseEntity *pRoot, float movetim
 	QAngle angles = pRoot->GetLocalAngles();
 	angles += pRoot->GetLocalAngularVelocity() * movetime;
 
+	for ( int i = 0; i < 3; ++i )
+		angles[i] = AngleNormalize( angles[i] );
+
 	pRoot->SetLocalAngles( angles );
 	
 	// Compute the change in absangles
