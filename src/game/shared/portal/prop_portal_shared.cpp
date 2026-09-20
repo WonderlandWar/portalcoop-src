@@ -120,6 +120,11 @@ void CProp_Portal::SetActive( bool bActive )
 	if ( !bActive )
 	{
 #ifdef GAME_DLL
+		if ( m_bOldActivatedState )
+		{
+			UpdatePortalDetectorsOnPortalDeactivated();
+		}
+
 		PunchAllPenetratingPlayers();
 		m_OnFizzled.FireOutput(this, this);
 #else

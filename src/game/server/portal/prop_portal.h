@@ -171,6 +171,8 @@ public:
 	//virtual bool			CreateVPhysics( void );
 	//virtual void			VPhysicsDestroyObject( void );
 
+	CPhysCollide			*GetCollisionShape();
+
 	virtual bool			TestCollision( const Ray_t &ray, unsigned int fContentsMask, trace_t& tr );
 
 	virtual void			PortalSimulator_TookOwnershipOfEntity( CBaseEntity *pEntity );
@@ -185,6 +187,10 @@ public:
 	QAngle					GetLastAngles() { return m_qLastPortalAngles; }
 	
 	CUtlVector<EHANDLE>		m_PortalEventListeners;			// Collection of entities (by handle) who wish to receive notification of portal events (fizzle, moved, etc)
+	
+	void					UpdatePortalDetectorsOnPortalMoved( void );
+	void					UpdatePortalDetectorsOnPortalActivated( void );
+	void					UpdatePortalDetectorsOnPortalDeactivated( void );
 
 	CNetworkVar( unsigned char, m_iLinkageGroupID )
 			

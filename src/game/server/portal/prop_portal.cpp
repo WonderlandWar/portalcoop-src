@@ -410,6 +410,16 @@ void CProp_Portal::OnRestore()
 void DumpActiveCollision( const CPortalSimulator *pPortalSimulator, const char *szFileName );
 void PortalSimulatorDumps_DumpCollideToGlView( CPhysCollide *pCollide, const Vector &origin, const QAngle &angles, float fColorScale, const char *pFilename );
 
+CPhysCollide* CProp_Portal::GetCollisionShape()
+{
+	if ( !m_pCollisionShape )
+	{
+		UpdateCollisionShape();
+	}
+
+	return m_pCollisionShape;
+}
+
 bool CProp_Portal::TestCollision( const Ray_t &ray, unsigned int fContentsMask, trace_t& tr )
 {
 	if ( !m_pCollisionShape )
@@ -939,6 +949,35 @@ void CProp_Portal::Activate( void )
 				}
 			}
 		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Kinda sucks... Normal triggers won't find portals because they're also triggers.
+//			Rather than addressing that directly, portal detectors look for portals with an explicit OBB check.
+//			
+//-----------------------------------------------------------------------------
+void CProp_Portal::UpdatePortalDetectorsOnPortalMoved( void )
+{
+	for ( CFuncPortalDetector *pDetector = GetPortalDetectorList(); pDetector != NULL; pDetector = pDetector->m_pNext )
+	{
+		pDetector->UpdateOnPortalMoved( this );
+	}
+}
+
+void CProp_Portal::UpdatePortalDetectorsOnPortalActivated( void )
+{
+	for ( CFuncPortalDetector *pDetector = GetPortalDetectorList(); pDetector != NULL; pDetector = pDetector->m_pNext )
+	{
+		pDetector->UpdateOnPortalActivated( this );
+	}
+}
+
+void CProp_Portal::UpdatePortalDetectorsOnPortalDeactivated( void )
+{
+	for ( CFuncPortalDetector *pDetector = GetPortalDetectorList(); pDetector != NULL; pDetector = pDetector->m_pNext )
+	{
+		pDetector->UpdateOnPortalDeactivated( this );
 	}
 }
 
@@ -1634,6 +1673,14 @@ void CProp_Portal::NewLocation( const Vector &vOrigin, const QAngle &qAngles )
 	}
 #endif
 	CreateSounds();
+	
+	UpdatePortalDetectorsOnPortalMoved();
+	if( (m_hLinkedPortal.Get() != NULL) && (m_bOldActivatedState == false) && (IsActive() == true) )
+	{
+		//went from inactive to active
+		UpdatePortalDetectorsOnPortalActivated();
+		((CProp_Portal *)m_hLinkedPortal.Get())->UpdatePortalDetectorsOnPortalActivated();
+	}
 
 	if ( m_pAmbientSound )
 	{
