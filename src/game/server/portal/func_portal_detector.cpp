@@ -214,7 +214,7 @@ void CFuncPortalDetector::UpdateOnPortalMoved( CProp_Portal *pPortal )
 		{
 			if ( !IsPortalInDetectorSpace( pPortal ) )
 			{
-				Msg( "Portal %i (%i) is not in the detector space\n", pPortal->m_bIsPortal2 ? 2 : 1, pPortal->GetLinkageGroup() );
+				//Msg( "Portal %i (%i) is not in the detector space\n", pPortal->m_bIsPortal2 ? 2 : 1, pPortal->GetLinkageGroup() );
 				bIsTouchingPortalDetector = false;
 			}
 		}
