@@ -328,7 +328,7 @@ uint8 GetCamerasForMapset( const char *pszMapset )
 	void *array[2] = 
 	{
 		(void*)pszMapset,
-		(void*)iNumCameras
+		(void*)&iNumCameras
 	};
 
 	if ( MapSetIsOfficial( pszMapset ) )
