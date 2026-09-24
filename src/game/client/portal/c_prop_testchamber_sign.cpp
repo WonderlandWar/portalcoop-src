@@ -83,6 +83,7 @@ public:
 	void DrawProgressBarQuad( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &start );
 	void DrawBigDigit( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &center, int digit );
 	void DrawBigDigit_Number1( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &center ); // 1 has a special shape that needs to be recreated
+	void DrawBigDigit_Number9( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &baseCenter ); // 9 is slightly smaller than the rest
 	void DrawSmallDigit( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &center, int digit );
 	void DrawSlash( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &center );
 	void DrawTotalChambers( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up );
@@ -814,9 +815,14 @@ void C_PropTestchamberSign::DrawProgressBarQuad( IMatRenderContext *pRenderConte
 //-----------------------------------------------------------------------------
 void C_PropTestchamberSign::DrawBigDigit( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &center, int digit )
 {
-	if (digit == 1) // Early out if it's a 1, these are special
+	switch ( digit ) // Specially shaped digits
 	{
+		case 1:
 		DrawBigDigit_Number1( pRenderContext, meshBuilder, right, up, center );
+		return;
+		
+		case 9:
+		DrawBigDigit_Number9( pRenderContext, meshBuilder, right, up, center );
 		return;
 	}
 	
@@ -1038,6 +1044,83 @@ void C_PropTestchamberSign::DrawBigDigit_Number1( IMatRenderContext *pRenderCont
 	meshBuilder.Position3fv (temp.Base());
 	meshBuilder.AdvanceVertex();
 
+	meshBuilder.End();
+	pMesh->Draw();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Draw a large 9 which is slightly smaller than the rest
+//-----------------------------------------------------------------------------
+void C_PropTestchamberSign::DrawBigDigit_Number9( IMatRenderContext *pRenderContext, CMeshBuilder &meshBuilder, const Vector &right, const Vector &up, const Vector &baseCenter )
+{
+	// The half width for the 9 is 11.412935 and the difference is 0.48328
+	const float HALF_WIDTH_PERCENTAGE_DIFF = 0.959375314;
+	const float HALF_WIDTH = AWE_BIG_DIGIT_HALF_WIDTH * HALF_WIDTH_PERCENTAGE_DIFF;
+
+	// TODO: It'd be way more elegant to make this multiply to get the desired result,
+	// but it's giving inaccurate results and won't work for both sides
+	
+	// The offset difference is 0.4832
+	//const float CENTER_X_OFFSET_PERCENTAGE = 0.965887029;
+	//Vector center = baseCenter + (right * CENTER_X_OFFSET_PERCENTAGE);
+
+	const float CENTER_X_OFFSET = 0.4832;
+	Vector center = baseCenter + (right * CENTER_X_OFFSET);
+
+	const float x1 = 0.854681;
+	const float x2 = 0.924089;
+
+	const float y1 = 0.576876;
+	const float y2 = 0.992359;
+
+	pRenderContext->Bind( GetAWEMaterialForSkinSet( TESTSIGN_SKINSET_NEWSIGNAGE_BACK02 ) );
+
+	Vector temp;
+	
+	IMesh* pMesh = pRenderContext->GetDynamicMesh();
+
+	meshBuilder.Begin( pMesh, MATERIAL_QUADS, 1 );
+
+	// Top Left
+	//
+	meshBuilder.Color3f( 1.0f, 1.0f, 1.0f );
+	meshBuilder.TexCoord2f (0.0, x1, y1);
+	temp = center;
+	temp += up * AWE_BIG_DIGIT_HALF_HEIGHT;
+	temp += right * HALF_WIDTH;
+	meshBuilder.Position3fv (temp.Base());
+	meshBuilder.AdvanceVertex();
+
+	// Top Right
+	//
+	meshBuilder.Color3f( 1.0f, 1.0f, 1.0f );
+	meshBuilder.TexCoord2f (0.0, x2, y1);
+	temp = center;
+	temp += up * AWE_BIG_DIGIT_HALF_HEIGHT;
+	temp += right * -HALF_WIDTH;
+	meshBuilder.Position3fv (temp.Base());
+	meshBuilder.AdvanceVertex();
+	
+	// Bottom Right
+	//
+	meshBuilder.Color3f( 1.0f, 1.0f, 1.0f );
+	meshBuilder.TexCoord2f (0.0, x2, y2);
+	temp = center;
+	temp += up * -AWE_BIG_DIGIT_HALF_HEIGHT;
+	temp += right * -HALF_WIDTH;
+	meshBuilder.Position3fv (temp.Base());
+	meshBuilder.AdvanceVertex();
+
+	// Bottom Left
+	//
+	meshBuilder.Color3f( 1.0f, 1.0f, 1.0f );
+	meshBuilder.TexCoord2f (0.0, x1, y2);
+	temp = center;
+	temp += up * -AWE_BIG_DIGIT_HALF_HEIGHT;
+	temp += right * HALF_WIDTH;
+	meshBuilder.Position3fv (temp.Base());
+	meshBuilder.AdvanceVertex();
+	
 	meshBuilder.End();
 	pMesh->Draw();
 }
