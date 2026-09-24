@@ -169,7 +169,7 @@ void CMapDataLoader::LevelInitPreEntity()
 
 	g_MapInfo.m_iRequiredPlayers = pMapData->GetInt( "required_players", -1 );
 	const char *associated_mapset = pMapData->GetString( "associated_mapset", NULL );
-	if ( *associated_mapset )
+	if ( associated_mapset && *associated_mapset )
 	{
 		V_strcpy( g_MapInfo.m_szAssociatedMapSet, associated_mapset );
 #ifndef CLIENT_DLL
