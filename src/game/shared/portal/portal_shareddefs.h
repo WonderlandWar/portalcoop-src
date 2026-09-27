@@ -148,9 +148,6 @@ extern ConVar pcoop_require_all_players_force_amount;
 
 //#define USE_BASIC_RADIOS
 
-#define RADIO_DATA_FILE "save/radios.txt"
-extern KeyValues *LoadRadioData();
-
 // Map data stuff
 //
 extern KeyValues *LoadMapDataForMap( const char *map );
@@ -165,8 +162,6 @@ public:
 	const char* GetAssociatedMapSet( void ) { return m_szAssociatedMapSet; }
 #ifdef CLIENT_DLL
 	const char *GetCreditsFile( void ) { return m_szCreditsFile; }
-#else
-	uint8 GetNumKnockdownCameras( void ) { return m_iNumKnockdownCameras; }
 #endif
 
 private:
@@ -174,14 +169,31 @@ private:
 	char m_szAssociatedMapSet[MAX_MAPSET_LENGTH];
 #ifdef CLIENT_DLL
 	char m_szCreditsFile[64];
-#else
-	uint8 m_iNumKnockdownCameras; //SECURITY_CAMERA_TOTAL_TO_KNOCK_DOWN
 #endif
 
 	friend class CMapDataLoader;
 };
 
+class CMapSetInfo
+{
+public:
+	CMapSetInfo();
+	void Reset();
+
+	void ParseDataFromMapSet( KeyValues *mapset );
+#ifndef CLIENT_DLL
+	uint8 GetNumKnockdownCameras( void ) { return m_iNumKnockdownCameras; }
+	uint8 GetNumProgressMaps( void ) { return m_iNumProgressMaps; }
+#endif
+private:
+#ifndef CLIENT_DLL
+	uint8 m_iNumKnockdownCameras;
+	uint8 m_iNumProgressMaps;
+#endif
+};
+
 extern CMapInfo g_MapInfo;
+extern CMapSetInfo g_MapSetInfo;
 
 int GetRequiredPlayers();
 

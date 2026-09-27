@@ -3,6 +3,8 @@
 //
 //=====================================================================================//
 #include "cbase.h"
+#include "c_portal_radio.h"
+#include "portal_radio_shared.h"
 #include "c_physicsprop.h"
 #include "portal_gamerules.h"
 #include "igameevents.h"
@@ -10,6 +12,17 @@
 #include "beamdraw.h"
 #include "filesystem.h"
 #include "portal_shareddefs.h"
+
+KeyValues *LoadRadioData()
+{	
+	KeyValues *radios = new KeyValues( "radios" );
+	if ( !radios->LoadFromFile( g_pFullFileSystem, RADIO_DATA_FILE, "GAME" ) )
+	{
+		radios->SaveToFile( g_pFullFileSystem, RADIO_DATA_FILE, "GAME" );
+	}
+
+	return radios;
+}
 
 extern const ConVar *sv_cheats;
 
@@ -43,7 +56,8 @@ public:
 	DECLARE_CLIENTCLASS();
 	DECLARE_CLASS( C_Portal_Dinosaur, C_PhysicsProp );
 
-				~C_Portal_Dinosaur( void );
+	C_Portal_Dinosaur( void );
+	~C_Portal_Dinosaur( void );
 
 	virtual void Spawn();
 	virtual void OnDataChanged( DataUpdateType_t updatetype );
@@ -73,15 +87,24 @@ public:
 	CSoundPatch		*m_pStaticSound;
 	CSoundPatch		*m_pSignalSound;
 #endif
+
+	RadioMode_t		m_iOldRadioMode;
+	RadioMode_t		m_iRadioMode;
 };
 
 IMPLEMENT_CLIENTCLASS_DT( C_Portal_Dinosaur, DT_PropDinosaur, CPortal_Dinosaur )
 #ifndef USE_BASIC_RADIOS
-	RecvPropEHandle( RECVINFO( m_hDinosaur_Signal) ),
+	RecvPropEHandle( RECVINFO( m_hDinosaur_Signal ) ),
+	RecvPropInt( RECVINFO( m_iRadioMode ) ),
 #endif
 END_RECV_TABLE()
 
 LINK_ENTITY_TO_CLASS( prop_radio, C_Portal_Dinosaur );
+
+C_Portal_Dinosaur::C_Portal_Dinosaur()
+{
+	m_iOldRadioMode = m_iRadioMode = RADIO_DINOSAUR;
+}
 
 void C_Portal_Dinosaur::Spawn()
 {
@@ -120,6 +143,12 @@ void C_Portal_Dinosaur::OnDataChanged( DataUpdateType_t updatetype )
 			}
 		}
 		radios->deleteThis();
+	}
+
+	if ( m_iRadioMode != m_iOldRadioMode )
+	{
+		SetupSounds();
+		m_iOldRadioMode = m_iRadioMode;
 	}
 #endif
 }
@@ -189,33 +218,72 @@ void C_Portal_Dinosaur::SetupSounds()
 {
 	CPASAttenuationFilter filter( this );
 
+	if ( m_iOldRadioMode != m_iRadioMode )
+	{
+		if ( m_pNormalSound )
+		{
+			CSoundEnvelopeController::GetController().SoundDestroy( m_pNormalSound );
+			m_pNormalSound = NULL;
+		}
+	}
+
 	if ( m_pNormalSound == NULL )
 	{
 		m_pNormalSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), GetRadioSongScript() );
 #ifdef USE_BASIC_RADIOS // Basic radios play the full sound
 		CSoundEnvelopeController::GetController().Play( m_pNormalSound, VOL_NORM, PITCH_NORM );
 #else
-		CSoundEnvelopeController::GetController().Play( m_pNormalSound, 0.0, PITCH_NORM );
+		if ( m_iRadioMode == RADIO_NORMAL )
+		{
+			CSoundEnvelopeController::GetController().Play( m_pNormalSound, VOL_NORM, PITCH_NORM );
+		}
+		else
+		{
+			CSoundEnvelopeController::GetController().Play( m_pNormalSound, 0.0, PITCH_NORM );
+		}
 #endif
 	}
 #ifndef USE_BASIC_RADIOS
-	if ( m_pStaticSound == NULL )
+	if ( m_iRadioMode == RADIO_DINOSAUR )
 	{
-		m_pStaticSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), "UpdateItem.Static" );
-		CSoundEnvelopeController::GetController().Play( m_pStaticSound, 0.0, PITCH_NORM );
-	}
+		if ( m_pStaticSound == NULL )
+		{
+			m_pStaticSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), "UpdateItem.Static" );
+			CSoundEnvelopeController::GetController().Play( m_pStaticSound, 0.0, PITCH_NORM );
+		}
 
-	if ( m_pSignalSound == NULL && 	m_hDinosaur_Signal.Get() != NULL )
+		if ( m_pSignalSound == NULL && 	m_hDinosaur_Signal.Get() != NULL )
+		{
+			m_pSignalSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), m_hDinosaur_Signal->m_iszSoundName );
+			//m_pSignalSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), "UpdateItem.Signal" );
+			CSoundEnvelopeController::GetController().Play( m_pSignalSound, 0.0, PITCH_NORM );
+		}
+	}
+	else
 	{
-		m_pSignalSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), m_hDinosaur_Signal->m_iszSoundName );
-		//m_pSignalSound = CSoundEnvelopeController::GetController().SoundCreate( filter, entindex(), "UpdateItem.Signal" );
-		CSoundEnvelopeController::GetController().Play( m_pSignalSound, 0.0, PITCH_NORM );
+		if ( m_pStaticSound )
+		{
+			CSoundEnvelopeController::GetController().SoundDestroy( m_pStaticSound );
+			m_pStaticSound = NULL;
+		}
+		
+		if ( m_pSignalSound )
+		{
+			CSoundEnvelopeController::GetController().SoundDestroy( m_pSignalSound );
+			m_pSignalSound = NULL;
+		}
 	}
 #endif
 }
 
 void C_Portal_Dinosaur::ClientThink()
 {
+	if ( m_iRadioMode != RADIO_DINOSAUR )
+	{
+		SetNextClientThink( CLIENT_THINK_NEVER );
+		return;
+	}
+
 	SetupSounds();
 #ifndef USE_BASIC_RADIOS
 	//if ( V_stristr( engine->GetLevelName(), "testchmb_a_00" ) != 0 )
@@ -287,7 +355,7 @@ void C_Portal_Dinosaur::ScanForSounds()
 	{
 		int id = pSignal->m_nSignalID;
 		if ( !engine->IsPlayingDemo() && // Don't save any data if we're running a demo file
-			sv_cheats->GetBool() // Don't save if cheats were enabled 
+			!sv_cheats->GetBool() // Don't save if cheats were enabled 
 			) 
 		{
 			KeyValues *radios = LoadRadioData();
@@ -327,22 +395,25 @@ int C_Portal_Dinosaur::DrawModel( int flags )
 {
 	int nRet = BaseClass::DrawModel( flags );
 #ifndef USE_BASIC_RADIOS
-	CMaterialReference	hMaterial;
-	hMaterial.Init( "sprites/grav_light", TEXTURE_GROUP_CLIENT_EFFECTS );
+	if ( m_iRadioMode == RADIO_DINOSAUR )
+	{
+		CMaterialReference	hMaterial;
+		hMaterial.Init( "sprites/grav_light", TEXTURE_GROUP_CLIENT_EFFECTS );
 
-	// Draw the sprite
-	CMatRenderContextPtr pRenderContext( materials );
-	pRenderContext->Bind( hMaterial, this );
-	color32 color;
-	color.r = ( m_bDinosaurExtinct ) ? 0 : 255;
-	color.g = ( m_bDinosaurExtinct ) ? 255 : 0;
-	color.b = 0;
-	color.a = 128;
+		// Draw the sprite
+		CMatRenderContextPtr pRenderContext( materials );
+		pRenderContext->Bind( hMaterial, this );
+		color32 color;
+		color.r = ( m_bDinosaurExtinct ) ? 0 : 255;
+		color.g = ( m_bDinosaurExtinct ) ? 255 : 0;
+		color.b = 0;
+		color.a = 128;
 
-	Vector vForward, vRight, vUp;
-	GetVectors( &vForward, &vRight, &vUp );
-	Vector vOffset = GetAbsOrigin() + ( vForward * 4.0f ) + ( vUp * 1.85f );
-	DrawSprite( vOffset, 6.0f, 6.0f, color );
+		Vector vForward, vRight, vUp;
+		GetVectors( &vForward, &vRight, &vUp );
+		Vector vOffset = GetAbsOrigin() + ( vForward * 4.0f ) + ( vUp * 1.85f );
+		DrawSprite( vOffset, 6.0f, 6.0f, color );
+	}
 #endif
 	return nRet;
 }

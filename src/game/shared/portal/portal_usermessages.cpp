@@ -47,7 +47,6 @@ void RegisterUserMessages()
 	usermessages->Register( "LogoTimeMsg", 4 );
 	usermessages->Register( "AchievementEvent", -1 );
 
-
 	//new stuff for portal
 	usermessages->Register( "KillCam", -1 );
 	usermessages->Register( "HudPingIndicator", sizeof( Vector ) );
@@ -61,6 +60,9 @@ void RegisterUserMessages()
 	
 	// Set's the player's mouse angle
 	usermessages->Register( "SetMouseAngle", sizeof( QAngle ) );
+
+	// Map progress
+	usermessages->Register( "UpdateMapProgress", sizeof( char ) );
 
 	// NVNT register haptic user messages
 	RegisterHapticMessages();

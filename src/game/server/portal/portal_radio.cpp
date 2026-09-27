@@ -4,6 +4,7 @@
 //=====================================================================================//
 
 #include "cbase.h"					// for pch
+#include "portal_radio_shared.h"
 #include "props.h"
 #include "filters.h"
 #include "achievementmgr.h"
@@ -91,7 +92,6 @@ int CDinosaurSignal::DrawDebugTextOverlays( void )
 }
 #endif
 
-
 class CPortal_Dinosaur : public CPhysicsProp 
 {
 public:
@@ -99,11 +99,17 @@ public:
 	DECLARE_DATADESC();
 	DECLARE_SERVERCLASS();
 
+	CPortal_Dinosaur();
+
 	virtual void Spawn();
 	virtual void Precache();
 	virtual QAngle PreferredCarryAngles( void ) { return QAngle( 0, 180, 0 ); }
 	virtual bool HasPreferredCarryAnglesForPlayer( CBasePlayer *pPlayer ) { return true; }
 	virtual void Activate();
+
+	void UpdateRadioMode( bool bNotEveryPlayerCompletedMapSet );
+	void OnSetRadioMode( RadioMode_t radioMode );
+	void SetRadioMode( RadioMode_t radioMode );
 
 	void ScanThink();
 #ifndef USE_BASIC_RADIOS
@@ -115,6 +121,8 @@ public:
 	COutputEvent m_OnSignalReceived;
 	float m_flOldInnerBlend;
 	float m_flOldOuterBlend;
+
+	CNetworkVar( RadioMode_t, m_iRadioMode );
 };
 
 LINK_ENTITY_TO_CLASS( prop_radio, CPortal_Dinosaur );
@@ -126,6 +134,7 @@ BEGIN_DATADESC( CPortal_Dinosaur )
 	DEFINE_FIELD( m_flOldOuterBlend, FIELD_FLOAT ),
 	
 	DEFINE_KEYFIELD( m_iszSignalName, FIELD_STRING, "signalname" ),
+	DEFINE_KEYFIELD( m_iRadioMode, FIELD_INTEGER, "radiomode" ),
 
 	DEFINE_OUTPUT( m_OnSignalReceived, "OnSignalReceived" ),
 	DEFINE_THINKFUNC( ScanThink ),
@@ -134,8 +143,14 @@ END_DATADESC()
 IMPLEMENT_SERVERCLASS_ST( CPortal_Dinosaur, DT_PropDinosaur )
 #ifndef USE_BASIC_RADIOS
 	SendPropEHandle( SENDINFO( m_hDinosaur_Signal ) ),
+	SendPropInt( SENDINFO( m_iRadioMode ) ),
 #endif
 END_SEND_TABLE()
+
+CPortal_Dinosaur::CPortal_Dinosaur()
+{
+	m_iRadioMode = RADIO_DINOSAUR;
+}
 
 void CPortal_Dinosaur::Precache()
 {
@@ -182,14 +197,55 @@ void CPortal_Dinosaur::Spawn()
 	m_flOldInnerBlend = 0.0f;
 	m_flOldOuterBlend = 0.0f;
 	BaseClass::Spawn();
-	SetContextThink( &CPortal_Dinosaur::ScanThink, gpGlobals->curtime, g_pszScanThinkContext );
 }
 
 void CPortal_Dinosaur::Activate( void )
 {
 	BaseClass::Activate();
-	
-	m_hDinosaur_Signal = dynamic_cast<CDinosaurSignal*>( gEntList.FindEntityByName( NULL, m_iszSignalName.ToCStr() ) );
+
+	OnSetRadioMode( m_iRadioMode );
+}
+
+void CPortal_Dinosaur::UpdateRadioMode( bool bNotEveryPlayerCompletedMapSet )
+{
+	if ( m_iRadioMode == RADIO_DINOSAUR )
+	{
+		if ( bNotEveryPlayerCompletedMapSet )
+		{
+			UTIL_Remove( this );
+		}
+	}
+	else if ( m_iRadioMode == RADIO_REPLACE_WITH_DINOSAUR )
+	{
+		if ( bNotEveryPlayerCompletedMapSet )
+		{
+			SetRadioMode( RADIO_NORMAL );
+		}
+		else
+		{
+			SetRadioMode( RADIO_DINOSAUR );
+		}
+	}
+}
+
+void CPortal_Dinosaur::SetRadioMode( RadioMode_t radioMode )
+{
+	m_iRadioMode = radioMode;
+	OnSetRadioMode( radioMode );
+}
+
+void CPortal_Dinosaur::OnSetRadioMode( RadioMode_t radioMode )
+{
+	if ( radioMode == RADIO_DINOSAUR )
+	{
+		SetContextThink( &CPortal_Dinosaur::ScanThink, gpGlobals->curtime, g_pszScanThinkContext );
+		m_hDinosaur_Signal = dynamic_cast<CDinosaurSignal*>( gEntList.FindEntityByName( NULL, m_iszSignalName.ToCStr() ) );
+	}
+	else
+	{
+		m_hDinosaur_Signal = NULL;
+		SetContextThink( NULL, 0, g_pszScanThinkContext );
+	}
 }
 
 void CPortal_Dinosaur::ScanThink()
@@ -672,5 +728,31 @@ void CSpawnDinosaurHack::ApplyMapSpecificHacks()
 			pFilter->KeyValue( "targetname", "filter_weight_box" );
 			DispatchSpawn( pFilter );
 		}
+	}
+}
+
+void CheckRadioModes()
+{
+	extern void GetProgressForPlayer( int iPlayer, int *piMapProgress, int *piFoundRadios );
+	
+	bool bNotEveryPlayerCompletedMapSet = true;
+
+	for ( int i = 1; i <= g_MapInfo.GetRequiredPlayers(); ++i )
+	{
+		int iMapProgress;
+		GetProgressForPlayer( i, &iMapProgress, NULL );
+
+		if ( iMapProgress < g_MapSetInfo.GetNumProgressMaps() )
+		{
+			bNotEveryPlayerCompletedMapSet = false;
+			break;
+		}
+	}
+
+	CBaseEntity* pEnt = NULL;
+	while ( ( pEnt = gEntList.FindEntityByClassname( pEnt, "prop_radio" ) ) != NULL )
+	{
+		CPortal_Dinosaur *pRadio = assert_cast<CPortal_Dinosaur*>( pEnt );
+		pRadio->UpdateRadioMode( bNotEveryPlayerCompletedMapSet );
 	}
 }

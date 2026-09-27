@@ -207,6 +207,8 @@ $Project "Client (Portal)"
 			$File	"portal\PortalRender.cpp"
 			$File	"portal\PortalRender.h"
 			$File	"portal\c_portal_radio.cpp"
+			$File	"portal\c_portal_radio.h"
+			$File	"$SRCDIR\game\shared\portal\portal_radio_shared.h"
 			$File	"portal\portalrenderable_flatbasic.cpp"
 			$File	"portal\portalrenderable_flatbasic.h"
 			$File	"portal\vgui_portal_stats_display_screen.cpp"
@@ -243,6 +245,8 @@ $Project "Client (Portal)"
 			
 			$File	"portal\c_prop_box.cpp"
 			$File	"portal\c_prop_box.h"
+			
+			$File 	"portal\c_pcoop_progress.cpp"
 			
 			// Portal 2
 			$File	"portal\c_env_portal_laser.cpp"

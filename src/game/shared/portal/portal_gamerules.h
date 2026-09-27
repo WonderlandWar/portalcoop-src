@@ -97,6 +97,7 @@ public:
 	virtual void	ClientDisconnected( edict_t *pClient );
 
 	void			CheckShouldPause( void );
+	void			OnInitialUnpause( void );
 #endif
 	bool			ShouldPauseGame( void );
 
@@ -182,6 +183,7 @@ public:
 	bool m_bRestoringPlayer;
 	bool m_bDisableGamePause;
 	bool m_bDisablePlayerRestore;
+	bool m_bDidFirstUnpause;
 #endif
 };
 

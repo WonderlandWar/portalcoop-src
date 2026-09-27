@@ -1171,7 +1171,7 @@ void PlayDismountSounds( void )
 	int iNumCamerasDetatched = GetNumCamerasDetatched();
 
 	// If they've knocked down every one possible, play special '1' sound.
-	if ( iNumCamerasDetatched == g_MapInfo.GetNumKnockdownCameras() )
+	if ( iNumCamerasDetatched == g_MapSetInfo.GetNumKnockdownCameras() && g_MapSetInfo.GetNumKnockdownCameras() != 0 )
 	{
 		InstancedScriptedScene( pGlaDOS, CAMERA_DESTROYED_SCENE_1 );
 	}

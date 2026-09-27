@@ -427,6 +427,7 @@ const char *CPortalGameRules::GetGameDescription( void )
 		m_bRestoringPlayer = false;
 		m_bDisableGamePause = false;
 		m_bDisablePlayerRestore = false;
+		m_bDidFirstUnpause = false;
 #endif
 	}
 
@@ -1702,6 +1703,7 @@ void CPortalGameRules::LevelInitPreEntity( void )
 {
 	m_bDisableGamePause = false;
 	m_bDisablePlayerRestore = false;
+	m_bDidFirstUnpause = false;
 	ResetPortalPlayerData();
 }
 
@@ -1886,6 +1888,12 @@ void CPortalGameRules::CheckShouldPause( void )
 
 			// Set the value
 			pcoop_paused.SetValue( true );
+
+			if ( !m_bDidFirstUnpause )
+			{
+				OnInitialUnpause();
+				m_bDidFirstUnpause = true;
+			}
 		}
 	}
 	else
@@ -1901,6 +1909,12 @@ void CPortalGameRules::CheckShouldPause( void )
 			ResetAllPauseData();
 		}
 	}
+}
+
+void CPortalGameRules::OnInitialUnpause( void )
+{
+	extern void CheckRadioModes();
+	CheckRadioModes();
 }
 
 //-----------------------------------------------------------------------------
