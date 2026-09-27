@@ -3,21 +3,42 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
+ConVar pcoop_progress_bots_are_maxed( "pcoop_progress_bots_are_maxed", "0", FCVAR_CHEAT, "If this is set to 1, the game will treat bots as though they have max progress" );
+
 void GetProgressForPlayer( int iPlayer, int *piMapProgress, int *piFoundRadios )
 {
+	CBasePlayer *pPlayer = UTIL_PlayerByIndex( iPlayer );
+	if ( pPlayer )
+	{
+		extern bool g_bCreatingTempBot;
+		if ( ( g_bCreatingTempBot || pPlayer->IsBot() ) && pcoop_progress_bots_are_maxed.GetBool() )
+		{
+			if ( piMapProgress )
+			{
+				*piMapProgress = 255;
+			}
+
+			if ( piFoundRadios )
+			{
+				*piFoundRadios = 255;
+			}
+			return;
+		}
+	}
+
 	const char *pszPlayerProgress = engine->GetClientConVarValue( iPlayer, "progress" );
 	
 	char szToken[16];
 	const char *psz = nexttoken(szToken, pszPlayerProgress, ',' );
 	if ( piMapProgress )
 	{
-		*piMapProgress = atoi( psz );
+		*piMapProgress = atoi( szToken );
 	}
 
 	if ( piFoundRadios )
 	{
 		psz = nexttoken( szToken, psz, ',' ); // Move this out of the check if the "progress" convar has more than 2 values
-		*piFoundRadios = atoi( psz );
+		*piFoundRadios = atoi( szToken );
 	}
 }
 
@@ -53,9 +74,14 @@ private:
 
 BEGIN_DATADESC( CProgressManager )
 
-	DEFINE_INPUTFUNC( FIELD_INTEGER, "TestPlayersFoundNumRadios", InputTestPlayersFoundNumRadios ),
-	DEFINE_INPUTFUNC( FIELD_INTEGER, "TestPlayersReached", InputTestPlayersReached ),
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "UpdatePlayerProgress", InputUpdatePlayerProgress ),
+	DEFINE_INPUTFUNC( FIELD_INTEGER, "TestPlayersReached", InputTestPlayersReached ),
+	DEFINE_INPUTFUNC( FIELD_INTEGER, "TestPlayersFoundNumRadios", InputTestPlayersFoundNumRadios ),
+
+	DEFINE_OUTPUT( m_IfAllPlayersReached, "IfAllPlayersReached" ),
+	DEFINE_OUTPUT( m_IfAnyPlayersReached, "IfAnyPlayersReached" ),
+	DEFINE_OUTPUT( m_IfAllPlayersFoundNumRadios, "IfAllPlayersFoundNumRadios" ),
+	DEFINE_OUTPUT( m_IfAnyPlayersFoundNumRadios, "IfAnyPlayersFoundNumRadios" ),
 
 END_DATADESC()
 

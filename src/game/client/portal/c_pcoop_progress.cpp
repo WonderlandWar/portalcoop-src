@@ -25,7 +25,7 @@ void UpdateMapProgress( char iMapNumber )
 	if ( progress && *pszMapSet )
 	{
 		char iCurrentMap = progress->GetInt( pszMapSet );
-		if ( iCurrentMap < iMapNumber )
+		if ( iCurrentMap == iMapNumber-1 ) // Only update if we've completed the previous map
 		{
 			progress->SetInt( pszMapSet, iMapNumber );
 			progress->SaveToFile( g_pFullFileSystem, PROGRESS_DATA_FILE, "GAME" );		
@@ -36,6 +36,8 @@ void UpdateMapProgress( char iMapNumber )
 	{
 		progress->deleteThis();
 	}
+
+	UpdateProgressConVars();
 }
 
 void __MsgFunc_UpdateMapProgress( bf_read &msg )
@@ -67,7 +69,6 @@ void UpdateProgressConVars()
 			{
 				for ( KeyValues *radio = radios_mapset->GetFirstValue(); radio != NULL; radio = radio->GetNextValue() )
 				{
-					AssertMsg1( false, "%s ugghhh", radio->GetName() );
 					if ( radios_mapset->GetBool( radio->GetName() ) )
 					{
 						++iFoundRadios;

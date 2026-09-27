@@ -60,6 +60,8 @@ typedef struct
 
 static botdata_t g_BotData[ MAX_PLAYERS ];
 
+bool g_bCreatingTempBot = false;
+
 //-----------------------------------------------------------------------------
 // Purpose: Create a new Bot and put it in the game.
 // Output : Pointer to the new Bot, or NULL if there's no free clients.
@@ -87,14 +89,14 @@ CBasePlayer *BotPutInServer( bool bFrozen, const char *pszCustomName )
 	{
 		Q_snprintf( botname, sizeof( botname ), "Bot%02i", BotNumber );
 	}
-
+	g_bCreatingTempBot = true;
 	edict_t *pEdict = engine->CreateFakeClient( botname );
+	g_bCreatingTempBot = false;
 	if (!pEdict)
 	{
 		Msg( "Failed to create Bot.\n");
 		return NULL;
 	}
-
 	// Allocate a CBasePlayer for the bot, and call spawn
 	//ClientPutInServer( pEdict, botname );
 	CPortal_Player *pPlayer = ((CPortal_Player *)CBaseEntity::Instance( pEdict ));

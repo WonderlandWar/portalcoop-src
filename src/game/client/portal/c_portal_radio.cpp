@@ -103,7 +103,7 @@ LINK_ENTITY_TO_CLASS( prop_radio, C_Portal_Dinosaur );
 
 C_Portal_Dinosaur::C_Portal_Dinosaur()
 {
-	m_iOldRadioMode = m_iRadioMode = RADIO_DINOSAUR;
+	m_iOldRadioMode = m_iRadioMode = RADIO_DINOSAUR_DEFAULT;
 }
 
 void C_Portal_Dinosaur::Spawn()
@@ -244,7 +244,7 @@ void C_Portal_Dinosaur::SetupSounds()
 #endif
 	}
 #ifndef USE_BASIC_RADIOS
-	if ( m_iRadioMode == RADIO_DINOSAUR )
+	if ( m_iRadioMode == RADIO_DINOSAUR_DEFAULT )
 	{
 		if ( m_pStaticSound == NULL )
 		{
@@ -278,9 +278,8 @@ void C_Portal_Dinosaur::SetupSounds()
 
 void C_Portal_Dinosaur::ClientThink()
 {
-	if ( m_iRadioMode != RADIO_DINOSAUR )
+	if ( m_iRadioMode != RADIO_DINOSAUR_DEFAULT )
 	{
-		SetNextClientThink( CLIENT_THINK_NEVER );
 		return;
 	}
 
@@ -395,7 +394,7 @@ int C_Portal_Dinosaur::DrawModel( int flags )
 {
 	int nRet = BaseClass::DrawModel( flags );
 #ifndef USE_BASIC_RADIOS
-	if ( m_iRadioMode == RADIO_DINOSAUR )
+	if ( m_iRadioMode == RADIO_DINOSAUR_DEFAULT )
 	{
 		CMaterialReference	hMaterial;
 		hMaterial.Init( "sprites/grav_light", TEXTURE_GROUP_CLIENT_EFFECTS );

@@ -149,7 +149,7 @@ END_SEND_TABLE()
 
 CPortal_Dinosaur::CPortal_Dinosaur()
 {
-	m_iRadioMode = RADIO_DINOSAUR;
+	m_iRadioMode = RADIO_DINOSAUR_DEFAULT;
 }
 
 void CPortal_Dinosaur::Precache()
@@ -208,11 +208,15 @@ void CPortal_Dinosaur::Activate( void )
 
 void CPortal_Dinosaur::UpdateRadioMode( bool bNotEveryPlayerCompletedMapSet )
 {
-	if ( m_iRadioMode == RADIO_DINOSAUR )
+	if ( m_iRadioMode == RADIO_DINOSAUR_REQUIRE_COMPLETION )
 	{
 		if ( bNotEveryPlayerCompletedMapSet )
 		{
 			UTIL_Remove( this );
+		}
+		else
+		{
+			SetRadioMode( RADIO_DINOSAUR_DEFAULT );
 		}
 	}
 	else if ( m_iRadioMode == RADIO_REPLACE_WITH_DINOSAUR )
@@ -223,7 +227,7 @@ void CPortal_Dinosaur::UpdateRadioMode( bool bNotEveryPlayerCompletedMapSet )
 		}
 		else
 		{
-			SetRadioMode( RADIO_DINOSAUR );
+			SetRadioMode( RADIO_DINOSAUR_DEFAULT );
 		}
 	}
 }
@@ -236,7 +240,7 @@ void CPortal_Dinosaur::SetRadioMode( RadioMode_t radioMode )
 
 void CPortal_Dinosaur::OnSetRadioMode( RadioMode_t radioMode )
 {
-	if ( radioMode == RADIO_DINOSAUR )
+	if ( radioMode == RADIO_DINOSAUR_DEFAULT )
 	{
 		SetContextThink( &CPortal_Dinosaur::ScanThink, gpGlobals->curtime, g_pszScanThinkContext );
 		m_hDinosaur_Signal = dynamic_cast<CDinosaurSignal*>( gEntList.FindEntityByName( NULL, m_iszSignalName.ToCStr() ) );
@@ -739,7 +743,7 @@ void CheckRadioModes()
 
 	for ( int i = 1; i <= g_MapInfo.GetRequiredPlayers(); ++i )
 	{
-		int iMapProgress;
+		int iMapProgress = 0;
 		GetProgressForPlayer( i, &iMapProgress, NULL );
 
 		if ( iMapProgress < g_MapSetInfo.GetNumProgressMaps() )
