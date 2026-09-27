@@ -1888,12 +1888,6 @@ void CPortalGameRules::CheckShouldPause( void )
 
 			// Set the value
 			pcoop_paused.SetValue( true );
-
-			if ( !m_bDidFirstUnpause )
-			{
-				OnInitialUnpause();
-				m_bDidFirstUnpause = true;
-			}
 		}
 	}
 	else
@@ -1907,6 +1901,12 @@ void CPortalGameRules::CheckShouldPause( void )
 			pcoop_paused.SetValue( false );
 			RestoreEventQueue();
 			ResetAllPauseData();
+
+			if ( !m_bDidFirstUnpause )
+			{
+				OnInitialUnpause();
+				m_bDidFirstUnpause = true;
+			}
 		}
 	}
 }

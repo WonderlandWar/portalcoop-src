@@ -735,7 +735,7 @@ void CheckRadioModes()
 {
 	extern void GetProgressForPlayer( int iPlayer, int *piMapProgress, int *piFoundRadios );
 	
-	bool bNotEveryPlayerCompletedMapSet = true;
+	bool bNotEveryPlayerCompletedMapSet = false;
 
 	for ( int i = 1; i <= g_MapInfo.GetRequiredPlayers(); ++i )
 	{
@@ -744,7 +744,7 @@ void CheckRadioModes()
 
 		if ( iMapProgress < g_MapSetInfo.GetNumProgressMaps() )
 		{
-			bNotEveryPlayerCompletedMapSet = false;
+			bNotEveryPlayerCompletedMapSet = true;
 			break;
 		}
 	}
