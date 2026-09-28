@@ -22,7 +22,6 @@ bool IsPortalIntersectingNoPortalVolume( const Vector &vOrigin, const QAngle &qA
 bool IsPortalOverlappingOtherPortals( const CProp_Portal *pIgnorePortal, const Vector &vOrigin, const QAngle &qAngles, bool bFizzle = false, bool bFizzlePartnerPortals = false );
 bool IsNoPortalMaterial( const csurface_t &surface );
 float VerifyPortalPlacement( const CProp_Portal *pIgnorePortal, Vector &vOrigin, QAngle &qAngles, int iPlacedBy, bool bTest = false );
-float VerifyPortalPlacementAndFizzleBlockingPortals( const CProp_Portal *pIgnorePortal, Vector &vOrigin, QAngle &qAngles, int iPlacedBy, bool bTest = false );
 
 CProp_Portal *GetOverlappedPartnerPortal( const CProp_Portal *pIgnorePortal, const Vector &vOrigin, const QAngle &qAngles );
 CProp_Portal *GetTheoreticalOverlappedPartnerPortal( int iLinkageGroupID, const Vector &vOrigin, const QAngle &qAngles );

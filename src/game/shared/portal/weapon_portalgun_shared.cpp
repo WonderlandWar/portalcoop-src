@@ -901,7 +901,7 @@ float CWeaponPortalgun::TraceFirePortal( bool bPortal2, const Vector &vTraceStar
 	if ( *pPlacementHelper )
 		return PORTAL_ANALOG_SUCCESS_NO_BUMP;
 
-	return VerifyPortalPlacementAndFizzleBlockingPortals(bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get() , vFinalPosition, qFinalAngles, iPlacedBy, bTest);
+	return VerifyPortalPlacement(bPortal2 ? m_hSecondaryPortal.Get() : m_hPrimaryPortal.Get() , vFinalPosition, qFinalAngles, iPlacedBy, bTest);
 }
 
 //-----------------------------------------------------------------------------

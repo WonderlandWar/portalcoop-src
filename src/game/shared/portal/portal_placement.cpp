@@ -53,6 +53,7 @@ bool g_bBumpedByLinkedPortal;
 
 ConVar sv_portal_placement_debug ("sv_portal_placement_debug", "0", FCVAR_REPLICATED );
 ConVar sv_portal_placement_never_bump ("sv_portal_placement_never_bump", "0", FCVAR_REPLICATED | FCVAR_CHEAT );
+ConVar sv_portal_placement_bump_fix ("sv_portal_placement_bump_fix", "1", FCVAR_REPLICATED | FCVAR_CHEAT );
 
 bool g_bTest = true;
 
@@ -961,8 +962,9 @@ bool FitPortalOnSurface( const CProp_Portal *pIgnorePortal, Vector &vOrigin, con
 	return true;
 }
 
-void FitPortalAroundOtherPortals( const CProp_Portal *pIgnorePortal, Vector &vOrigin, const Vector &vForward, const Vector &vRight, const Vector &vUp )
+void FitPortalAroundOtherPortals( const CProp_Portal *pIgnorePortal, Vector &vOrigin, const Vector &vForward, const Vector &vRight, const Vector &vUp, ITraceFilter *pTraceFilterPortalShot )
 {
+	Vector vecResultOrigin = vOrigin;
 	int iPortalCount = CProp_Portal_Shared::AllPortals.Count();
 	if( iPortalCount != 0 )
 	{
@@ -998,10 +1000,67 @@ void FitPortalAroundOtherPortals( const CProp_Portal *pIgnorePortal, Vector &vOr
 
 				if ( fProjUpLength < PORTAL_HALF_HEIGHT && fProjRightLength < PORTAL_HALF_WIDTH )
 				{
-					vOrigin += vDiffProjRight * ( PORTAL_HALF_WIDTH - fProjRightLength + 1.0f );
+					vecResultOrigin += vDiffProjRight * ( PORTAL_HALF_WIDTH - fProjRightLength + 1.0f );
 				}
 			}
 		}
+	}
+	if ( sv_portal_placement_bump_fix.GetBool() )
+	{
+		trace_t tr;
+		Ray_t ray;
+		ray.Init( vOrigin, vecResultOrigin );
+	
+		enginetrace->TraceRay( ray, MASK_SHOT_PORTAL, pTraceFilterPortalShot, &tr );
+		
+		// Trace to the surface to see if there's a rotating door in the way
+		CBaseEntity *list[1024];
+
+		int nCount = AllEdictsAlongRay(list, 1024, ray, 0);
+
+		for ( int i = 0; i < nCount; i++ )
+		{
+	#if 0
+	#if defined( GAME_DLL )
+			Warning( "TraceBumpingEntities(server) : %s\n", list[i]->m_iClassname );
+	#else
+			Warning( "TraceBumpingEntities(client) : %s\n", list[i]->GetClassname() );
+	#endif
+	#endif
+			trace_t trTemp;
+			UTIL_ClearTrace( trTemp );
+
+			if ( dynamic_cast<CTriggerPortalCleanser*>( list[i] ) != NULL )
+			{
+				if( !((CTriggerPortalCleanser *)list[i])->m_bDisabled )
+				{
+					enginetrace->ClipRayToEntity( ray, MASK_ALL, list[i], &trTemp );
+				}
+			}
+		
+#ifdef GAME_DLL
+			if ( sv_portal_placement_debug.GetBool() )
+			{
+				const Vector extents(4, 4, 4);
+				NDebugOverlay::Box( vecResultOrigin, -extents, extents, 255, 0, 0, 100, 2 );
+				NDebugOverlay::Box( tr.endpos, -extents, extents, 0, 255, 0, 100, 2 );
+			}
+#endif
+
+			if ( tr.endpos.DistToSqr( vOrigin ) > trTemp.endpos.DistToSqr( vOrigin ) )
+			{
+				tr.endpos = trTemp.endpos;
+			}
+		}
+
+		if ( tr.endpos == vecResultOrigin )
+		{
+			vOrigin = vecResultOrigin;
+		}
+	}
+	else
+	{
+		vOrigin = vecResultOrigin;
 	}
 }
 bool IsPortalIntersectingNoPortalVolume( const Vector &vOrigin, const QAngle &qAngles, const Vector &vForward )
@@ -1401,7 +1460,7 @@ float VerifyPortalPlacement( const CProp_Portal *pIgnorePortal, Vector &vOrigin,
 	if ( iPlacedBy == PORTAL_PLACED_BY_PLAYER && !sv_portal_placement_never_bump.GetBool() )
 	{
 		// Bump away from linked portal so it can be fit next to it
-		FitPortalAroundOtherPortals( pIgnorePortal, vOrigin, vForward, vRight, vUp );
+		FitPortalAroundOtherPortals( pIgnorePortal, vOrigin, vForward, vRight, vUp, &traceFilterPortalShot );
 	}
 
 	float fBumpDistance = 0.0f;
@@ -1505,26 +1564,4 @@ float VerifyPortalPlacement( const CProp_Portal *pIgnorePortal, Vector &vOrigin,
 	fAnalogSuccessMultiplier *= fAnalogSuccessMultiplier;
 
 	return fAnalogSuccessMultiplier * ( PORTAL_ANALOG_SUCCESS_NO_BUMP - PORTAL_ANALOG_SUCCESS_BUMPED ) + PORTAL_ANALOG_SUCCESS_BUMPED;
-}
-
-
-float VerifyPortalPlacementAndFizzleBlockingPortals(const CProp_Portal *pIgnorePortal, Vector &vOrigin, QAngle &qAngles, int iPlacedBy, bool bTest /*= false*/)
-{
-	float placementResult = VerifyPortalPlacement( pIgnorePortal, vOrigin, qAngles, iPlacedBy, bTest );
-	if ( iPlacedBy == PORTAL_PLACED_BY_FIXED && placementResult == PORTAL_ANALOG_SUCCESS_OVERLAP_LINKED )
-	{
-		// overlapping another portal. Fizzle them and try again.
-		IsPortalOverlappingOtherPortals( pIgnorePortal, vOrigin, qAngles, true, false );
-		placementResult = VerifyPortalPlacement( pIgnorePortal, vOrigin, qAngles, iPlacedBy, bTest );
-	}
-	else if ( placementResult == PORTAL_ANALOG_SUCCESS_STEAL )
-	{
-		// overlapping partner's portal. Fizzle them and try again.
-		//IsPortalOverlappingOtherPortals( pIgnorePortal, vOrigin, qAngles, false, true );
-		GetOverlappedPartnerPortal ( pIgnorePortal, vOrigin, qAngles );
-		
-		placementResult = VerifyPortalPlacement( pIgnorePortal, vOrigin, qAngles, iPlacedBy, bTest );
-	}
-
-	return placementResult;
 }

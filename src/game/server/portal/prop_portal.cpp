@@ -1823,7 +1823,7 @@ void CProp_Portal::InputSetActivatedState( inputdata_t &inputdata )
 		QAngle qAngles;
 		VectorAngles( tr.plane.normal, vUp, qAngles );
 
-		float fPlacementSuccess = VerifyPortalPlacementAndFizzleBlockingPortals(this, tr.endpos, qAngles, PORTAL_PLACED_BY_FIXED);
+		float fPlacementSuccess = VerifyPortalPlacement(this, tr.endpos, qAngles, PORTAL_PLACED_BY_FIXED);
 		PlacePortal( tr.endpos, qAngles, fPlacementSuccess );
 
 		// If the fixed portal is overlapping a portal that was placed before it... kill it!

@@ -459,17 +459,26 @@ void CProp_Portal::DelayedPlacementThink( void )
 	
 	// Check if something made the spot invalid mid flight
 	// Bad surface and near fizzle effects take priority
-	if ( m_iDelayedFailure != PORTAL_FIZZLE_BAD_SURFACE && m_iDelayedFailure != PORTAL_FIZZLE_CLEANSER && m_iDelayedFailure != PORTAL_FIZZLE_NEAR_BLUE && m_iDelayedFailure != PORTAL_FIZZLE_NEAR_RED )
+	if ( m_iDelayedFailure != PORTAL_FIZZLE_BAD_SURFACE &&
+		m_iDelayedFailure != PORTAL_FIZZLE_CLEANSER &&
+		m_iDelayedFailure != PORTAL_FIZZLE_NEAR_BLUE &&
+		m_iDelayedFailure != PORTAL_FIZZLE_NEAR_RED )
 	{
-		CProp_Portal *pHitPortal = GetOverlappedPartnerPortal( this, m_vDelayedPosition, m_qDelayedAngles );
-		if( pHitPortal )
+		bool bShouldDoOverlappingChecks = m_iDelayedFailure != PORTAL_FIZZLE_CANT_FIT;
+
+		CProp_Portal *pHitPortal = NULL;
+		if ( bShouldDoOverlappingChecks )
+		{
+			pHitPortal = GetOverlappedPartnerPortal( this, m_vDelayedPosition, m_qDelayedAngles );
+		}
+		if ( pHitPortal && m_iDelayedFailure != PORTAL_FIZZLE_CANT_FIT )
 		{
 			m_vDelayedPosition = pHitPortal->GetAbsOrigin();
 			m_qDelayedAngles = pHitPortal->GetAbsAngles();
 			m_iDelayedFailure = PORTAL_FIZZLE_SUCCESS;
 			StealPortal( pHitPortal );
 		}
-		else if ( IsPortalOverlappingOtherPortals( this, m_vDelayedPosition, m_qDelayedAngles ) )
+		else if ( bShouldDoOverlappingChecks && IsPortalOverlappingOtherPortals( this, m_vDelayedPosition, m_qDelayedAngles ) )
 		{
 			m_iDelayedFailure = PORTAL_FIZZLE_OVERLAPPED_LINKED;
 		}
