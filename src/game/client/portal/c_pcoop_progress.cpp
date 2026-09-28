@@ -18,35 +18,6 @@ KeyValues *LoadProgressData()
 	return radios;
 }
 
-void UpdateMapProgress( char iMapNumber )
-{
-	KeyValues *progress = LoadProgressData();
-	const char *pszMapSet = g_MapInfo.GetAssociatedMapSet();
-	if ( progress && *pszMapSet )
-	{
-		char iCurrentMap = progress->GetInt( pszMapSet );
-		if ( iCurrentMap == iMapNumber-1 ) // Only update if we've completed the previous map
-		{
-			progress->SetInt( pszMapSet, iMapNumber );
-			progress->SaveToFile( g_pFullFileSystem, PROGRESS_DATA_FILE, "GAME" );		
-		}
-	}
-
-	if ( progress )
-	{
-		progress->deleteThis();
-	}
-
-	UpdateProgressConVars();
-}
-
-void __MsgFunc_UpdateMapProgress( bf_read &msg )
-{
-	char iMapNumber = msg.ReadChar();
-	UpdateMapProgress( iMapNumber );
-}
-USER_MESSAGE_REGISTER( UpdateMapProgress );
-
 void UpdateProgressConVars()
 {
 	int iCurrentMap = 0, iFoundRadios = 0;
@@ -81,6 +52,34 @@ void UpdateProgressConVars()
 	progress_cv.SetValue( VarArgs( "%i,%i", iCurrentMap, iFoundRadios ) );
 }
 
+void UpdateMapProgress( char iMapNumber )
+{
+	KeyValues *progress = LoadProgressData();
+	const char *pszMapSet = g_MapInfo.GetAssociatedMapSet();
+	if ( progress && *pszMapSet )
+	{
+		char iCurrentMap = progress->GetInt( pszMapSet );
+		if ( iCurrentMap == iMapNumber-1 ) // Only update if we've completed the previous map
+		{
+			progress->SetInt( pszMapSet, iMapNumber );
+			progress->SaveToFile( g_pFullFileSystem, PROGRESS_DATA_FILE, "GAME" );		
+		}
+	}
+
+	if ( progress )
+	{
+		progress->deleteThis();
+	}
+
+	UpdateProgressConVars();
+}
+
+void __MsgFunc_UpdateMapProgress( bf_read &msg )
+{
+	char iMapNumber = msg.ReadChar();
+	UpdateMapProgress( iMapNumber );
+}
+USER_MESSAGE_REGISTER( UpdateMapProgress );
 
 class CMapProgress : public CAutoGameSystem
 {
