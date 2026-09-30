@@ -149,7 +149,7 @@ END_SEND_TABLE()
 
 CPortal_Dinosaur::CPortal_Dinosaur()
 {
-	m_iRadioMode = RADIO_DINOSAUR_DEFAULT;
+	m_iRadioMode = RADIO_NORMAL;
 }
 
 void CPortal_Dinosaur::Precache()
