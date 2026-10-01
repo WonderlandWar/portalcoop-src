@@ -369,6 +369,7 @@ $Project "Server (Portal)"
 			$File	"portal\prop_testchamber_sign.cpp"
 			$File 	"portal\info_player_ping_detector.cpp"
 			$File 	"portal\pcoop_progress.cpp"
+			$File 	"portal\pcoop_progress.h"
 			
 			// Portal 2 stuff
 			$File	"portal\env_portal_laser.cpp"

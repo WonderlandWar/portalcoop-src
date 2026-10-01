@@ -1745,7 +1745,14 @@ extern void RestorePortalPlayerData( CPortal_Player *pPlayer );
 void CPortalGameRules::ClientActive( CPortal_Player *pPlayer )
 {
 	if ( PlayerShouldPlay( pPlayer->entindex() ) )
+	{
+		if ( m_iPlayingPlayers == 0 && !pcoop_require_all_players.GetBool() )
+		{
+			extern void CheckRadioModes();
+			CheckRadioModes();
+		}
 		++m_iPlayingPlayers;
+	}
 
 	CPortalGameRulesProxy *ent = NULL;
 	while ( ( ent = static_cast<CPortalGameRulesProxy*>( gEntList.FindEntityByClassname( ent, "portal_gamerules" ) ) ) != NULL )

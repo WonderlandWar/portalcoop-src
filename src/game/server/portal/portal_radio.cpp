@@ -9,6 +9,8 @@
 #include "filters.h"
 #include "achievementmgr.h"
 #include "portal_shareddefs.h"
+#include "player_resource.h"
+#include "pcoop_progress.h"
 
 //extern CAchievementMgr g_AchievementMgrPortal;
 
@@ -741,12 +743,15 @@ void CheckRadioModes()
 	
 	bool bNotEveryPlayerCompletedMapSet = false;
 
-	for ( int i = 1; i <= g_MapInfo.GetRequiredPlayers(); ++i )
+	for ( int i = 1; i <= GetRequiredPlayers(); ++i )
 	{
-		int iMapProgress = 0;
-		GetProgressForPlayer( i, &iMapProgress, NULL );
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
+		if ( !pPlayer )
+		{
+			continue;
+		}
 
-		if ( iMapProgress < g_MapSetInfo.GetNumProgressMaps() )
+		if ( !Progress_HasPlayerReachedNumber( i, g_MapSetInfo.GetNumProgressMaps() ) )
 		{
 			bNotEveryPlayerCompletedMapSet = true;
 			break;

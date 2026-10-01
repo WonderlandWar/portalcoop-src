@@ -1,11 +1,13 @@
 #include "cbase.h"
+#include "pcoop_progress.h"
+#include "portal_shareddefs.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
 ConVar pcoop_progress_bots_are_maxed( "pcoop_progress_bots_are_maxed", "0", FCVAR_CHEAT, "If this is set to 1, the game will treat bots as though they have max progress" );
 
-void GetProgressForPlayer( int iPlayer, int *piMapProgress, int *piFoundRadios )
+void Progress_GetPlayerProgress( int iPlayer, int *piMapProgress, int *piFoundRadios )
 {
 	CBasePlayer *pPlayer = UTIL_PlayerByIndex( iPlayer );
 	if ( pPlayer )
@@ -27,19 +29,59 @@ void GetProgressForPlayer( int iPlayer, int *piMapProgress, int *piFoundRadios )
 	}
 
 	const char *pszPlayerProgress = engine->GetClientConVarValue( iPlayer, "progress" );
+
+	if ( !pszPlayerProgress || !*pszPlayerProgress )
+	{
+		if ( piMapProgress )
+		{
+			*piMapProgress = 0;
+		}
+
+		if ( piFoundRadios )
+		{
+			*piFoundRadios = 0;
+		}
+		return;
+	}
 	
 	char szToken[16];
 	const char *psz = nexttoken(szToken, pszPlayerProgress, ',' );
 	if ( piMapProgress )
 	{
-		*piMapProgress = atoi( szToken );
+		*piMapProgress = MAX( atoi( szToken ), 0 );
 	}
 
 	if ( piFoundRadios )
 	{
 		psz = nexttoken( szToken, psz, ',' ); // Move this out of the check if the "progress" convar has more than 2 values
-		*piFoundRadios = atoi( szToken );
+		*piFoundRadios = MAX( atoi( szToken ), 0 );
 	}
+}
+
+bool Progress_HasPlayerReachedNumber( int iPlayer, int iMapNumber )
+{
+	int iMapProgress = 0;
+	Progress_GetPlayerProgress( iPlayer, &iMapProgress, NULL );
+
+	if ( iMapProgress >= iMapNumber )
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool Progress_HasPlayerFoundRadios( int iPlayer, int iNumRadios )
+{
+	int iFoundRadios = 0;
+	Progress_GetPlayerProgress( iPlayer, &iFoundRadios, NULL );
+
+	if ( iFoundRadios >= iNumRadios )
+	{
+		return true;
+	}
+
+	return false;
 }
 
 void UpdatePlayerProgress( char iMapNumber )
@@ -48,11 +90,6 @@ void UpdatePlayerProgress( char iMapNumber )
 	UserMessageBegin( filter, "UpdateMapProgress" );
 	WRITE_CHAR( iMapNumber );
 	MessageEnd();
-}
-
-bool Progress_HasPlayer()
-{
-	return true;
 }
 
 class CProgressManager : public CServerOnlyPointEntity 
@@ -95,10 +132,58 @@ void CProgressManager::InputUpdatePlayerProgress( inputdata_t &inputdata )
 
 void CProgressManager::InputTestPlayersReached( inputdata_t &inputdata )
 {
+	int iMapNumber = inputdata.value.Int();
 
+	bool bAnyPlayerReached = false;
+	bool bFoundUnreachedPlayer = false;
+
+	for ( int i = 1; i <= GetRequiredPlayers(); ++i )
+	{
+		if ( Progress_HasPlayerReachedNumber( i, iMapNumber ) )
+		{
+			bAnyPlayerReached = true;
+		}
+		else
+		{
+			bFoundUnreachedPlayer = true;
+		}
+	}
+
+	if ( bAnyPlayerReached )
+	{
+		if ( !bFoundUnreachedPlayer )
+		{
+			m_IfAllPlayersReached.FireOutput( inputdata.pActivator, this );
+		}
+		m_IfAnyPlayersReached.FireOutput( inputdata.pActivator, this );
+	}
 }
 
 void CProgressManager::InputTestPlayersFoundNumRadios( inputdata_t &inputdata )
 {
+	int iNumRadios = inputdata.value.Int();
 
+	bool bAnyPlayerReached = false;
+	bool bFoundUnreachedPlayer = false;
+
+	for ( int i = 1; i <= GetRequiredPlayers(); ++i )
+	{
+		if ( Progress_HasPlayerFoundRadios( i, iNumRadios ) )
+		{
+			bAnyPlayerReached = true;
+		}
+		else
+		{
+			bFoundUnreachedPlayer = true;
+		}
+	}
+
+	if ( bAnyPlayerReached )
+	{
+		if ( !bFoundUnreachedPlayer )
+		{
+			m_IfAllPlayersFoundNumRadios.FireOutput( inputdata.pActivator, this );
+		}
+		m_IfAnyPlayersFoundNumRadios.FireOutput( inputdata.pActivator, this );
+	}
 }
