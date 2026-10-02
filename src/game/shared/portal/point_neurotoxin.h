@@ -33,6 +33,36 @@ public:
 	DECLARE_NETWORKCLASS();
 	CPointNeurotoxin();
 	~CPointNeurotoxin();
+
+	bool	IsDamaging()
+	{
+		if ( m_bPaused ) // Can't pause while damaging
+		{
+			return false;
+		}
+
+		return m_MainTimer.HasStarted() && m_MainTimer.IsElapsed();
+	}
+	bool	InProgress()
+	{
+		if ( m_bPaused ) // Can't pause while damaging or hasn't started, so must be in progress
+		{
+			return true;
+		}
+
+		return m_MainTimer.HasStarted() && !m_MainTimer.IsElapsed();
+	}
+
+	float	GetRemainingTime()
+	{
+		if ( m_bPaused )
+		{
+			return m_flPausedTimeLeft;
+		}
+
+		return m_MainTimer.GetRemainingTime();
+	}
+
 #ifndef CLIENT_DLL
 
 	virtual int UpdateTransmitState()
@@ -45,18 +75,17 @@ public:
 	void	Pause();
 	void	Resume();
 
-	void	ThinkTimer();
+	void	TimerEndThink();
 	void	DamagePlayersThink();
 
 //	bool	ShouldUseMaxTime(); //Is this really necessary?
 	bool	ShouldUseMaxTimeLeft();
-		
-	int		m_iNeurotoxinMaxTimeLeft;
-	int		m_iNeurotoxinTime;
-	
-	bool	m_bShouldBeTicking;
-	bool	m_bShouldDoDamage;
 
+	void	ClampMainTimer();
+	
+	float	m_flNeurotoxinMaxTimeLeft;
+	float	m_flNeurotoxinTime;
+	
 	// Inputs
 	void	InputStart(inputdata_t &inputdata);
 	void	InputStop(inputdata_t &inputdata);
@@ -83,9 +112,6 @@ public:
 
 	void OnDataChanged( DataUpdateType_t updatetype );
 
-	int GetControlledMilliseconds() const { return m_flMillisecondsControlled; }
-	int GetNeurotoxinTimeLeft() const { return m_iNeurotoxinTimeLeft; }
-
 private:
 
 	bool m_bOldInProgress;
@@ -94,11 +120,11 @@ private:
 
 private:
 	
-	CNetworkVar( bool, m_bInProgress );
-	CNetworkVar( float, m_flMillisecondsControlled );
-	CNetworkVar( int, m_iNeurotoxinTimeLeft );
+	CNetworkVarEmbedded( NetworkedCountdownTimer, m_MainTimer );
+	CNetworkVar( bool, m_bPaused );
+	CNetworkVar( float, m_flPausedTimeLeft );
 };
 
-extern CPointNeurotoxin *g_ActiveNeurotoxin;
+extern CPointNeurotoxin *g_pActiveNeurotoxin;
 
 #endif

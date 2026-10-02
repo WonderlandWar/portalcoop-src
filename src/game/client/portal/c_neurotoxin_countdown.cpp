@@ -35,9 +35,10 @@ C_NeurotoxinCountdown::~C_NeurotoxinCountdown()
 
 int C_NeurotoxinCountdown::GetMinutes( void )
 {
-	if ( g_ActiveNeurotoxin )
+	if ( g_pActiveNeurotoxin )
 	{
-		return g_ActiveNeurotoxin->GetNeurotoxinTimeLeft() / 60;
+		int iTimeRemaining = g_pActiveNeurotoxin->GetRemainingTime();
+		return iTimeRemaining / 60;
 	}
 	
 	return 0.0f;
@@ -45,9 +46,10 @@ int C_NeurotoxinCountdown::GetMinutes( void )
 
 int C_NeurotoxinCountdown::GetSeconds( void )
 {
-	if ( g_ActiveNeurotoxin )
+	if ( g_pActiveNeurotoxin )
 	{
-		return g_ActiveNeurotoxin->GetNeurotoxinTimeLeft() % 60;
+		int iTimeRemaining = g_pActiveNeurotoxin->GetRemainingTime();
+		return iTimeRemaining % 60;
 	}
 
 	return 0.0f;
@@ -55,10 +57,13 @@ int C_NeurotoxinCountdown::GetSeconds( void )
 
 int C_NeurotoxinCountdown::GetMilliseconds( void )
 {
-	if ( g_ActiveNeurotoxin )
+	if ( g_pActiveNeurotoxin )
 	{
-		return g_ActiveNeurotoxin->GetControlledMilliseconds();
+		float flTimeRemaining = g_pActiveNeurotoxin->GetRemainingTime();
+		int iTimeRemaining = flTimeRemaining;
+
+		return (flTimeRemaining - iTimeRemaining) * 100;
 	}
 
-	return static_cast<int>( gpGlobals->curtime * 100.0f ) % 100;;
+	return static_cast<int>( gpGlobals->curtime * 100.0f ) % 100;
 }

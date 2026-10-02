@@ -1080,6 +1080,28 @@ float CountdownTimer::Now( void ) const
 	return gpGlobals->curtime;
 }
 
+// work-around since client header doesn't like inlined gpGlobals->curtime
+float NetworkedCountdownTimer::Now( void ) const
+{
+	return gpGlobals->curtime;
+}
+
+
+#ifdef CLIENT_DLL
+BEGIN_RECV_TABLE_NOBASE( NetworkedCountdownTimer, DT_NetworkedCountdownTimer )
+	RecvPropFloat(RECVINFO(m_duration)),
+	RecvPropFloat(RECVINFO(m_timestamp)),
+END_RECV_TABLE()
+BEGIN_PREDICTION_DATA_NO_BASE( NetworkedCountdownTimer )
+	DEFINE_PRED_FIELD( m_duration, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_timestamp, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+END_PREDICTION_DATA()	
+#else
+BEGIN_SEND_TABLE_NOBASE( NetworkedCountdownTimer, DT_NetworkedCountdownTimer )
+	SendPropFloat	(SENDINFO(m_duration), 0, SPROP_NOSCALE ),
+	SendPropFloat	(SENDINFO(m_timestamp), 0, SPROP_NOSCALE ),
+END_SEND_TABLE()
+#endif
 
 #ifdef CLIENT_DLL
 	CBasePlayer *UTIL_PlayerByIndex( int entindex )
