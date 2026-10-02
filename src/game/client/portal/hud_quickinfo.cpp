@@ -190,7 +190,7 @@ bool CHUDQuickInfo::ShouldDraw( void )
 	
 	if ( pcoop_require_all_players.GetBool() )
 	{	
-		if ( PortalGameRules() && PortalGameRules()->ShouldPauseGame() )
+		if ( PortalGameRules() && PortalGameRules()->IsGamePaused() )
 			return false;
 	}
 

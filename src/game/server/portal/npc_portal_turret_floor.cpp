@@ -420,7 +420,7 @@ bool CNPC_Portal_FloorTurret::PreThink( turretState_e state )
 //-----------------------------------------------------------------------------
 void CNPC_Portal_FloorTurret::Shoot( const Vector &vecSrc, const Vector &vecDirToEnemy, bool bStrict )
 {
-	Assert( !PortalGameRules()->ShouldPauseGame() ); // Shots were fired when the game was paused, were we still simulating?
+	Assert( !PortalGameRules()->IsGamePaused() ); // Shots were fired when the game was paused, were we still simulating?
 	FireBulletsInfo_t info;
 
 	//if ( !bStrict && GetEnemy() == UTIL_PlayerByIndex( 1 ) )

@@ -1491,7 +1491,7 @@ void CPortal_Player::PostThink(void)
 	SetLocalAngles(angles);
 
 	// Regenerate heath after 3 seconds
-	if (IsAlive() && GetHealth() < GetMaxHealth() && !PortalGameRules()->ShouldPauseGame() )
+	if (IsAlive() && GetHealth() < GetMaxHealth() && !PortalGameRules()->IsGamePaused() )
 	{
 		// Color to overlay on the screen while the player is taking damage
 		color32 hurtScreenOverlay = { 64,0,0,64 };

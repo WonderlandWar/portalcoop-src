@@ -50,6 +50,7 @@
 #include "portal_physics_collisionevent.h"
 #include "physicsshadowclone.h"
 #include "PortalSimulation.h"
+#include "portal_gamerules.h"
 void PortalPhysFrame( float deltaTime ); //small wrapper for PhysFrame that simulates all 3 environments at once
 #endif
 
@@ -375,8 +376,7 @@ void CPhysicsHook::FrameUpdatePostEntityThink( )
 {
 	VPROF_BUDGET( "CPhysicsHook::FrameUpdatePostEntityThink", VPROF_BUDGETGROUP_PHYSICS );
 #ifdef PORTAL
-	extern ConVar pcoop_paused;
-	if ( pcoop_paused.GetBool() )
+	if ( PortalGameRules()->IsGamePaused() )
 		return;
 #endif
 

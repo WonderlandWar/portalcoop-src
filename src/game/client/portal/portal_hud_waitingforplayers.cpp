@@ -50,7 +50,7 @@ bool CWaitingForPlayersText::ShouldDraw( void )
 	if ( !PortalGameRules() )
 		return false;
 	
-	if ( !PortalGameRules()->ShouldPauseGame() )
+	if ( !PortalGameRules()->IsGamePaused() )
 		return false;
 
 	return CHudElement::ShouldDraw();

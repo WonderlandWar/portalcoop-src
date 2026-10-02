@@ -86,6 +86,7 @@ public:
 	virtual float	GetAutoAimScale( CBasePlayer *pPlayer );
 
 	virtual void	LevelShutdown( void );
+	virtual void	CreateStandardEntities();
 
 	virtual bool	ServerIsFull( void );
 
@@ -99,7 +100,7 @@ public:
 	void			CheckShouldPause( void );
 	void			OnInitialUnpause( void );
 #endif
-	bool			ShouldPauseGame( void );
+	bool			IsGamePaused( void );
 
 #ifdef CLIENT_DLL
 	virtual bool IsBonusChallengeTimeBased( void );
@@ -129,6 +130,8 @@ public:
 private:
 	// Rules change for the mega physgun
 	CNetworkVar( bool, m_bMegaPhysgun );
+	
+	CNetworkVar( bool, m_bPaused );
 
 	DECLARE_SIMPLE_DATADESC();
 

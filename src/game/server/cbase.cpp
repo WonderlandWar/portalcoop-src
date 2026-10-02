@@ -85,7 +85,9 @@ OUTPUTS:
 #include "datacache/imdlcache.h"
 #include "env_debughistory.h"
 #include "fgdlib/entitydefs.h"
-
+#ifdef PORTAL
+#include "portal_gamerules.h"
+#endif
 #include "tier0/vprof.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -116,8 +118,7 @@ int CEventAction::s_iNextIDStamp = 0;
 static float GetCurrentTimeForEventQueue( void )
 {
 #ifdef PORTAL // Catch cases where the output was fired while paused
-	extern ConVar pcoop_paused;
-	if ( pcoop_paused.GetBool() )
+	if ( PortalGameRules()->IsGamePaused() )
 	{
 #if defined ( USE_SERVER_TIME )
 		extern float g_flServerTimeWhenPaused;

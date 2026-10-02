@@ -54,8 +54,6 @@ ConVar sv_portalgun_spawn( "sv_portalgun_spawn", "0", FCVAR_CHEAT, "Sets if the 
 ConVar sv_portalgun_color( "sv_portalgun_color", "2", FCVAR_CHEAT, "Sets what portalgun colors players spawn with. 0 = Primary, 1 = Secondary, 2 = Both" );
 #endif
 
-ConVar pcoop_paused( "pcoop_paused", "0", FCVAR_REPLICATED | FCVAR_HIDDEN );
-
 REGISTER_GAMERULES_CLASS( CPortalGameRules );
 
 IMPLEMENT_NETWORKCLASS_ALIASED( PortalGameRulesProxy, DT_PortalGameRulesProxy )
@@ -63,8 +61,10 @@ IMPLEMENT_NETWORKCLASS_ALIASED( PortalGameRulesProxy, DT_PortalGameRulesProxy )
 BEGIN_NETWORK_TABLE_NOBASE( CPortalGameRules, DT_PortalGameRules )
 	#ifdef CLIENT_DLL
 		RecvPropBool( RECVINFO( m_bMegaPhysgun ) ),
+		RecvPropBool( RECVINFO( m_bPaused ) ),
 	#else
 		SendPropBool( SENDINFO( m_bMegaPhysgun ) ),
+		SendPropBool( SENDINFO( m_bPaused ) ),
 	#endif
 END_NETWORK_TABLE()
 
@@ -422,13 +422,12 @@ const char *CPortalGameRules::GetGameDescription( void )
 		m_flPreStartTime = 0.0f;
 
 		g_pCVar->FindVar( "sv_maxreplay" )->SetValue( "1.5" );
-#ifdef GAME_DLL
 		m_iPlayingPlayers = 0;
 		m_bRestoringPlayer = false;
 		m_bDisableGamePause = false;
 		m_bDisablePlayerRestore = false;
 		m_bDidFirstUnpause = false;
-#endif
+		m_bPaused = false;
 	}
 
 
@@ -1506,6 +1505,7 @@ bool CPortalGameRules::Init()
 
 #endif // !CLIENT_DLL
 
+	m_bPaused = false;
 
 	return BaseClass::Init();
 }
@@ -1739,6 +1739,20 @@ void CPortalGameRules::LevelShutdown( void )
 	ResetPortalPlayerData();
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: create some proxy entities that we use for transmitting data */
+//-----------------------------------------------------------------------------
+void CPortalGameRules::CreateStandardEntities()
+{
+	BaseClass::CreateStandardEntities();
+
+	// Create the entity that will send our data to the client.
+	if ( !gEntList.FindEntityByClassname( NULL, "portal_gamerules" ) )
+	{
+		CBaseEntity::Create( "portal_gamerules", vec3_origin, vec3_angle );
+	}
+}
+
 extern void SavePortalPlayerData( CPortal_Player *pPlayer );
 extern void RestorePortalPlayerData( CPortal_Player *pPlayer );
 
@@ -1762,7 +1776,7 @@ void CPortalGameRules::ClientActive( CPortal_Player *pPlayer )
 
 	CheckShouldPause();
 	
-	if ( pcoop_paused.GetBool() )
+	if ( IsGamePaused() )
 		pPlayer->OnPause();
 
 	m_bRestoringPlayer = true;
@@ -1802,10 +1816,6 @@ void CPortalGameRules::ClientDisconnected( edict_t *pClient )
 
 	CheckShouldPause();
 	
-	// This doesn't seem necessary
-	//if ( pcoop_paused.GetBool() )
-	//	pPlayer->OnPause();
-
 	BaseClass::ClientDisconnected( pClient );
 }
 
@@ -1882,7 +1892,7 @@ void CPortalGameRules::CheckShouldPause( void )
 	bool bShouldFreeze = pcoop_require_all_players.GetBool() && m_iPlayingPlayers < nRequiredPlayers && !m_bDisableGamePause;
 	if ( bShouldFreeze )
 	{
-		if ( !pcoop_paused.GetBool() )
+		if ( !IsGamePaused() )
 		{
 			// When the game pauses, do things
 			PauseEntities();
@@ -1894,18 +1904,18 @@ void CPortalGameRules::CheckShouldPause( void )
 			g_iPauseTick = gpGlobals->tickcount;
 
 			// Set the value
-			pcoop_paused.SetValue( true );
+			m_bPaused = true;
 		}
 	}
 	else
 	{
-		if ( pcoop_paused.GetBool() )
+		if ( IsGamePaused() )
 		{
 			// When the game unpauses, do things
 			UnPauseEntities();			
 
 			// Set the value
-			pcoop_paused.SetValue( false );
+			m_bPaused = false;
 			RestoreEventQueue();
 			ResetAllPauseData();
 
@@ -2045,9 +2055,9 @@ bool CPortalGameRules::IsBonusChallengeTimeBased( void )
 
 #endif
 
-bool CPortalGameRules::ShouldPauseGame( void )
+bool CPortalGameRules::IsGamePaused( void )
 {
-	return pcoop_paused.GetBool();
+	return m_bPaused;
 }
 
 // ------------------------------------------------------------------------------------ //
