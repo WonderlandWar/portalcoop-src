@@ -7,8 +7,19 @@
 #include "neurotoxin_countdown.h"
 #endif
 
-int		iNeurotoxinTimeLeft;
-int		iMillisecondsControlled;
+CPointNeurotoxin *g_ActiveNeurotoxin = NULL;
+IMPLEMENT_NETWORKCLASS_ALIASED( PointNeurotoxin, DT_PointNeurotoxin )
+BEGIN_NETWORK_TABLE( CPointNeurotoxin, DT_PointNeurotoxin )
+#ifdef GAME_DLL
+	SendPropInt( SENDINFO( m_iNeurotoxinTimeLeft) ),
+	SendPropBool( SENDINFO( m_bInProgress) ),
+	SendPropFloat( SENDINFO( m_flMillisecondsControlled ) ),
+#else
+	RecvPropInt( RECVINFO( m_iNeurotoxinTimeLeft ) ),
+	RecvPropBool( RECVINFO( m_bInProgress ) ),
+	RecvPropFloat( RECVINFO( m_flMillisecondsControlled ) ),
+#endif
+END_NETWORK_TABLE()
 
 #ifndef CLIENT_DLL
 
@@ -38,9 +49,6 @@ BEGIN_DATADESC(CPointNeurotoxin)
 	
 	DEFINE_FIELD(m_flMillisecondsControlled,	FIELD_FLOAT),
 
-	DEFINE_FIELD(m_iNeurotoxinTime,				FIELD_INTEGER),
-	DEFINE_FIELD(m_iNeurotoxinTimeLeft,			FIELD_INTEGER),
-
 	DEFINE_FIELD(m_bInProgress,					FIELD_BOOLEAN),
 	DEFINE_FIELD(m_bShouldBeTicking,			FIELD_BOOLEAN),
 	DEFINE_FIELD(m_bShouldDoDamage,				FIELD_BOOLEAN),
@@ -50,35 +58,45 @@ BEGIN_DATADESC(CPointNeurotoxin)
 #endif
 
 END_DATADESC();
-/*
-IMPLEMENT_NETWORKCLASS_DT( CPointNeurotoxin, DT_Point_Neurotoxin)
-#ifdef GAME_DLL
-	SendPropInt(SENDINFO(m_iNeurotoxinTime)),
-	SendPropInt(SENDINFO(m_iNeurotoxinTimeLeft)),
-	SendPropBool(SENDINFO(m_bInProgress)),
-	SendPropBool(SENDINFO(m_bShouldBeTicking)),
-	SendPropBool(SENDINFO(m_bShouldDoDamage)),
-#else
-	RecvPropInt(RECVINFO(m_iNeurotoxinTime)),
-	RecvPropInt(RECVINFO(m_iNeurotoxinTimeLeft)),
-	RecvPropBool(RECVINFO(m_bInProgress)),
-	RecvPropBool(RECVINFO(m_bShouldBeTicking)),
-	RecvPropBool(RECVINFO(m_bShouldDoDamage)),
-#endif
-END_NETWORK_TABLE()
-*/
-LINK_ENTITY_TO_CLASS(point_neurotoxin, CPointNeurotoxin)
+
+LINK_ENTITY_TO_CLASS( point_neurotoxin, CPointNeurotoxin )
+
+#endif // !CLIENT_DLL
 
 CPointNeurotoxin::CPointNeurotoxin()
 {
 	m_bInProgress = false;
+	m_flMillisecondsControlled = 0;
+	m_iNeurotoxinTimeLeft = 0;
+#ifndef CLIENT_DLL
+	m_iNeurotoxinMaxTimeLeft = 0;
+	m_iNeurotoxinTime = 0;
+	
+	m_bShouldBeTicking = false;
+	m_bShouldDoDamage = false;
+#endif
 }
 
+CPointNeurotoxin::~CPointNeurotoxin()
+{
+	if ( g_ActiveNeurotoxin == this )
+	{
+		g_ActiveNeurotoxin = NULL;
+	}
+}
+#ifndef CLIENT_DLL
 void CPointNeurotoxin::Start()
 {
-	if (m_bInProgress)
+	if ( m_bInProgress )
 		return;
 	
+	if ( g_ActiveNeurotoxin )
+	{
+		g_ActiveNeurotoxin->Stop();
+	}
+
+	g_ActiveNeurotoxin = this;
+
 	m_flMillisecondsControlled = 0;
 	m_bInProgress = true;
 	SetThink(&CPointNeurotoxin::ThinkTimer);
@@ -93,10 +111,14 @@ void CPointNeurotoxin::Start()
 }
 
 void CPointNeurotoxin::Stop()
-{	
-	// Bad check
-	//if (!m_bInProgress)
-	//	return;
+{
+	if ( !m_bInProgress )
+		return;
+
+	if ( g_ActiveNeurotoxin == this )
+	{
+		g_ActiveNeurotoxin = NULL;
+	}
 
 	m_bInProgress = false;
 	SetThink(NULL);
@@ -142,28 +164,26 @@ void CPointNeurotoxin::ThinkTimer()
 {
 	if (m_bShouldBeTicking == true)
 	{
-		m_flMillisecondsControlled = m_flMillisecondsControlled - MILSECSADDED;
+		float milliseconds = m_flMillisecondsControlled - MILSECSADDED;
+		m_flMillisecondsControlled = milliseconds;
 	}
-		if (0 > m_flMillisecondsControlled)
-			m_flMillisecondsControlled = 0;
-	
-//	Msg("m_flMillisecondsControlled = %f\n", m_flMillisecondsControlled);
 
+	m_flMillisecondsControlled = MAX( m_flMillisecondsControlled, 0.0 );
+	
 	if (0 >= m_flMillisecondsControlled)
 	{
-
 		if (m_iNeurotoxinTimeLeft <= 0 && m_flMillisecondsControlled <= 0)
 		{
-				m_flMillisecondsControlled = 0;
-				m_iNeurotoxinTimeLeft = 0;
-				m_bShouldDoDamage = true;
-				m_bShouldBeTicking = false;
-				m_bInProgress = false;
+			m_flMillisecondsControlled = 0;
+			m_iNeurotoxinTimeLeft = 0;
+			m_bShouldDoDamage = true;
+			m_bShouldBeTicking = false;
+			m_bInProgress = false;
 		}
 
 		if (m_bShouldBeTicking)
 		{
-			m_iNeurotoxinTimeLeft = m_iNeurotoxinTimeLeft - 1;
+			m_iNeurotoxinTimeLeft -= 1;
 			m_flMillisecondsControlled = 99;
 		}
 		else
@@ -178,11 +198,7 @@ void CPointNeurotoxin::ThinkTimer()
 			SetThink(&CPointNeurotoxin::DamagePlayersThink);
 		}
 	}
-	
-
-	iMillisecondsControlled = m_flMillisecondsControlled;
-	iNeurotoxinTimeLeft = m_iNeurotoxinTimeLeft;
-	
+		
 	SetNextThink(gpGlobals->curtime + NEXTTHINK);
 }
 
@@ -241,7 +257,6 @@ void CPointNeurotoxin::InputResume(inputdata_t &inputdata)
 	Resume();
 }
 
-#ifndef CLIENT_DLL
 void CPointNeurotoxin::InputSetNeurotoxinTimeInSeconds(inputdata_t &inputdata)
 {
 	m_iNeurotoxinTime = inputdata.value.Int();
@@ -308,81 +323,27 @@ void CPointNeurotoxin::InputSetMaxTimeLeft(inputdata_t &inputdata)
 	m_iNeurotoxinMaxTimeLeft = inputdata.value.Int();
 }
 
-#endif
+#else
 
-#ifdef GAME_DLL
-//-----------------------------------------------------------------------------
-// Set the remaining time
-//-----------------------------------------------------------------------------
-void CNeurotoxinCountdown::SetRemainingTime()
+
+void CPointNeurotoxin::OnDataChanged( DataUpdateType_t updatetype )
 {
-	m_iRemainingTimeCountdown = iNeurotoxinTimeLeft;
-	m_iMilliseconds = iMillisecondsControlled;
+	BaseClass::OnDataChanged( updatetype );
+	if ( m_bOldInProgress != m_bInProgress )
+	{
+		if ( m_bInProgress )
+		{
+			g_ActiveNeurotoxin = this;
+		}
+		else
+		{
+			if ( g_ActiveNeurotoxin == this )
+			{
+				g_ActiveNeurotoxin = NULL;
+			}
+		}
+		m_bOldInProgress = m_bInProgress;
+	}
 }
 
-//-----------------------------------------------------------------------------
-// Constantly update the remaining time to C_NeurotoxinCountdown
-//-----------------------------------------------------------------------------
-void CNeurotoxinCountdown::Think()
-{
-	SetRemainingTime();
-	
-	SetNextThink(gpGlobals->curtime);
-}
-#endif
-
-#endif
-
-
-#ifdef CLIENT_DLL
-
-IMPLEMENT_CLIENTCLASS_DT(C_NeurotoxinCountdown, DT_NeurotoxinCountdown, CNeurotoxinCountdown)
-	RecvPropBool( RECVINFO(m_bEnabled) ),
-	RecvPropInt( RECVINFO(m_iRemainingTimeCountdown) ),
-	RecvPropInt( RECVINFO(m_iMilliseconds) ),
-END_RECV_TABLE()
-
-BEGIN_PREDICTION_DATA(C_NeurotoxinCountdown)
-
-	DEFINE_PRED_FIELD(m_iRemainingTimeCountdown, FIELD_INTEGER ,FTYPEDESC_OVERRIDE),
-	DEFINE_PRED_FIELD(m_iMilliseconds, FIELD_INTEGER, FTYPEDESC_OVERRIDE),
-
-END_PREDICTION_DATA()
-
-
-#endif
-
-//NEUROTOXIN COUNTDOWN CODE
-#ifdef CLIENT_DLL
-CUtlVector< C_NeurotoxinCountdown* > g_NeurotoxinCountdowns;
-
-C_NeurotoxinCountdown::C_NeurotoxinCountdown()
-{
-	g_NeurotoxinCountdowns.AddToTail(this);
-}
-
-C_NeurotoxinCountdown::~C_NeurotoxinCountdown()
-{
-	g_NeurotoxinCountdowns.FindAndRemove(this);
-}
-
-int C_NeurotoxinCountdown::GetMinutes(void)
-{
-	
-	int m_iMinutes = m_iRemainingTimeCountdown / 60;
-	return m_iMinutes;	
-}
-
-int C_NeurotoxinCountdown::GetSeconds(void)
-{
-	int m_iSeconds = m_iRemainingTimeCountdown % 60;
-	return m_iSeconds;
-}
-
-int C_NeurotoxinCountdown::GetMilliseconds(void)
-{
-	return m_iMilliseconds;
-
-	//return static_cast<int>(gpGlobals->curtime * 100.0f) % 100;;
-}
-#endif
+#endif // !CLIENT_DLL

@@ -36,12 +36,6 @@ public:
 	virtual void Spawn( void );
 	virtual void Precache( void );
 	virtual void OnRestore( void );
-	
-	CNetworkVar(int, m_iRemainingTimeCountdown);
-	CNetworkVar(int, m_iMilliseconds)
-
-	void		SetRemainingTime(void);
-	void	Think();
 
 	void	ScreenVisible( bool bVisible );
 
@@ -50,9 +44,6 @@ public:
 
 	void	InputDisable( inputdata_t &inputdata );
 	void	InputEnable( inputdata_t &inputdata );
-
-	int		m_iTickMilliseconds;
-	int		GetMilliseconds(void);
 
 private:
 

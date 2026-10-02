@@ -25,14 +25,10 @@ BEGIN_DATADESC( CNeurotoxinCountdown )
 	DEFINE_INPUTFUNC( FIELD_VOID, "Disable", InputDisable ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Enable", InputEnable ),
 
-	DEFINE_THINKFUNC(Think),
-
 END_DATADESC()
 
 IMPLEMENT_SERVERCLASS_ST( CNeurotoxinCountdown, DT_NeurotoxinCountdown )
 	SendPropBool( SENDINFO(m_bEnabled) ),
-	SendPropInt( SENDINFO(m_iRemainingTimeCountdown) ),
-	SendPropInt( SENDINFO(m_iMilliseconds) ),
 END_SEND_TABLE()
 
 LINK_ENTITY_TO_CLASS( vgui_neurotoxin_countdown, CNeurotoxinCountdown );
@@ -152,8 +148,6 @@ void CNeurotoxinCountdown::Disable( void )
 	if ( !m_bEnabled )
 		return;
 
-	SetThink(NULL);
-
 	m_bEnabled = false;
 
 	ScreenVisible( false );
@@ -164,13 +158,9 @@ void CNeurotoxinCountdown::Enable( void )
 	if ( m_bEnabled )
 		return;
 
-	SetThink(&CNeurotoxinCountdown::Think);
-	
 	m_bEnabled = true;
 
 	ScreenVisible( true );
-
-	SetNextThink(gpGlobals->curtime);
 }
 
 

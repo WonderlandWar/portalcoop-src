@@ -14,7 +14,6 @@
 #include "ienginevgui.h"
 #include "fmtstr.h"
 #include "vgui_controls/ImagePanel.h"
-#include "point_neurotoxin.h"
 
 using namespace vgui;
 
@@ -147,14 +146,12 @@ void CNeurotoxinCountdownScreen::Update( C_NeurotoxinCountdown *pNeurotoxinCount
 	char szMinutesBuff[ 4 ];
 	char szSecondsBuff[ 4 ];
 	char szMillisecondsBuff[ 4 ];
-	
+
 	int iMinutes = pNeurotoxinCountdown->GetMinutes();
 	int iSeconds = pNeurotoxinCountdown->GetSeconds();
-	int iMilliseconds = pNeurotoxinCountdown->GetMilliseconds();
-		
-	//int iMilliseconds;
-		
-	if ( iMinutes <= 0 && iSeconds <= 0 && iMilliseconds <= 0)
+	int iMilliseconds;
+	
+	if ( iMinutes <= 0 && iSeconds <= 0 )
 	{
 		iMinutes = 0;
 		iSeconds = 0;
@@ -165,6 +162,7 @@ void CNeurotoxinCountdownScreen::Update( C_NeurotoxinCountdown *pNeurotoxinCount
 	}
 	else
 	{
+		iMilliseconds = pNeurotoxinCountdown->GetMilliseconds();
 		m_pDisplayTextLabel->SetVisible( true );
 	}
 

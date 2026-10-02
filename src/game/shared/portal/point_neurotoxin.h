@@ -9,10 +9,6 @@
 #ifndef POINT_NEUROTOXIN_H
 #define POINT_NEUROTOXIN_H
 
-#ifdef CLIENT_DLL
-//#define CPointNeurotoxin C_PointNeurotoxin
-#endif
-
 #include "cbase.h"
 #include "networkvar.h"
 
@@ -24,18 +20,25 @@
 #else
 #include "c_portal_player.h"
 #include "cdll_util.h"
+#define CPointNeurotoxin C_PointNeurotoxin
 #endif
-#ifndef CLIENT_DLL
 
 class CPointNeurotoxin : public CBaseEntity
 {
 	DECLARE_CLASS(CPointNeurotoxin, CBaseEntity)
 public:
-
+#ifndef CLIENT_DLL
 	DECLARE_DATADESC();
-//	DECLARE_NETWORKCLASS();
-
+#endif
+	DECLARE_NETWORKCLASS();
 	CPointNeurotoxin();
+	~CPointNeurotoxin();
+#ifndef CLIENT_DLL
+
+	virtual int UpdateTransmitState()
+	{
+		return SetTransmitState( FL_EDICT_ALWAYS );
+	}
 
 	void	Start();
 	void	Stop();
@@ -49,27 +52,12 @@ public:
 	bool	ShouldUseMaxTimeLeft();
 		
 	int		m_iNeurotoxinMaxTimeLeft;
-	/*
-	CNetworkVar(int, m_iNeurotoxinTime);
-	CNetworkVar(int, m_iNeurotoxinTimeLeft);
-
-	CNetworkVar(bool, m_bInProgress);
-	CNetworkVar(bool, m_bShouldBeTicking);
-	CNetworkVar(bool, m_bShouldDoDamage);
-	*/
-
-	float		m_flMillisecondsControlled;
-
 	int		m_iNeurotoxinTime;
-	int		m_iNeurotoxinTimeLeft;
 	
-	bool	m_bInProgress;
 	bool	m_bShouldBeTicking;
 	bool	m_bShouldDoDamage;
 
 	// Inputs
-
-#ifndef CLIENT_DLL
 	void	InputStart(inputdata_t &inputdata);
 	void	InputStop(inputdata_t &inputdata);
 	void	InputPause(inputdata_t &inputdata);
@@ -84,13 +72,33 @@ public:
 	void	InputSetMaxTimeLeft(inputdata_t &inputdata);
 
 	// Outputs
-
+private:
 	COutputEvent m_OnStart;
 	COutputEvent m_OnStop;
 	COutputEvent m_OnPause;
 	COutputEvent m_OnResume;
 	COutputEvent m_OnTimerEnded;
-#endif
+#else
+public:
+
+	void OnDataChanged( DataUpdateType_t updatetype );
+
+	int GetControlledMilliseconds() const { return m_flMillisecondsControlled; }
+	int GetNeurotoxinTimeLeft() const { return m_iNeurotoxinTimeLeft; }
+
+private:
+
+	bool m_bOldInProgress;
+
+#endif // !CLIENT_DLL
+
+private:
+	
+	CNetworkVar( bool, m_bInProgress );
+	CNetworkVar( float, m_flMillisecondsControlled );
+	CNetworkVar( int, m_iNeurotoxinTimeLeft );
 };
-#endif
+
+extern CPointNeurotoxin *g_ActiveNeurotoxin;
+
 #endif
