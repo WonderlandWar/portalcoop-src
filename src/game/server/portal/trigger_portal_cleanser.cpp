@@ -26,6 +26,8 @@
 
 BEGIN_DATADESC( CTriggerPortalCleanser )
 
+DEFINE_KEYFIELD( m_bSuppressDissolveOutput, FIELD_BOOLEAN, "SuppressDissolveOutput" ),
+
 // Outputs
 DEFINE_OUTPUT( m_OnDissolve, "OnDissolve" ),
 DEFINE_OUTPUT( m_OnFizzle, "OnFizzle" ),
@@ -40,6 +42,10 @@ END_SEND_TABLE()
 
 LINK_ENTITY_TO_CLASS( trigger_portal_cleanser, CTriggerPortalCleanser );
 
+CTriggerPortalCleanser::CTriggerPortalCleanser()
+{
+	m_bSuppressDissolveOutput = false;
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -265,7 +271,7 @@ void CTriggerPortalCleanser::FizzleBaseAnimating( CBaseEntity *pOther, CTriggerP
 			CPropBox *pBox = dynamic_cast<CPropBox*>( pBaseAnimating );
 			if ( pBox )
 			{
-				pBox->PreDissolve( pBox, pTrigger );
+				pBox->PreDissolve( pBox, pTrigger, !pTrigger || !pTrigger->m_bSuppressDissolveOutput );
 			}
 
 			// Remove old prop, transfer name and children to the new simple prop

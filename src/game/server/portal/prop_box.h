@@ -27,7 +27,7 @@ public:
 	void Precache( void );
 
 	void EnergyBallHit( CPropCombineBall *pBall );
-	void PreDissolve( CBaseEntity *pActivator, CBaseEntity *pCaller );
+	void PreDissolve( CBaseEntity *pActivator, CBaseEntity *pCaller, bool bFireOutput = true );
 
 	int OnTakeDamage( const CTakeDamageInfo &info ) OVERRIDE;
 

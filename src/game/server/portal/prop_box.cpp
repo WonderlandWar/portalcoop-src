@@ -66,13 +66,17 @@ void CPropBox::EnergyBallHit( CPropCombineBall *pBall )
 	}
 }
 
-void CPropBox::PreDissolve( CBaseEntity *pActivator, CBaseEntity *pCaller )
+void CPropBox::PreDissolve( CBaseEntity *pActivator, CBaseEntity *pCaller, bool bFireOutput /*= true*/ )
 {
 	if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA )
 	{
 		EmitSound( "Rexaura.BoxDissolve" );
 	}
-	m_OnDissolved.FireOutput( pActivator, pCaller );
+
+	if ( bFireOutput )
+	{
+		m_OnDissolved.FireOutput( pActivator, pCaller );
+	}
 }
 
 int CPropBox::OnTakeDamage( const CTakeDamageInfo &info )

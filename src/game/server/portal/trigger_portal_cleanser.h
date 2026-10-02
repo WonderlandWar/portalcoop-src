@@ -43,6 +43,8 @@ class CTriggerPortalCleanser : public CBaseTrigger
 	DECLARE_SERVERCLASS();
 
 public:
+
+	CTriggerPortalCleanser();
 	
 	virtual bool IsPredicted(void) { return true; }
 	void Spawn( void );
@@ -52,6 +54,9 @@ public:
 	static void FizzleBaseAnimating( CBaseEntity *pOther, CTriggerPortalCleanser *pTrigger );
 
 	DECLARE_DATADESC();
+
+private:
+	bool m_bSuppressDissolveOutput;
 
 	// Outputs
 	COutputEvent m_OnDissolve;
