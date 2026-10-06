@@ -118,7 +118,7 @@ int CEventAction::s_iNextIDStamp = 0;
 static float GetCurrentTimeForEventQueue( void )
 {
 #ifdef PORTAL // Catch cases where the output was fired while paused
-	if ( PortalGameRules()->IsGamePaused() )
+	if ( PortalGameRules() && PortalGameRules()->IsGamePaused() )
 	{
 #if defined ( USE_SERVER_TIME )
 		extern float g_flServerTimeWhenPaused;
