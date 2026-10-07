@@ -18,6 +18,7 @@
 #include "KeyValues.h"
 #include "filesystem.h"
 #include "portal_shareddefs.h"
+#include <vgui/IVGui.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -37,6 +38,7 @@ struct portalcreditname_t
 	float flTimeInit;
 	int iAsciiIndex;
 	bool bReset;
+	bool bWasRead;
 	int iXOffset;
 	int iSlot;
 };
@@ -72,6 +74,7 @@ public:
 	CHudPortalCredits( const char *pElementName );
 	virtual void Init( void );
 	virtual void LevelShutdown( void );
+	virtual void OnTick();
 
 	int GetStringPixelWidth ( wchar_t *pString, vgui::HFont hFont );
 	int GetPixelWidth( char *pString, vgui::HFont hFont );
@@ -260,6 +263,23 @@ void CHudPortalCredits::LevelShutdown()
 	Clear();
 }
 
+void CHudPortalCredits::OnTick()
+{
+	if ( m_CreditsList.Count() == 0 )
+		return;
+
+	if (m_flLyricsStartTime == -1) m_flLyricsStartTime = gpGlobals->curtime;
+
+	float flCurTime = gpGlobals->curtime - m_flLyricsStartTime;
+
+	if (m_bStartSong && flCurTime>= m_flSongStartTime)
+	{
+		surface()->PlaySound( "music/portal_still_alive.mp3" );
+		m_bStartSong=false;
+		//engine->ClientCmd( "play music/portal_still_alive.mp3" );
+	}
+}
+
 void CHudPortalCredits::Clear( void )
 {
 	SetActive( false );
@@ -268,6 +288,8 @@ void CHudPortalCredits::Clear( void )
 	m_bLastOneInPlace = false;
 	m_Alpha = m_TextColor[3];
 	m_iLogoState = LOGO_FADEOFF;
+	
+	vgui::ivgui()->RemoveTickSignal( GetVPanel() );
 }
 
 //-----------------------------------------------------------------------------
@@ -310,6 +332,8 @@ void CHudPortalCredits::ReadNames( KeyValues *pKeyValue )
 		if (!(cTmp == NULL)) {
 			Q_strcpy(Credits.szCreditName,cTmp+1);
 		}
+
+		Credits.bWasRead = false;
 
 		m_CreditsList.AddToTail( Credits );
 		pKVNames = pKVNames->GetNextKey();
@@ -377,6 +401,8 @@ void CHudPortalCredits::ReadLyrics( KeyValues *pKeyValue )
 			Q_strcpy(Credits.szCreditName," ");
 		}
 		else Credits.bReset = false;
+
+		Credits.bWasRead = false;
 
 		Credits.flYPos = iHeight;
 		Credits.bActive = false;
@@ -881,8 +907,6 @@ void CHudPortalCredits::DrawPortalOutroCreditsLyrics( void )
 	static bool bCursor = false;
 	static int iLastNameY = 0;
 	
-	if (m_flLyricsStartTime == -1) m_flLyricsStartTime = gpGlobals->curtime;
-
 	//get the screen stats
 	int iWidth, iTall;
 	GetHudSize(iWidth, iTall);
@@ -902,13 +926,6 @@ void CHudPortalCredits::DrawPortalOutroCreditsLyrics( void )
 
 	float flCurTime = gpGlobals->curtime - m_flLyricsStartTime;
 
-	if (m_bStartSong && flCurTime>= m_flSongStartTime)
-	{
-		surface()->PlaySound( "music/portal_still_alive.mp3" );
-		m_bStartSong=false;
-		//engine->ClientCmd( "play music/portal_still_alive.mp3" );
-	}
-
 	//Draw Lyrics
 	bool bBorders = false;
 	for ( int i = 0; i < m_LyricsList.Count(); i++ )
@@ -919,11 +936,13 @@ void CHudPortalCredits::DrawPortalOutroCreditsLyrics( void )
 			 continue;
 
 		if (pCredit->flTimeStart > flCurTime) break;
-		if (pCredit->flTimeStart <= flCurTime && pCredit->flTimeEnd > flCurTime)
+		if (pCredit->flTimeStart <= flCurTime && ( pCredit->flTimeEnd > flCurTime || !pCredit->bWasRead ) )
 		{
+			pCredit->bWasRead = true;
 			m_iYOffset = i;
 			if (pCredit->bReset) 
 			{
+				//Msg( "pCredit->bReset %i\n", i);
 				m_iCurrentLowY = i;
 			}
 			m_iXOffset = (int) (((flCurTime-pCredit->flTimeStart) / pCredit->flTimeInit)*Q_wcslen(pCredit->szLyricLine))+1;
@@ -1039,22 +1058,39 @@ void CHudPortalCredits::DrawPortalOutroCreditsLyrics( void )
 		vgui::HFont m_hTFont = vgui::scheme()->GetIScheme(scheme)->GetFont( pCredit->szFontName, true );
 		int iFontTall = surface()->GetFontTall ( m_hTFont );
 
-		if (pCredit->flTimeStart <= flCurTime && pCredit->flTimeEnd > flCurTime)
+		if (pCredit->flTimeStart <= flCurTime && (pCredit->flTimeEnd > flCurTime || !pCredit->bWasRead ))
 		{
-			if (iLastNameY!=i)
+			bool bShouldRead = true;
+			if ( i != 0 )
 			{
-				int iYDelta = iFontTall + (int) m_flSeparation;			
-				for (int j = 0; j <i; j++)
+				portalcreditname_t *pPreviousCredit = &m_CreditsList[i-1];
+				if ( pPreviousCredit )
 				{
-					m_CreditsList[j].flYPos -= (float) iYDelta;
+					bShouldRead = pPreviousCredit->bWasRead;
 				}
-				m_CreditsList[i].flYPos = (iTall/2) - iYDelta;
-				iLastNameY=i;
 			}
-			m_iYOffsetNames = i;
-			m_iXOffsetNames = (int) (((flCurTime-pCredit->flTimeStart) / pCredit->flTimeInit)*Q_strlen(pCredit->szCreditName))+1;
-			if (m_iXOffsetNames<1) m_iXOffsetNames = 1;
-			else if (m_iXOffsetNames>Q_strlen(pCredit->szCreditName) ) m_iXOffsetNames = Q_strlen(pCredit->szCreditName);
+			if ( bShouldRead )
+			{
+				if ( !pCredit->bWasRead )
+				{
+					pCredit->bWasRead = true;
+					//Msg( "Read credit: %s\n", pCredit->szCreditName );
+				}
+				if (iLastNameY!=i)
+				{
+					int iYDelta = iFontTall + (int) m_flSeparation;			
+					for (int j = 0; j <i; j++)
+					{
+						m_CreditsList[j].flYPos -= (float) iYDelta;
+					}
+					m_CreditsList[i].flYPos = (iTall/2) - iYDelta;
+					iLastNameY=i;
+				}
+				m_iYOffsetNames = i;
+				m_iXOffsetNames = (int) (((flCurTime-pCredit->flTimeStart) / pCredit->flTimeInit)*Q_strlen(pCredit->szCreditName))+1;
+				if (m_iXOffsetNames<1) m_iXOffsetNames = 1;
+				else if (m_iXOffsetNames>Q_strlen(pCredit->szCreditName) ) m_iXOffsetNames = Q_strlen(pCredit->szCreditName);
+			}
 		}
 
 
@@ -1424,6 +1460,8 @@ void CHudPortalCredits::PreparePortalOutroCredits( void )
 	
 	if ( m_CreditsList.Count() == 0 )
 		 return;
+	
+	vgui::ivgui()->AddTickSignal( GetVPanel() );
 
 	// fill the screen
 	int iWidth, iTall;
