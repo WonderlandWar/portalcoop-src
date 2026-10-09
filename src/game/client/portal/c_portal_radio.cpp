@@ -16,9 +16,16 @@
 KeyValues *LoadRadioData()
 {	
 	KeyValues *radios = new KeyValues( "radios" );
-	if ( !radios->LoadFromFile( g_pFullFileSystem, RADIO_DATA_FILE, "GAME" ) )
+	if ( !radios->LoadFromFile( g_pFullFileSystem, RADIO_DATA_FILE, NULL ) )
 	{
-		radios->SaveToFile( g_pFullFileSystem, RADIO_DATA_FILE, "GAME" );
+		CUtlBuffer buf( 0, 0, CUtlBuffer::TEXT_BUFFER );
+		radios->RecursiveSaveToFile( buf, 0 );
+		g_pFullFileSystem->WriteFile( RADIO_DATA_FILE, "MOD", buf );
+		if ( !radios->LoadFromFile( g_pFullFileSystem, RADIO_DATA_FILE, NULL ) )
+		{
+			radios->deleteThis();
+			return NULL;
+		}
 	}
 
 	return radios;

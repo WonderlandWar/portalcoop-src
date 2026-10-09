@@ -9,13 +9,20 @@ ConVar progress_cv( "progress", "0", FCVAR_USERINFO );
 
 KeyValues *LoadProgressData()
 {	
-	KeyValues *radios = new KeyValues( "progress_data" );
-	if ( !radios->LoadFromFile( g_pFullFileSystem, PROGRESS_DATA_FILE, "GAME" ) )
+	KeyValues *progress_data = new KeyValues( "progress_data" );
+	if ( !progress_data->LoadFromFile( g_pFullFileSystem, PROGRESS_DATA_FILE, NULL ) )
 	{
-		radios->SaveToFile( g_pFullFileSystem, PROGRESS_DATA_FILE, "GAME" );
+		CUtlBuffer buf( 0, 0, CUtlBuffer::TEXT_BUFFER );
+		progress_data->RecursiveSaveToFile( buf, 0 );
+		g_pFullFileSystem->WriteFile( PROGRESS_DATA_FILE, "MOD", buf );
+		if ( !progress_data->LoadFromFile( g_pFullFileSystem, PROGRESS_DATA_FILE, NULL ) )
+		{
+			progress_data->deleteThis();
+			return NULL;
+		}
 	}
 
-	return radios;
+	return progress_data;
 }
 
 void UpdateProgressConVars()
