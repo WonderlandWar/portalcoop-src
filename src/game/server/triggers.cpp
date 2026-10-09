@@ -1648,6 +1648,8 @@ void CChangeLevel::WarnAboutActiveLead( void )
 
 extern ConVar sv_bonus_challenge;
 
+bool g_bChangedLevelFromTrigger = false;
+
 void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 {
 	if ( !AllPlayersAreTouching() && m_bAllPlayersMustBeTouching )
@@ -1661,7 +1663,7 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 	levellist_t	levels[16];
 
 	Assert(!FStrEq(m_szMapName, ""));
-	
+
 	// Restart the map if we're doing a bonus challenge
 	if ( g_pGameRules->GetBonusChallenge() )
 	{
@@ -1669,6 +1671,8 @@ void CChangeLevel::ChangeLevelNow( CBaseEntity *pActivator )
 		engine->ChangeLevel( gpGlobals->mapname.ToCStr(), NULL );
 		return;
 	}
+
+	g_bChangedLevelFromTrigger = true;
 
 	// Don't work in multiplayer
 	if ( gpGlobals->maxClients > 1 )

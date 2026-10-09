@@ -114,10 +114,10 @@ void CPortalGameRulesProxy::InputRespawnAllPlayers( inputdata_t &inputdata )
 	RespawnAllPlayers();
 }
 
-extern int g_iNumCamerasDetatched;
 void CPortalGameRulesProxy::InputResetDetachedCameras( inputdata_t &inputdata )
 {
-	g_iNumCamerasDetatched = 0;
+	extern void ResetNumCamerasDetatched();
+	ResetNumCamerasDetatched();
 }
 
 void CPortalGameRulesProxy::InputDisableGamePause( inputdata_t &inputdata )
