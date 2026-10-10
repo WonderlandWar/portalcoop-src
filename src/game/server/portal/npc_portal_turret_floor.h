@@ -78,6 +78,8 @@ public:
 	// Inputs
 	void	InputFireBullet( inputdata_t &inputdata );
 
+	COutputEvent m_OnDissolved;
+
 private:
 
 	CHandle<CRopeKeyframe>	m_hRopes[ PORTAL_FLOOR_TURRET_NUM_ROPES ];

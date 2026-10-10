@@ -21,18 +21,6 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-static char *g_pszPortalNonCleansable[] = 
-{ 
-	"func_door", 
-	"func_door_rotating", 
-	"prop_door_rotating",
-	"func_tracktrain",
-	"env_ghostanimating",
-	"physicsshadowclone",
-	"prop_energy_ball",
-	NULL,
-};
-
 //-----------------------------------------------------------------------------
 // Purpose: Removes anything that touches it. If the trigger has a targetname,
 //			firing it will toggle state.

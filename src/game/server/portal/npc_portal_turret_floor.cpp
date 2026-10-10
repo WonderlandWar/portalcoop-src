@@ -129,6 +129,9 @@ BEGIN_DATADESC( CNPC_Portal_FloorTurret )
 	DEFINE_THINKFUNC( BurnThink ),
 	DEFINE_THINKFUNC( BreakThink ),
 
+	// Outputs
+	DEFINE_OUTPUT( m_OnDissolved, "OnDissolved" ),
+
 	// Inputs
 	DEFINE_INPUTFUNC( FIELD_STRING, "FireBullet", InputFireBullet ),
 
