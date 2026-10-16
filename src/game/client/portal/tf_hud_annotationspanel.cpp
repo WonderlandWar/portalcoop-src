@@ -313,7 +313,6 @@ void CTFAnnotationsPanel::AddAnnotation( IGameEvent * event )
 	int iFollowEntIndex = event->GetInt("follow_entindex");
 	int iOwnerEntIndex = event->GetInt( "owner_entindex" );
 	bool bShowDistance = event->GetBool("show_distance");
-	const char *pSound = event->GetString( "play_sound" );
 	bool bShowEffect = event->GetBool( "show_effect" );
 	int iForcedPingIcon = event->GetInt( "forcedpingicon" );
 
@@ -348,10 +347,7 @@ void CTFAnnotationsPanel::AddAnnotation( IGameEvent * event )
 
 		if ( pCallout->IsVisible() )
 		{
-			if ( pSound )
-			{
-				vgui::surface()->PlaySound( pSound );
-			}
+			vgui::surface()->PlaySound( "npc/roller/mine/rmine_chirp_answer1.wav" );
 
 			if ( bShowEffect )
 			{

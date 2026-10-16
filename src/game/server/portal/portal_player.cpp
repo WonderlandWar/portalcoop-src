@@ -689,13 +689,9 @@ void RestorePortalPlayerData( CPortal_Player *pPlayer )
 }
 
 ConVar sv_portal_coop_ping_cooldown_time( "sv_portal_coop_ping_cooldown_time", "0.5", FCVAR_REPLICATED, "Time (in seconds) between coop pings", true, 0.1f, false, 60.0f );
-#if 0
-ConVar sv_portal_coop_ping_indicator_show_to_all_players( "sv_portal_coop_ping_indicator_show_to_all_players", "1", FCVAR_REPLICATED, "Sets if pinging should show for all players");
-#endif
 ConVar sv_portal_coop_allow_ping("sv_portal_coop_allow_ping", "1", FCVAR_REPLICATED, "Sets if players are allowed to ping");
 
 #define COOP_PING_SOUNDSCRIPT_NAME "Player.Coop_Ping"
-#define COOP_PING_HUD_SOUNDSCRIPT_NAME "npc/roller/mine/rmine_chirp_answer1.wav"
 //#define COOP_PING_PARTICLE_NAME "command_target_ping"
 #define COOP_PING_PARTICLE_NAME_ORANGE "command_target_ping_orange"
 #define COOP_PING_PARTICLE_NAME_RED "command_target_ping_red"
@@ -1176,7 +1172,6 @@ void ShowAnnotation( Vector location, int follow_entindex, int entindex, int for
 		pEvent->SetFloat( "worldPosY", location.y );
 		pEvent->SetFloat( "worldPosZ", location.z );
 		pEvent->SetFloat( "lifetime", PINGTIME );
-		pEvent->SetString( "play_sound", COOP_PING_HUD_SOUNDSCRIPT_NAME );
 		if ( follow_entindex != -1 )
 			pEvent->SetInt( "follow_entindex", follow_entindex );
 		pEvent->SetInt( "owner_entindex", entindex );
