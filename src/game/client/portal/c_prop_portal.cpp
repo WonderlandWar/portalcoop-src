@@ -956,10 +956,10 @@ void C_Prop_Portal::HandleNetworkChanges( void )
 		g_pPortalRender->RemovePortal( this );
 		m_PortalSimulator.DetachFromLinked();
 
-		if( bPortalMoved || bActivityChanged )
+		/*if (bPortalMoved || bActivityChanged)
 		{
 			m_PortalSimulator.MoveTo( m_ptOrigin, m_qAbsAngle );
-		}
+		}*/
 	}
 	
 	if (m_PortalSimulator.GetInternalData().Simulation.hCollisionEntity)
