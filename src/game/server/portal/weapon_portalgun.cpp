@@ -354,6 +354,9 @@ static void change_portalgun_linkage_id_f( const CCommand &args )
 
 	CPortal_Player *pPlayer = (CPortal_Player *)UTIL_GetCommandClient();
 
+	if ( !pPlayer )
+		return;
+
 	int iWeaponCount = pPlayer->WeaponCount();
 	for( int i = 0; i != iWeaponCount; ++i )
 	{
