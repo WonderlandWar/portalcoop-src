@@ -20,10 +20,80 @@
 #include "effect_color_tables.h"
 #include "prediction.h"
 #include "portal_shareddefs.h"
+#include "vprof.h"
+#include "particles_localspace.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 extern float g_flGameCurTime;
+
+static void MuzzleFlash_Portalgun_Thirdperson( ClientEntityHandle_t hEntity, int attachmentIndex )
+{
+	VPROF_BUDGET( "MuzzleFlash_Portalgun_Thirdperson", VPROF_BUDGETGROUP_PARTICLE_RENDERING );
+	CSmartPtr<CLocalSpaceEmitter> pSimple = CLocalSpaceEmitter::Create( "MuzzleFlash", hEntity, attachmentIndex );
+
+	SimpleParticle *pParticle;
+	Vector			forward(1,0,0), offset; //NOTENOTE: All coords are in local space
+
+	float flScale = random->RandomFloat( 1.1f, 1.15f );
+
+	
+	PMaterialHandle pMuzzle[2];
+	pMuzzle[0] = pSimple->GetPMaterial( "effects/combinemuzzle1" );
+	pMuzzle[1] = pSimple->GetPMaterial( "effects/combinemuzzle2" );
+
+	// Flash
+	for ( int i = 1; i < 6; i++ )
+	{
+		offset = (forward * (i*5.0f*flScale));
+
+		pParticle = (SimpleParticle *) pSimple->AddParticle( sizeof( SimpleParticle ), pMuzzle[random->RandomInt(0,1)], offset );
+			
+		if ( pParticle == NULL )
+			return;
+
+		pParticle->m_flLifetime		= 0.0f;
+		pParticle->m_flDieTime		= 0.025f;
+
+		pParticle->m_vecVelocity.Init();
+
+		pParticle->m_uchColor[0]	= 255;
+		pParticle->m_uchColor[1]	= 255;
+		pParticle->m_uchColor[2]	= 200+random->RandomInt(0,55);
+
+		pParticle->m_uchStartAlpha	= 255;
+		pParticle->m_uchEndAlpha	= 255;
+
+		pParticle->m_uchStartSize	= ( (random->RandomFloat( 6.0f, 8.0f ) * (16-(i))/16) * flScale );
+		pParticle->m_uchEndSize		= pParticle->m_uchStartSize;
+		pParticle->m_flRoll			= random->RandomInt( 0, 360 );
+		pParticle->m_flRollDelta	= 0.0f;
+	}
+
+	// Tack on the smoke
+	pParticle = (SimpleParticle *) pSimple->AddParticle( sizeof( SimpleParticle ), pMuzzle[random->RandomInt(0,1)], vec3_origin );
+		
+	if ( pParticle == NULL )
+		return;
+
+	pParticle->m_flLifetime		= 0.0f;
+	pParticle->m_flDieTime		= 0.025f;
+
+	pParticle->m_vecVelocity.Init();
+
+	pParticle->m_uchColor[0]	= 255;
+	pParticle->m_uchColor[1]	= 255;
+	pParticle->m_uchColor[2]	= 255;
+
+	pParticle->m_uchStartAlpha	= random->RandomInt( 64, 128 );
+	pParticle->m_uchEndAlpha	= 32;
+
+	pParticle->m_uchStartSize	= random->RandomFloat( 10.0f, 16.0f );
+	pParticle->m_uchEndSize		= pParticle->m_uchStartSize;
+	
+	pParticle->m_flRoll			= random->RandomInt( 0, 360 );
+	pParticle->m_flRollDelta	= 0.0f;
+}
 
 class C_PortalBlast : public C_BaseEntity
 {
@@ -88,19 +158,23 @@ void C_PortalBlast::Init( bool bIsPortal2, PortalPlacedByType ePlacedBy, const V
 
 	m_ptAimPoint = m_ptCreationPoint + vForward * m_ptCreationPoint.DistTo( m_ptDeathPoint );
 
-	C_BasePlayer *pPlayer = ToBasePlayer(hEntity.Get());
+	C_BaseCombatWeapon *pWeapon = hEntity ? hEntity->MyCombatWeaponPointer() : NULL;
 
+	C_BasePlayer *pPlayer = ToBasePlayer( hEntity.Get() );
+	
 	//Probably unnecessary
-	if (pPlayer)
+	if ( pWeapon && pWeapon->GetOwner() == C_BasePlayer::GetLocalPlayer() )
 	{
-		if ( pPlayer->IsLocalPlayer() )
+		ePlacedBy = PORTAL_PLACED_BY_PLAYER;
+	}
+	else
+	{
+		if ( pWeapon && pWeapon->GetOwner() )
 		{
-			ePlacedBy = PORTAL_PLACED_BY_PLAYER;
+			int attachment = pWeapon->LookupAttachment( "muzzle" );
+			MuzzleFlash_Portalgun_Thirdperson( hEntity, attachment );
 		}
-		else
-		{
-			ePlacedBy = PORTAL_PLACED_BY_PEDESTAL;
-		}
+		ePlacedBy = PORTAL_PLACED_BY_PEDESTAL;
 	}
 
 

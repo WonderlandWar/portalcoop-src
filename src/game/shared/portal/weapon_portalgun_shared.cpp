@@ -545,10 +545,12 @@ void CWeaponPortalgun::DoEffectBlast( CBaseEntity *pOwner, bool bPortal2, int iP
 	fxData.m_nDamageType = iPlacedBy;
 	fxData.m_nHitBox = iPortalColorSet; //Use m_nHitBox as a dummy var
 #ifdef CLIENT_DLL
-	AssertMsg( GetOwner() == C_BasePlayer::GetLocalPlayer(), "This should only run in prediction, and the owner should be the local player!" );
-	fxData.m_hEntity = GetOwner();
+	//AssertMsg( GetOwner() == C_BasePlayer::GetLocalPlayer(), "This should only run in prediction, and the owner should be the local player!" );
+	//fxData.m_hEntity = GetOwner();
+	fxData.m_hEntity = this;
 #else
-	fxData.m_nEntIndex = pOwner ? pOwner->entindex() : entindex();
+	//fxData.m_nEntIndex = pOwner ? pOwner->entindex() : entindex();
+	fxData.m_nEntIndex = entindex();
 #endif
 	
 #ifdef CLIENT_DLL
