@@ -110,7 +110,7 @@ LINK_ENTITY_TO_CLASS( prop_radio, C_Portal_Dinosaur );
 
 C_Portal_Dinosaur::C_Portal_Dinosaur()
 {
-	m_iOldRadioMode = m_iRadioMode = RADIO_NORMAL;
+	m_iOldRadioMode = m_iRadioMode = RADIO_NUM_MODES;
 }
 
 void C_Portal_Dinosaur::Spawn()
