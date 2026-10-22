@@ -2,6 +2,7 @@
 #include "prop_testchamber_sign_shared.h"
 #include "c_props.h"
 #include "debugoverlay_shared.h"
+#include "model_types.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -283,6 +284,11 @@ int C_PropTestchamberSign::DrawModel( int flags )
 	int ret = BaseClass::DrawModel( flags );
 	if ( !ret )
 		return 0;
+
+	if ( flags & STUDIO_GLOWING )
+	{
+		return ret; // Don't draw AWE again
+	}
 
 	DrawAWE();
 
