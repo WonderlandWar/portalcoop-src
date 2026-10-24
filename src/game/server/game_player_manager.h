@@ -7,15 +7,18 @@
 #include "cbase.h"
 
 
-class CPlayerManager : public CBaseEntity
+class CPlayerManager : public CBaseEntity, CGameEventListener
 {
 public:
 	DECLARE_CLASS(CPlayerManager, CBaseEntity)
 	DECLARE_DATADESC();
 
+	CPlayerManager();
 
 	void Spawn(void);
 	
+	void FireGameEvent( IGameEvent *event );
+
 	void InputPlayerCount( inputdata_t &inputdata );
 	void InputMaxPlayerCount( inputdata_t &inputdata );
 	void InputPlayerSpawn( inputdata_t &inputdata ); // !FGD
@@ -26,6 +29,7 @@ public:
 	COutputInt m_MaxPlayers;
 	COutputEvent m_OnPlayerSpawn;
 	COutputEvent m_OnPlayerJoin;
+	COutputEvent m_OnPlayerDeath;
 };
 
 #endif //GAME_PLAYER_MANAGER_H

@@ -11,6 +11,7 @@ DEFINE_INPUTFUNC( FIELD_VOID, "InMaxPlayerCount", InputMaxPlayerCount ),
 
 DEFINE_OUTPUT( m_OnPlayerJoin, "OnPlayerJoin" ),
 DEFINE_OUTPUT( m_OnPlayerSpawn, "OnPlayerSpawn" ),
+DEFINE_OUTPUT( m_OnPlayerDeath, "OnPlayerDeath" ),
 
 DEFINE_OUTPUT( m_MaxPlayers, "OutMaxPlayerCount" ),
 DEFINE_OUTPUT( m_PlayerCount, "OutPlayerCount" ),
@@ -20,10 +21,26 @@ END_DATADESC()
 
 LINK_ENTITY_TO_CLASS( game_player_manager, CPlayerManager )
 
+CPlayerManager::CPlayerManager()
+{
+	ListenForGameEvent( "player_death" );
+}
+
 void CPlayerManager::Spawn( void )
 {
 	m_MaxPlayers.Init(0);
 	m_PlayerCount.Init(0);
+}
+
+void CPlayerManager::FireGameEvent( IGameEvent *event )
+{
+	const char *pszName = event->GetName();
+	if ( !V_strcmp( pszName, "player_death" ) )
+	{
+		int userid = event->GetInt( "userid" );
+		CBasePlayer *pVictim = UTIL_PlayerByUserId( userid );
+		m_OnPlayerDeath.FireOutput( pVictim, this );
+	}
 }
 
 void CPlayerManager::InputPlayerCount( inputdata_t &inputdata )
