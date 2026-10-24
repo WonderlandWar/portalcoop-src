@@ -1021,7 +1021,15 @@ void C_Portal_Player::FixTeleportationRoll( void )
 	{
 		if ( vAbsAngles[ROLL] != 0.0f )
 		{
-			if ( vCurrentUp.z < 0.2f )
+			if ( fabs( vAbsAngles[ROLL] ) < 0.001 ) // pcoop hax
+			{
+				vAbsAngles[ROLL] = 0.0;
+				engine->SetViewAngles( vAbsAngles );
+				m_angEyeAngles = vAbsAngles;
+				m_iv_angEyeAngles.Reset( gpGlobals->curtime );
+
+			}
+			else if ( vCurrentUp.z < 0.2f )
 			{
 				float fDegrees = gpGlobals->frametime * m_fReorientationRate;
 				if ( vCurrentForward.z > 0.0f )
