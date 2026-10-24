@@ -53,9 +53,6 @@ ConVar mapsets_cv( "mapsets", "", FCVAR_USERINFO | FCVAR_DEVELOPMENTONLY );
 #define REORIENTATION_RATE 120.0f
 #define REORIENTATION_ACCELERATION_RATE 400.0f
 
-//#define ENABLE_PORTAL_EYE_INTERPOLATION_CODE 1
-
-
 #define DEATH_CC_LOOKUP_FILENAME "materials/correction/cc_death.raw"
 #define DEATH_CC_FADE_SPEED 0.05f
 
@@ -1290,6 +1287,12 @@ void C_Portal_Player::ApplyUnpredictedPortalTeleportation( const CProp_Portal *p
 			engine->SetViewAngles( qEngineAngles );
 			pl.v_angle = qEngineAngles;
 		}
+		
+	
+		UTIL_Portal_PointTransform( pEnteredPortal->MatrixThisToLinked(), PortalEyeInterpolation.m_vEyePosition_Interpolated, PortalEyeInterpolation.m_vEyePosition_Interpolated);
+		UTIL_Portal_PointTransform( pEnteredPortal->MatrixThisToLinked(), PortalEyeInterpolation.m_vEyePosition_Uninterpolated, PortalEyeInterpolation.m_vEyePosition_Uninterpolated );
+
+		PortalEyeInterpolation.m_bEyePositionIsInterpolating = true;
 	}
 
 	for ( int i = 0; i < MAX_VIEWMODELS; i++ )
@@ -1358,6 +1361,11 @@ void C_Portal_Player::ApplyPredictedPortalTeleportation( CProp_Portal *pEnteredP
 		C_PortalGhostRenderable::CreateInversion( pGhost, pEnteredPortal, gpGlobals->curtime, true );
 	}
 #endif
+	
+	UTIL_Portal_PointTransform( pEnteredPortal->MatrixThisToLinked(), PortalEyeInterpolation.m_vEyePosition_Interpolated, PortalEyeInterpolation.m_vEyePosition_Interpolated);
+	UTIL_Portal_PointTransform( pEnteredPortal->MatrixThisToLinked(), PortalEyeInterpolation.m_vEyePosition_Uninterpolated, PortalEyeInterpolation.m_vEyePosition_Uninterpolated );
+
+	PortalEyeInterpolation.m_bEyePositionIsInterpolating = true;
 
 	//Warning( "C_Portal_Player::ApplyPredictedPortalTeleportation() ent:%i slot:%i\n", entindex(), engine->GetActiveSplitScreenPlayerSlot() );
 	ApplyTransformToInterpolators( pEnteredPortal->m_matrixThisToLinked, gpGlobals->curtime, false, bForcedDuck );
@@ -2761,6 +2769,9 @@ void C_Portal_Player::UpdatePortalEyeInterpolation( void )
 Vector C_Portal_Player::EyePosition()
 {
 	if ( !IsLocalPlayer() )
+		return BaseClass::EyePosition();
+
+	if ( prediction->InPrediction() )
 		return BaseClass::EyePosition();
 
 	return PortalEyeInterpolation.m_vEyePosition_Interpolated;  

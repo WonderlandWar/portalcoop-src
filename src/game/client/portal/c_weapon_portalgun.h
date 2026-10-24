@@ -188,9 +188,6 @@ public:
 
 	unsigned char m_iOldPortalLinkageGroupID; 
 	unsigned char m_iPortalLinkageGroupID; //which portal linkage group this gun is tied to, usually set by mapper, or inherited from owning player's index
-#ifdef ENABLE_PORTAL_EYE_INTERPOLATION_CODE
-	Vector m_vFirstPredictedShotPos;
-#endif
 
 	int m_iValidPlayer;
 	bool m_bCanAttack;

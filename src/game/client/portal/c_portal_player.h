@@ -20,6 +20,8 @@
 #include "c_trigger_tractorbeam.h"
 #include "portal_gamemovement.h"
 
+#define ENABLE_PORTAL_EYE_INTERPOLATION_CODE 1
+
 class C_EntityPortalledNetworkMessage : public CMemZeroOnNew
 {
 public:	

@@ -594,22 +594,7 @@ float CWeaponPortalgun::FirePortal( bool bPortal2, Vector *pVector /*= 0*/, bool
 
 
 		pPlayer->EyeVectors( &vDirection, NULL, NULL );
-#ifdef CLIENT_DLL
-#ifdef ENABLE_PORTAL_EYE_INTERPOLATION_CODE
-		if ( !bTest )
-		{
-			if ( bIsFirstTimePredicted )
-			{
-				m_vFirstPredictedShotPos = pPlayer->EyePosition();
-			}
-			vEye = m_vFirstPredictedShotPos;
-		}
-		else
-#endif
-#endif
-		{
-			vEye = pPlayer->EyePosition();
-		}
+		vEye = pPlayer->EyePosition();
 
 		// Check if the players eye is behind the portal they're in and translate it
 		VMatrix matThisToLinked;
