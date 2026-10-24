@@ -1471,8 +1471,11 @@ float UTIL_Portal_ShortestDistanceSqr( const Vector &vPoint1, const Vector &vPoi
 
 						//do some crazy wrapped line intersection algorithm
 
+						const Vector &ptOrigin = pTempPortal->m_ptOrigin;
+						const Vector &ptLinkedOrigin = pLinkedPortal->m_ptOrigin;
+
 						//for now, just do the cheap and easy solution
-						float fWrapDist = vPoint1.DistToSqr( pTempPortal->GetAbsOrigin() ) + pLinkedPortal->GetAbsOrigin().DistToSqr( vPoint2 );
+						float fWrapDist = vPoint1.DistToSqr( ptOrigin ) + ptLinkedOrigin.DistToSqr( vPoint2 );
 						if( fWrapDist < fMinDist )
 						{
 							fMinDist = fWrapDist;
