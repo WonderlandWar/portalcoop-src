@@ -66,7 +66,11 @@ ConVar mat_hdr_manual_tonemap_rate( "mat_hdr_manual_tonemap_rate", "1.0" );
 ConVar mat_non_hdr_bloom_scalefactor("mat_non_hdr_bloom_scalefactor",".3");
 
 // Apply addition scale to the final bloom scale
+#ifdef PORTAL // PCOOP: Would use modsettings.cfg, but that doesn't appear to work
+static ConVar mat_bloom_scalefactor_scalar( "mat_bloom_scalefactor_scalar", ".6" );
+#else
 static ConVar mat_bloom_scalefactor_scalar( "mat_bloom_scalefactor_scalar", "1.0" );
+#endif
 
 //ConVar mat_exposure_center_region_x( "mat_exposure_center_region_x","0.75", FCVAR_CHEAT );
 //ConVar mat_exposure_center_region_y( "mat_exposure_center_region_y","0.80", FCVAR_CHEAT );
