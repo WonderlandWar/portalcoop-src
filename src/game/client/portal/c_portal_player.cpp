@@ -3097,56 +3097,27 @@ CPlayerGlower g_PlayerGlower;
 
 void CPlayerGlower::PreRender( void )
 {
-	if ( m_bGlowingPlayers )
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
 	{
-		for (int i = 1; i <= gpGlobals->maxClients; ++i)
-		{
-			C_Portal_Player *pPlayer = (C_Portal_Player*)UTIL_PlayerByIndex(i);
+		C_Portal_Player *pPlayer = (C_Portal_Player*)UTIL_PlayerByIndex(i);
 
-			if ( !pPlayer )
-				continue;
+		if ( !pPlayer )
+			continue;
 
-			if ( pPlayer->IsLocalPlayer() )
-				continue;
+		if ( pPlayer->IsLocalPlayer() )
+			continue;
 										
-			pPlayer->SetClientSideGlowEnabled( true );
+		pPlayer->SetClientSideGlowEnabled( m_bGlowingPlayers );
 
-			// We also want the player's weapon to glow
-			for (int i = 0; i < pPlayer->WeaponCount(); ++i)
-			{					
-				C_BaseCombatWeapon *pWeapon = pPlayer->GetWeapon(i);
+		// We also want the player's weapon to glow
+		for (int i = 0; i < pPlayer->WeaponCount(); ++i)
+		{					
+			C_BaseCombatWeapon *pWeapon = pPlayer->GetWeapon(i);
 
-				if (!pWeapon)
-					continue;
-
-				pWeapon->SetClientSideGlowEnabled( true );
-			}
-		}
-	}
-	else
-	{
-		for (int i = 1; i <= gpGlobals->maxClients; ++i)
-		{
-			C_Portal_Player *pPlayer = (C_Portal_Player*)UTIL_PlayerByIndex(i);
-
-			if ( !pPlayer )
-				continue;
-			
-			if ( pPlayer->IsLocalPlayer() )
+			if (!pWeapon)
 				continue;
 
-			pPlayer->SetClientSideGlowEnabled( false );
-			
-			// Don't forget to turn off the weapon glow!
-			for (int i = 0; i < pPlayer->WeaponCount(); ++i)
-			{					
-				C_BaseCombatWeapon *pWeapon = pPlayer->GetWeapon(i);
-
-				if (!pWeapon)
-					continue;
-
-				pWeapon->SetClientSideGlowEnabled( false );
-			}
+			pWeapon->SetClientSideGlowEnabled( m_bGlowingPlayers );
 		}
 	}
 }
