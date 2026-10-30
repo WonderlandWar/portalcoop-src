@@ -104,6 +104,11 @@ void CInfoPlayerPortalCoop::PlayerSpawned( CBasePlayer *pPlayer )
 
 bool CInfoPlayerPortalCoop::CanSpawnOnMe( CBasePlayer *pPlayer )
 {
+	if ( IsMarkedForDeletion() )
+	{
+		return false;
+	}
+
 	if ( !m_iValidPlayerIndex || m_iValidPlayerIndex == pPlayer->entindex() )
 	{
 		return true;
