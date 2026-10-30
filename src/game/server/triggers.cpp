@@ -120,6 +120,7 @@ BEGIN_DATADESC( CBaseTrigger )
 
 	DEFINE_INPUTFUNC( FIELD_VOID, "StartTouch", InputStartTouch ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "EndTouch", InputEndTouch ),
+	DEFINE_INPUTFUNC( FIELD_STRING, "SetFilter", InputSetFilter ),
 
 	// Outputs
 	DEFINE_OUTPUT( m_OnStartTouch, "OnStartTouch"),
@@ -410,6 +411,20 @@ void CBaseTrigger::InputEndTouch( inputdata_t &inputdata )
 {
 	//And... pretend we left the trigger.
 	EndTouch( inputdata.pCaller );	
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Called to simulate what happens when an entity leaves the trigger.
+// Input  : pOther - The entity that is touching us.
+//-----------------------------------------------------------------------------
+void CBaseTrigger::InputSetFilter( inputdata_t &inputdata )
+{
+	// Get a handle to my filter entity if there is one
+	const char *str = inputdata.value.String();
+	if ( str && *str )
+	{
+		m_hFilter = dynamic_cast<CBaseFilter *>( gEntList.FindEntityByName( NULL, str ) );
+	}
 }
 
 //-----------------------------------------------------------------------------

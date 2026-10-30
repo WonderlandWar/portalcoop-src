@@ -86,6 +86,7 @@ public:
 
 	virtual void InputStartTouch( inputdata_t &inputdata );
 	virtual void InputEndTouch( inputdata_t &inputdata );
+	void InputSetFilter( inputdata_t &inputdata );
 
 	virtual bool UsesFilter( void ){ return ( m_hFilter.Get() != NULL ); }
 	virtual void StartTouch(CBaseEntity *pOther);
