@@ -101,6 +101,7 @@ public:
 	virtual void	NotifySystemEvent( CBaseEntity *pNotify, notify_system_event_t eventType, const notify_system_event_params_t &params );
 	virtual int		ObjectCaps( void );
 	void			Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void			Camera_FindEnemy( void );
 
 	// Think functions
 	void	Retire( void );
@@ -405,6 +406,50 @@ void CNPC_SecurityCamera::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, US
 		pPlayer->PickupObject( this );
 }
 
+void CNPC_SecurityCamera::Camera_FindEnemy( void )
+{
+	CBaseEntity *pEnemy = NULL;
+
+	float fLastDistSqr = FLT_MAX;
+	//CBasePlayer *pPlayer = UTIL_PlayerByIndex( 1 );
+	for( int i = 1; i <= gpGlobals->maxClients; ++i )
+	{
+		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
+
+		if ( !pPlayer || !pPlayer->IsAlive() )
+			continue;
+
+		float fDistSqr;
+		if ( FInViewCone( pPlayer ) && FVisible( pPlayer ) )
+		{
+			fDistSqr = EyePosition().DistToSqr( pPlayer->EyePosition() );
+		}
+		else
+		{
+			CProp_Portal *pPortal = FInViewConeThroughPortal( pPlayer );
+			if ( pPortal && FVisibleThroughPortal( pPortal, pPlayer ) )
+			{
+				fDistSqr = UTIL_Portal_DistanceThroughPortalSqr( pPortal, EyePosition(), pPlayer->EyePosition() );
+			}
+			else
+			{
+				continue; // Not visible at all
+			}
+		}
+
+		if ( fDistSqr >= fLastDistSqr )
+			continue;
+
+		fLastDistSqr = fDistSqr;
+		pEnemy = pPlayer;
+	}
+
+	if ( pEnemy )
+	{
+		SetEnemy( pEnemy );
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -646,6 +691,8 @@ void CNPC_SecurityCamera::ActiveThink( void )
 	//Update our think time
 	SetNextThink( gpGlobals->curtime + 0.1f );
 
+	Camera_FindEnemy();
+
 	CBaseEntity *pEnemy = GetEnemy();
 
 	//If we've become inactive, go back to searching
@@ -813,36 +860,7 @@ void CNPC_SecurityCamera::SearchThink( void )
 	//Acquire the target
  	if ( GetEnemy() == NULL )
 	{
-
-		CBaseEntity *pEnemy = NULL;
-
-		//CBasePlayer *pPlayer = UTIL_PlayerByIndex( 1 );
-		for( int i = 1; i <= gpGlobals->maxClients; ++i )
-		{
-			CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );
-			if ( pPlayer && pPlayer->IsAlive() )
-			{
-				if ( FInViewCone( pPlayer ) && FVisible( pPlayer ) )
-				{
-					pEnemy = pPlayer;
-					break;
-				}
-				else
-				{
-					CProp_Portal *pPortal = FInViewConeThroughPortal( pPlayer );
-					if ( pPortal && FVisibleThroughPortal( pPortal, pPlayer ) )
-					{
-						pEnemy = pPlayer;
-						break;
-					}
-				}
-			}
-		}
-
-		if ( pEnemy )
-		{
-			SetEnemy( pEnemy );
-		}
+		Camera_FindEnemy();
 	}
 
 	//If we've found a target follow it
