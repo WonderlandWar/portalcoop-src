@@ -23,9 +23,10 @@
 #define PLAYER_HINT_DISTANCE	150
 #define PLAYER_HINT_DISTANCE_SQ	(PLAYER_HINT_DISTANCE*PLAYER_HINT_DISTANCE)
 
-static ConVar hud_centerid( "hud_centerid", "1" );
-static ConVar hud_showtargetid( "hud_showtargetid", "0", FCVAR_ARCHIVE );
+ConVar hud_centerid( "hud_centerid", "1" );
+ConVar hud_showtargetid( "hud_showtargetid", "0", FCVAR_ARCHIVE );
 ConVar hud_showportals( "hud_showportals", "0", FCVAR_ARCHIVE );
+ConVar hud_showplayernames( "hud_showplayernames", "0", FCVAR_ARCHIVE );
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -237,7 +238,7 @@ void CTargetID::Paint()
 				c = UTIL_Portal_Color( pPortal->m_bIsPortal2 ? 2 : 1, ConvertLinkageIDToColorSet( pPortal->m_iLinkageGroupID ) );
 			}
 		}
-		else if ( pTargetPlayer && !pTargetPlayer->IsLocalPlayer() )
+		else if ( pTargetPlayer && !pTargetPlayer->IsLocalPlayer() && hud_showplayernames.GetBool() )
 		{
 			bShowPlayerName = true;
 			g_pVGuiLocalize->ConvertANSIToUnicode( pTargetPlayer->GetPlayerName(),  wszPlayerName, sizeof(wszPlayerName) );

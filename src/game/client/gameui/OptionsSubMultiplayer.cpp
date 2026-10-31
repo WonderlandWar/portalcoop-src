@@ -1099,7 +1099,7 @@ COptionsSubMultiplayer::COptionsSubMultiplayer(vgui::Panel *parent) : vgui::Prop
 	m_pHighQualityModelCheckBox = new CCvarToggleCheckButton( this, "High Quality Models", "#GameUI_HighModels", "cl_himodels" );
 	m_pShowPortalInfoCheckBox = new CCvarToggleCheckButton(this, "CheckShowPortalInfo", "#GameUI_MultiplayerShowPortalOwner", "hud_showportals");
 	m_pShowPingAlertsCheckBox = new CCvarToggleCheckButton(this, "ShowPingAlerts", "#GameUI_MultiplayerShowPingAlerts", "cl_portal_coop_show_annotations");
-	m_pShowPlayerNameCheckBox = new CCvarToggleCheckButton(this, "ShowPlayerName", "#GameUI_MultiplayerShowPlayerName", "hud_showtargetid");
+	m_pShowPlayerNameCheckBox = new CCvarToggleCheckButton(this, "ShowPlayerName", "#GameUI_MultiplayerShowPlayerName", "hud_showplayernames");
 	
 	m_pModelList = new CLabeledCommandComboBox( this, "Player model" );
 	m_ModelName[0] = 0;
