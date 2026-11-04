@@ -11,4 +11,6 @@ enum RadioMode_t
 	RADIO_NUM_MODES,
 };
 
+#define DEFAULT_RADIO_SONG "Portal.room1_radio"
+
 #endif // PORTAL_RADIO_SHARED_H

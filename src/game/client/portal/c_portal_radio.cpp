@@ -40,6 +40,7 @@ class C_Dinosaur_Signal : public C_BaseEntity
 public:
 	DECLARE_CLIENTCLASS();
 	DECLARE_CLASS( C_Dinosaur_Signal, C_BaseEntity );
+
 #ifndef USE_BASIC_RADIOS
 	char  m_iszSoundName[128];
 #endif
@@ -68,7 +69,6 @@ public:
 
 	virtual void Spawn();
 	virtual void OnDataChanged( DataUpdateType_t updatetype );
-	virtual void Precache();
 	virtual void ClientThink();
 	virtual	int DrawModel( int flags );
 
@@ -88,6 +88,9 @@ public:
 	bool	m_bAlreadyDiscovered;
 	bool	m_bDinosaurExtinct;
 #endif
+
+	char  m_iszSongName[128];
+
 	// Sound envelopes
 	CSoundPatch		*m_pNormalSound;
 #ifndef USE_BASIC_RADIOS
@@ -97,12 +100,32 @@ public:
 
 	RadioMode_t		m_iOldRadioMode;
 	RadioMode_t		m_iRadioMode;
+
+	bool			m_bOldShouldPlay;
+	bool			m_bShouldPlay;
 };
+
+static void RecvProxy_SongName( const CRecvProxyData *pData, void *pStruct, void *pOut )
+{
+	RecvProxy_StringToString( pData, pStruct, pOut );
+	
+	C_Portal_Dinosaur *pDinosaur = (C_Portal_Dinosaur*)pStruct;
+	
+	if ( pDinosaur->m_pNormalSound )
+	{
+		CSoundEnvelopeController::GetController().SoundDestroy( pDinosaur->m_pNormalSound );
+		pDinosaur->m_pNormalSound = NULL;
+	}
+
+	pDinosaur->SetupSounds();
+}
 
 IMPLEMENT_CLIENTCLASS_DT( C_Portal_Dinosaur, DT_PropDinosaur, CPortal_Dinosaur )
 #ifndef USE_BASIC_RADIOS
 	RecvPropEHandle( RECVINFO( m_hDinosaur_Signal ) ),
 	RecvPropInt( RECVINFO( m_iRadioMode ) ),
+	RecvPropBool( RECVINFO( m_bShouldPlay ) ),
+	RecvPropString( RECVINFO(m_iszSongName) ), 
 #endif
 END_RECV_TABLE()
 
@@ -110,7 +133,10 @@ LINK_ENTITY_TO_CLASS( prop_radio, C_Portal_Dinosaur );
 
 C_Portal_Dinosaur::C_Portal_Dinosaur()
 {
+	m_iszSongName[0] = '\0';
 	m_iOldRadioMode = m_iRadioMode = RADIO_NUM_MODES;
+	m_bShouldPlay = true;
+	m_bOldShouldPlay = false;
 }
 
 void C_Portal_Dinosaur::Spawn()
@@ -157,6 +183,12 @@ void C_Portal_Dinosaur::OnDataChanged( DataUpdateType_t updatetype )
 		SetupSounds();
 		m_iOldRadioMode = m_iRadioMode;
 	}
+
+	if ( m_bOldShouldPlay != m_bShouldPlay )
+	{
+		SetupSounds();
+		m_bOldShouldPlay = m_bShouldPlay;
+	}
 #endif
 }
 
@@ -179,46 +211,19 @@ C_Portal_Dinosaur::~C_Portal_Dinosaur( void )
 #endif
 }
 
-void C_Portal_Dinosaur::Precache( void )
-{
-	PrecacheScriptSound( "Portal.room1_radio" );
-	PrecacheScriptSound( "UpdateItem.Static" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur01" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur02" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur03" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur04" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur05" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur06" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur07" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur08" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur09" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur10" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur11" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur12" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur13" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur14" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur15" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur16" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur17" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur18" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur19" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur20" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur21" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur22" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur23" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur24" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur25" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur26" );
-}
-
 const char *C_Portal_Dinosaur::GetRadioSongScript( void )
 {
+	if ( m_iszSongName[0] )
+	{
+		return m_iszSongName;
+	}
+
 	if ( sv_portal_game.GetInt() == PORTAL_GAME_REXAURA )
 	{
 		return "";
 	}
-	
-	return "Portal.room1_radio";
+
+	return DEFAULT_RADIO_SONG;
 }
 
 void C_Portal_Dinosaur::SetupSounds()
@@ -232,6 +237,17 @@ void C_Portal_Dinosaur::SetupSounds()
 			CSoundEnvelopeController::GetController().SoundDestroy( m_pNormalSound );
 			m_pNormalSound = NULL;
 		}
+	}
+
+	if ( !m_bShouldPlay )
+	{
+		if ( m_pNormalSound )
+		{
+			CSoundEnvelopeController::GetController().SoundDestroy( m_pNormalSound );
+			m_pNormalSound = NULL;
+		}
+
+		return;
 	}
 
 	if ( m_pNormalSound == NULL )

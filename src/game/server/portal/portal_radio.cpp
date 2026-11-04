@@ -105,9 +105,10 @@ public:
 
 	virtual void Spawn();
 	virtual void Precache();
+	virtual void Activate();
 	virtual QAngle PreferredCarryAngles( void ) { return QAngle( 0, 180, 0 ); }
 	virtual bool HasPreferredCarryAnglesForPlayer( CBasePlayer *pPlayer ) { return true; }
-	virtual void Activate();
+	virtual void OnPhysGunPickup( CBasePlayer *pPhysGunUser, PhysGunPickup_t reason );
 
 	void UpdateRadioMode( bool bNotEveryPlayerCompletedMapSet );
 	void OnSetRadioMode( RadioMode_t radioMode );
@@ -120,11 +121,14 @@ public:
 	CHandle< CDinosaurSignal > m_hDinosaur_Signal;
 #endif
 	string_t m_iszSignalName;
+	CNetworkVar( string_t, m_iszSongName );
 	COutputEvent m_OnSignalReceived;
 	float m_flOldInnerBlend;
 	float m_flOldOuterBlend;
 
+	bool m_bPlayOnPickup;
 	CNetworkVar( RadioMode_t, m_iRadioMode );
+	CNetworkVar( bool, m_bShouldPlay );
 };
 
 LINK_ENTITY_TO_CLASS( prop_radio, CPortal_Dinosaur );
@@ -137,6 +141,8 @@ BEGIN_DATADESC( CPortal_Dinosaur )
 	
 	DEFINE_KEYFIELD( m_iszSignalName, FIELD_STRING, "signalname" ),
 	DEFINE_KEYFIELD( m_iRadioMode, FIELD_INTEGER, "radiomode" ),
+	DEFINE_KEYFIELD( m_bPlayOnPickup, FIELD_BOOLEAN, "PlayOnPickup" ),
+	DEFINE_KEYFIELD( m_iszSongName, FIELD_STRING, "SongName" ),
 
 	DEFINE_OUTPUT( m_OnSignalReceived, "OnSignalReceived" ),
 	DEFINE_THINKFUNC( ScanThink ),
@@ -146,47 +152,26 @@ IMPLEMENT_SERVERCLASS_ST( CPortal_Dinosaur, DT_PropDinosaur )
 #ifndef USE_BASIC_RADIOS
 	SendPropEHandle( SENDINFO( m_hDinosaur_Signal ) ),
 	SendPropInt( SENDINFO( m_iRadioMode ) ),
+	SendPropBool( SENDINFO( m_bShouldPlay ) ),
+	SendPropStringT( SENDINFO( m_iszSongName ) ),
 #endif
 END_SEND_TABLE()
 
 CPortal_Dinosaur::CPortal_Dinosaur()
 {
+	m_bShouldPlay = true;
 	m_iRadioMode = RADIO_NORMAL;
+	m_bPlayOnPickup = false;
+
+	m_iszSongName = AllocPooledString_StaticConstantStringPointer( DEFAULT_RADIO_SONG );
 }
 
 void CPortal_Dinosaur::Precache()
 {
 	PrecacheModel( RADIO_MODEL_NAME );
 
-	PrecacheScriptSound( "Portal.room1_radio" );
+	PrecacheScriptSound( m_iszSongName.Get().ToCStr() );
 	PrecacheScriptSound( "UpdateItem.Static" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur01" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur02" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur03" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur04" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur05" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur06" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur07" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur08" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur09" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur10" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur11" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur12" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur13" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur14" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur15" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur16" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur17" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur18" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur19" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur20" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur21" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur22" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur23" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur24" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur25" );
-	PrecacheScriptSound( "UpdateItem.Dinosaur26" );
-
 	PrecacheScriptSound( "UpdateItem.Fizzle" );
 }
 
@@ -206,6 +191,21 @@ void CPortal_Dinosaur::Activate( void )
 	BaseClass::Activate();
 
 	OnSetRadioMode( m_iRadioMode );
+
+	if ( m_bPlayOnPickup )
+	{
+		m_bShouldPlay = false;
+	}
+}
+
+void CPortal_Dinosaur::OnPhysGunPickup( CBasePlayer *pPhysGunUser, PhysGunPickup_t reason )
+{
+	BaseClass::OnPhysGunPickup( pPhysGunUser, reason );
+
+	if ( m_bPlayOnPickup )
+	{
+		m_bShouldPlay = true;
+	}
 }
 
 void CPortal_Dinosaur::UpdateRadioMode( bool bNotEveryPlayerCompletedMapSet )
