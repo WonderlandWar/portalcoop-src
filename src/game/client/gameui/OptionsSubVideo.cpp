@@ -1511,6 +1511,21 @@ void COptionsSubVideo::SetCurrentResolutionComboItem()
 	}
 }
 
+void UpdateUIScaleCVars( int height, int width )
+{
+	ConVarRef vgui_ui_scale_height( "vgui_ui_scale_height" );
+	if ( vgui_ui_scale_height.IsValid() )
+	{
+		vgui_ui_scale_height.SetValue( height );
+	}
+	
+	ConVarRef vgui_ui_scale_width( "vgui_ui_scale_width" );
+	if ( vgui_ui_scale_width.IsValid() )
+	{
+		vgui_ui_scale_width.SetValue( width );
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: restarts the game
 //-----------------------------------------------------------------------------
@@ -1586,6 +1601,8 @@ void COptionsSubVideo::OnApplyChanges()
 	{
 		bConfigChanged = true;
 	}
+
+	UpdateUIScaleCVars( width, height );
 
 #if defined( USE_SDL )
 	if ( !windowed )

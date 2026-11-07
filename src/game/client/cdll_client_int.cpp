@@ -152,6 +152,9 @@
 
 #endif
 
+#ifdef PORTAL
+#include "materialsystem/materialsystem_config.h"
+#endif
 
 extern vgui::IInputInternal *g_InputInternal;
 
@@ -1201,14 +1204,22 @@ void CHLClient::PostInit()
 	}
 #endif
 
-	if ( !r_lightmap_bicubic_set.GetBool() && materials )
+	if ( materials )
 	{
-		MaterialAdapterInfo_t info{};
-		materials->GetDisplayAdapterInfo( materials->GetCurrentAdapter(), info );
+		if ( !r_lightmap_bicubic_set.GetBool() )
+		{
+			MaterialAdapterInfo_t info{};
+			materials->GetDisplayAdapterInfo( materials->GetCurrentAdapter(), info );
 
-		ConVarRef r_lightmap_bicubic( "r_lightmap_bicubic" );
-		r_lightmap_bicubic.SetValue( info.m_nMaxDXSupportLevel >= 95 || ( info.m_nMaxDXSupportLevel >= 90 && IsLinux() ) );
-		r_lightmap_bicubic_set.SetValue( true );
+			ConVarRef r_lightmap_bicubic( "r_lightmap_bicubic" );
+			r_lightmap_bicubic.SetValue( info.m_nMaxDXSupportLevel >= 95 || ( info.m_nMaxDXSupportLevel >= 90 && IsLinux() ) );
+			r_lightmap_bicubic_set.SetValue( true );
+		}
+	#ifdef PORTAL
+		const MaterialSystem_Config_t &config = materials->GetCurrentConfigForVideoCard();
+		extern void UpdateUIScaleCVars( int width, int height );
+		UpdateUIScaleCVars( config.m_VideoMode.m_Width, config.m_VideoMode.m_Height );
+	#endif
 	}
 }
 
