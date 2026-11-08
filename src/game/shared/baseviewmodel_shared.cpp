@@ -504,7 +504,14 @@ void CBaseViewModel::CalcViewModelLag( Vector& origin, QAngle& angles, QAngle& o
 			pitch -= 360.0f;
 		else if ( pitch < -180.0f )
 			pitch += 360.0f;
-
+#ifdef PORTAL
+		// HACK: Make looking up and down similar
+		// (solves view model "pop" on floor to floor transitions)
+		if ( original_angles[ PITCH ] > 0 )
+		{
+			pitch = -pitch;
+		}
+#endif
 		if ( g_fMaxViewModelLag == 0.0f )
 		{
 			origin = vOriginalOrigin;
