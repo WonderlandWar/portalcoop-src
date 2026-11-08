@@ -3029,19 +3029,24 @@ void C_Portal_Player::GetToolRecordingState( KeyValues *msg )
 extern float g_fMaxViewModelLag;
 void C_Portal_Player::CalcViewModelView( const Vector& eyeOrigin, const QAngle& eyeAngles)
 {
-	// HACK: Manually adjusting the eye position that view model looking up and down are similar
-	// (solves view model "pop" on floor to floor transitions)
 	Vector vInterpEyeOrigin = eyeOrigin;
 
-	Vector vForward;
-	Vector vRight;
-	Vector vUp;
-	AngleVectors( eyeAngles, &vForward, &vRight, &vUp );
-
-	if ( vForward.z < 0.0f )
+	extern ConVar sv_viewmodel_lag_do_angles;
+	if ( sv_viewmodel_lag_do_angles.GetBool() )
 	{
-		float fT = vForward.z * vForward.z;
-		vInterpEyeOrigin += vRight * ( fT * 4.7f ) + vForward * ( fT * 5.0f ) + vUp * ( fT * 4.0f );
+		// HACK: Manually adjusting the eye position that view model looking up and down are similar
+		// (solves view model "pop" on floor to floor transitions)
+
+		Vector vForward;
+		Vector vRight;
+		Vector vUp;
+		AngleVectors( eyeAngles, &vForward, &vRight, &vUp );
+
+		if ( vForward.z < 0.0f )
+		{
+			float fT = vForward.z * vForward.z;
+			vInterpEyeOrigin += vRight * ( fT * 4.7f ) + vForward * ( fT * 5.0f ) + vUp * ( fT * 4.0f );
+		}
 	}
 	
 	if ( UTIL_EntityIsIntersectingPortalWithLinkedAlsoBeingFloorOrCeiling( this ) )
