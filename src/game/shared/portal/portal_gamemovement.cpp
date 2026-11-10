@@ -156,8 +156,11 @@ public:
 	void HandlePortallingLegacy( void ); // This is Portal 1 code but ported to gamemovement partially mixed with Portal 2 code
 
 private:
+
+	bool			Portalling_ShouldTeleportPlayer( CProp_Portal *pPortal, const Vector &ptPlayerCenter, CPortalSimulator *pPortalSimulator, const PS_InternalData_t &LocalPortalDataAccess );
+	void			Portalling_TeleportPlayer( CProp_Portal *pPortal, Vector ptPlayerCenter, CPortalSimulator *pPortalSimulator, const PS_InternalData_t &LocalPortalDataAccess );
 	
-	virtual void	TBeamMove();
+	void			TBeamMove();
 
 	CPortal_Player	*GetPortalPlayer();
 	
@@ -1162,6 +1165,12 @@ void CPortalGameMovement::HandlePortallingLegacy( void )
 	{
 		if ( pPortalEnvironment )
 		{
+			CPortalSimulator *pPortalSimulator = &pPortalEnvironment->m_PortalSimulator;
+			const PS_InternalData_t &LocalPortalDataAccess = pPortalSimulator->GetInternalData();
+			if ( Portalling_ShouldTeleportPlayer( pPortalEnvironment, ptPlayerCenter, pPortalSimulator, LocalPortalDataAccess ) )
+			{
+				Portalling_TeleportPlayer( pPortalEnvironment, ptPlayerCenter, pPortalSimulator, LocalPortalDataAccess );
+			}
 			pPortalEnvironment->m_PortalSimulator.ReleaseOwnershipOfEntity( player );
 		}
 		if ( pPortal )
@@ -1170,25 +1179,33 @@ void CPortalGameMovement::HandlePortallingLegacy( void )
 			pPortal->m_PortalSimulator.TakeOwnershipOfEntity( player );
 		}
 	}
+		
+	CPortalSimulator *pPortalSimulator = &pPortal->m_PortalSimulator;
+	const PS_InternalData_t &LocalPortalDataAccess = pPortalSimulator->GetInternalData();
 
+	if ( Portalling_ShouldTeleportPlayer( pPortal, ptPlayerCenter, pPortalSimulator, LocalPortalDataAccess ) )
+	{
+		Portalling_TeleportPlayer( pPortal, ptPlayerCenter, pPortalSimulator, LocalPortalDataAccess );
+	}
+}
+#endif
+
+bool CPortalGameMovement::Portalling_ShouldTeleportPlayer( CProp_Portal *pPortal, const Vector &ptPlayerCenter, CPortalSimulator *pPortalSimulator, const PS_InternalData_t &LocalPortalDataAccess )
+{
 	if ( !pPortal ) // Found nothing, so don't handle teleportations
-		return;
+		return false;
 
 	// Check to see if we should teleport
 	
-	CPortalSimulator *pPortalSimulator = &pPortal->m_PortalSimulator;
-	
-	if( !pPortalSimulator->OwnsEntity( player ) ) //can't teleport an entity we don't own
+	/*if( !pPortalSimulator->OwnsEntity( player ) ) //can't teleport an entity we don't own
 	{
-		return;
+		return false;
 	}
 
-	const PS_InternalData_t &LocalPortalDataAccess = pPortalSimulator->GetInternalData();
-
-	if( m_vVelocityStart.Dot( LocalPortalDataAccess.Placement.vForward ) > 0.0f )
+	if (m_vVelocityStart.Dot(LocalPortalDataAccess.Placement.vForward) > 0.0f)
 	{
-		return;
-	}
+		return false;
+	}*/
 
 	bool bPastPortalHole = false;
 	// Test for entity's center being past portal plane
@@ -1207,8 +1224,14 @@ void CPortalGameMovement::HandlePortallingLegacy( void )
 	}
 
 	if ( !bPastPortalHole )
-		return;
+		return false;
 
+	return true;
+}
+
+void CPortalGameMovement::Portalling_TeleportPlayer( CProp_Portal *pPortal, Vector ptPlayerCenter, CPortalSimulator *pPortalSimulator, const PS_InternalData_t &LocalPortalDataAccess )
+{
+	CPortal_Player *pPortalPlayer = GetPortalPlayer();
 	// Now do the teleportation
 	
 	const PS_InternalData_t &RemotePortalDataAccess = pPortal->m_hLinkedPortal->m_PortalSimulator.GetInternalData();
@@ -1472,7 +1495,7 @@ void CPortalGameMovement::HandlePortallingLegacy( void )
 #endif
 	player->pl.NetworkStateChanged();
 }
-#endif
+
 // Expose our interface.
 static CPortalGameMovement g_GameMovement;
 IGameMovement *g_pGameMovement = ( IGameMovement * )&g_GameMovement;
