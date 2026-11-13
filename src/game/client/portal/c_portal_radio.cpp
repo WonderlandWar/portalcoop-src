@@ -12,6 +12,7 @@
 #include "beamdraw.h"
 #include "filesystem.h"
 #include "portal_shareddefs.h"
+#include "model_types.h"
 
 KeyValues *LoadRadioData()
 {	
@@ -416,6 +417,12 @@ void C_Portal_Dinosaur::ScanForSounds()
 int C_Portal_Dinosaur::DrawModel( int flags )
 {
 	int nRet = BaseClass::DrawModel( flags );
+
+	if ( flags & STUDIO_GLOWING )
+	{
+		return nRet;
+	}
+
 #ifndef USE_BASIC_RADIOS
 	if ( m_iRadioMode == RADIO_DINOSAUR_DEFAULT )
 	{
