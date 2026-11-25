@@ -533,6 +533,8 @@ bool CPortalSimulator::EntityIsInPortalHole( CBaseEntity *pEntity ) const
 		}
 
 	case SOLID_BBOX:
+	case SOLID_OBB:
+	case SOLID_OBB_YAW:
 		{
 			Vector ptEntityPosition = pEntity->GetAbsOrigin();
 			CCollisionProperty *pCollisionProp = pEntity->CollisionProp();
