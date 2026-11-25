@@ -66,4 +66,5 @@ void RegisterUserMessages()
 
 	// NVNT register haptic user messages
 	RegisterHapticMessages();
+	RegisterScriptMessages();
 }
