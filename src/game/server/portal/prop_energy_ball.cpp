@@ -603,7 +603,7 @@ void CEnergyBallLauncher::SpawnBall()
 	if ( pBall == NULL )
 		return;
 
-	Assert( !PortalGameRules()->ShouldPauseGame() );
+	Assert( !PortalGameRules()->IsGamePaused() );
 
 	pBall->SetRadius( m_flBallRadius );
 	Vector vecAbsOrigin = GetAbsOrigin();
