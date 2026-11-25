@@ -50,6 +50,15 @@ ConVar pcoop_avoidplayers_infinifling( "pcoop_avoidplayers_infinifling", "1", FC
 
 #if defined( CLIENT_DLL )
 ConVar cl_vertical_elevator_fix( "cl_vertical_elevator_fix", "1" );
+ConVar gamemovement_debug_portalling( "cl_gamemovement_debug_portalling", "0", FCVAR_CHEAT );
+#ifdef DEBUG
+ConVar gamemovement_debug_break_on_teleport( "cl_gamemovement_debug_break_on_teleport", "0", FCVAR_CHEAT );
+#endif
+#else
+ConVar gamemovement_debug_portalling( "sv_gamemovement_debug_portalling", "0", FCVAR_CHEAT );
+#ifdef DEBUG
+ConVar gamemovement_debug_break_on_teleport( "sv_gamemovement_debug_break_on_teleport", "0", FCVAR_CHEAT );
+#endif
 #endif
 
 class CReservePlayerSpot;
@@ -1171,7 +1180,10 @@ void CPortalGameMovement::HandlePortallingLegacy( void )
 			{
 				Portalling_TeleportPlayer( pPortalEnvironment, ptPlayerCenter, pPortalSimulator, LocalPortalDataAccess );
 			}
-			pPortalEnvironment->m_PortalSimulator.ReleaseOwnershipOfEntity( player );
+			else
+			{
+				pPortalEnvironment->m_PortalSimulator.ReleaseOwnershipOfEntity( player );
+			}
 		}
 		if ( pPortal )
 		{
@@ -1200,12 +1212,18 @@ bool CPortalGameMovement::Portalling_ShouldTeleportPlayer( CProp_Portal *pPortal
 	/*if( !pPortalSimulator->OwnsEntity( player ) ) //can't teleport an entity we don't own
 	{
 		return false;
-	}
+	}*/
 
 	if (m_vVelocityStart.Dot(LocalPortalDataAccess.Placement.vForward) > 0.0f)
 	{
+#ifdef DEBUG
+		if ( gamemovement_debug_portalling.GetBool() )
+		{
+			Msg( "DEBUG PORTALLING: Portal %i (%i) NOT portalling because the player's velocity direction isn't torwards the portal.\n", pPortal->m_bIsPortal2 ? 2 : 1, pPortal->GetLinkageGroup() );
+		}
+#endif
 		return false;
-	}*/
+	}
 
 	bool bPastPortalHole = false;
 	// Test for entity's center being past portal plane
@@ -1217,14 +1235,31 @@ bool CPortalGameMovement::Portalling_ShouldTeleportPlayer( CProp_Portal *pPortal
 		// If the player goes too fast, they can go past the portal without
 		// actually being inside it.
 		// Removing this will require further testing, however.
-		//if( pPortalSimulator->EntityIsInPortalHole( player ) )
+
+		// PCOOP: Restoring with the new portalling system.
+		if( pPortalSimulator->EntityIsInPortalHole( player ) )
 		{
 			bPastPortalHole = true;
 		}
 	}
 
 	if ( !bPastPortalHole )
+	{
+#ifdef DEBUG
+		if ( gamemovement_debug_portalling.GetBool() )
+		{
+			Msg( "DEBUG PORTALLING: Portal %i (%i) NOT portalling because the player isn't past the portal hole\n", pPortal->m_bIsPortal2 ? 2 : 1, pPortal->GetLinkageGroup() );
+		}
+#endif
 		return false;
+	}
+#ifdef DEBUG
+	if ( gamemovement_debug_portalling.GetBool() )
+	{
+		Msg( "DEBUG PORTALLING: Portal %i (%i) portalling...\n", pPortal->m_bIsPortal2 ? 2 : 1, pPortal->GetLinkageGroup() );
+	}
+#endif
+	Assert( gamemovement_debug_break_on_teleport.GetInt() != (pPortal->m_bIsPortal2 ? 2 : 1) );
 
 	return true;
 }
@@ -1276,6 +1311,8 @@ void CPortalGameMovement::Portalling_TeleportPlayer( CProp_Portal *pPortal, Vect
 
 	ptNewOrigin = pPortal->m_matrixThisToLinked * ptPlayerCenter;
 	ptNewOrigin += mv->GetAbsOrigin() - ptPlayerCenter;
+	
+	Assert( RemotePortalDataAccess.Placement.PortalPlane.m_Normal.Dot( ptNewOrigin ) >= RemotePortalDataAccess.Placement.PortalPlane.m_Dist );
 
 #ifdef GAME_DLL
 	//Msg( "SERVER Portal: %i ptNewOrigin: %f %f %f\n", pPortal->m_bIsPortal2 ? 2 : 1 , ptNewOrigin.x, ptNewOrigin.y, ptNewOrigin.z );
@@ -1347,16 +1384,25 @@ void CPortalGameMovement::Portalling_TeleportPlayer( CProp_Portal *pPortal, Vect
 				vNewVelocity.z = MINIMUM_FLOOR_PORTAL_EXIT_VELOCITY_PLAYER;
 		}
 
-
 		if ( vNewVelocity.LengthSqr() > (MAXIMUM_PORTAL_EXIT_VELOCITY * MAXIMUM_PORTAL_EXIT_VELOCITY)  )
 			vNewVelocity *= (MAXIMUM_PORTAL_EXIT_VELOCITY / vNewVelocity.Length());
+
+		if ( vNewVelocity.IsZero() )
+		{
+			vNewVelocity = pPortal->m_vForward * 10; // Hax
+		}
+	}
+
+	if ( pPortal->IsCeilingPortal() ) // This should fix ceiling to ceiling portal transitions
+	{		
+		player->SetGroundEntity( NULL );
 	}
 	
 	//untouch the portal(s), will force a touch on destination after the teleport
 	{
 		pPortalSimulator->ReleaseOwnershipOfEntity( player, true );
-		//this->PhysicsNotifyOtherOfUntouch( this, pOther );
-		//pOther->PhysicsNotifyOtherOfUntouch( pOther, this );
+		pPortal->PhysicsNotifyOtherOfUntouch( pPortal, player );
+		player->PhysicsNotifyOtherOfUntouch( player, pPortal );
 
 		pPortal->m_hLinkedPortal->m_PortalSimulator.TakeOwnershipOfEntity( player );
 
@@ -1364,13 +1410,59 @@ void CPortalGameMovement::Portalling_TeleportPlayer( CProp_Portal *pPortal, Vect
 		//pOther->PhysicsNotifyOtherOfUntouch( pOther, m_hLinkedPortal );
 	}
 
-#ifdef GAME_DLL
-	//NDebugOverlay::Box(ptNewOrigin, Vector(4, 4, 4), -Vector(4, 4, 4), 255, 0, 0, 128, 3.0 );
+	mv->SetAbsOrigin( ptNewOrigin );
+
+	Assert( gamemovement_debug_break_on_teleport.GetInt() != (pPortal->m_bIsPortal2 ? 2 : 1) );
+#ifdef DEBUG
+	if ( gamemovement_debug_portalling.GetInt() == 1 )
+	{
+		Vector mins, maxs;
+		if ( pPortalPlayer->IsDucked() )
+		{
+			mins = VEC_DUCK_HULL_MIN;
+			maxs = VEC_DUCK_HULL_MAX;
+		}
+		else
+		{
+			mins = VEC_HULL_MIN;
+			maxs = VEC_HULL_MAX;
+		}
+
+		float r, g, b;
+#ifdef CLIENT_DLL
+		r = 255;
+		g = 0;
+		b = 0;
+#else
+		r = 0;
+		g = 0;
+		b = 255;
+#endif
+		NDebugOverlay::Box( ptNewOrigin, mins, maxs, r, g, b, 200, 10 );
+	}
+	else if ( gamemovement_debug_portalling.GetInt() == 2 )
+	{
+		Vector mins, maxs;
+		mins = -Vector(2, 2, 2);
+		maxs = Vector(2, 2, 2);
+
+		float r, g, b;
+#ifdef CLIENT_DLL
+		r = 255;
+		g = 0;
+		b = 0;
+#else
+		r = 0;
+		g = 0;
+		b = 255;
 #endif
 
-	mv->SetAbsOrigin( ptNewOrigin );
-	
-	
+		Vector ptTransformedPlayerCenter = pPortal->m_matrixThisToLinked * ptPlayerCenter;
+
+		NDebugOverlay::Box( ptTransformedPlayerCenter, mins, maxs, r, g, b, 200, 10 );
+		NDebugOverlay::Box( ptPlayerCenter, mins, maxs, b, r, g, 200, 10 );
+	}
+#endif
 #if defined( CLIENT_DLL )
 	{
 		C_Portal_Player::PredictedPortalTeleportation_t entry;
@@ -1431,7 +1523,7 @@ void CPortalGameMovement::Portalling_TeleportPlayer( CProp_Portal *pPortal, Vect
 	}
 #endif
 	mv->m_vecVelocity = vNewVelocity;
-	
+
 #if defined( GAME_DLL )
 	pPortalPlayer->ApplyPortalTeleportation( pPortal, mv );
 #else
