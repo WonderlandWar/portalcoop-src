@@ -1110,6 +1110,12 @@ void CPortal_Player::Weapon_Drop( CBaseCombatWeapon *pWeapon, const Vector *pvec
 
 int CPortal_Player::GetPlayerConcept( void )
 {
+	// Mel
+	if ( GetColorSetForPlayer( entindex() ) == PORTAL_COLOR_SET_LIGHTBLUE_PURPLE )
+	{
+		return CONCEPT_MEL_IDLE;
+	}
+
 	return CONCEPT_CHELL_IDLE;
 
 }

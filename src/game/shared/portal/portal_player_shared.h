@@ -30,6 +30,7 @@ enum
 {
 	CONCEPT_PLAYER_DEAD,
 	CONCEPT_CHELL_IDLE,
+	CONCEPT_MEL_IDLE,
 };
 
 extern const char *g_pszPortalPlayerConcepts[];
